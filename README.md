@@ -63,7 +63,7 @@ The project files target .NET 10 and pin the official `ModelContextProtocol` pac
 
 ## Release hardening
 
-`build/release-hardening.ps1` publishes the Windows host and Control Center, emits an SPDX 2.3 SBOM, saves the transitive dependency inventory, and creates SHA-256 checksums. Set `ENGINEERING_MCP_SIGNING_THUMBPRINT` and pass `-RequireSigning` for an official signed release. CI creates an unsigned review artifact; unsigned output must not be promoted as an official release.
+`build/release-hardening.ps1` publishes the Windows host and Control Center, emits an SPDX 2.3 SBOM, saves the transitive dependency inventory, and creates SHA-256 checksums. Run it locally after the build, test, static-check, and vulnerable-dependency gates. Set `ENGINEERING_MCP_SIGNING_THUMBPRINT` and pass `-RequireSigning` for an official signed release. Unsigned output must not be promoted as an official release.
 
 ## VS Code
 

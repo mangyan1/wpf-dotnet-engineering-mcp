@@ -38,7 +38,7 @@ Verified on Windows on 2026-08-26 with .NET SDK 10.0.400:
 | Codex integration | IMPLEMENTED, VERIFIED CONFIG | global `dotnetWpfEngineering` entry uses bearer-token environment variable |
 | Developer Control Center | IMPLEMENTED, BUILD VERIFIED | authenticated MCP self-test + WPF end-to-end button-driven lab + policy selection |
 | Protocol hardening | IMPLEMENTED, VERIFIED | structured output/error signaling, schemas, annotations, native images, progress, pagination |
-| Production packaging | IMPLEMENTED, VERIFIED | locked dependencies, CI, SPDX SBOM, checksums, optional/required Authenticode gate |
+| Production packaging | IMPLEMENTED, VERIFIED | locked dependencies, local release hardening, SPDX SBOM, checksums, optional/required Authenticode gate |
 
 ## Developer Control Center verification target
 

@@ -43,9 +43,9 @@
 - Policy downgrade: policy version/schema and semantic validation reject open egress, disabled PII protection, whole-drive roots, unsafe screenshot behavior, and contradictory tool rules.
 - Audit loss: completion-write failure marks the host audit path unhealthy and subsequent audited calls fail closed; each host has a separate append stream.
 - Tool overexposure: profiles and exact tool rules limit discovery/calls while invocation authorization remains mandatory.
-- Supply chain: packages are centrally pinned and locked; CI scans known vulnerabilities and emits dependency inventory, SPDX SBOM, and checksums.
+- Supply chain: packages are centrally pinned and locked; local release validation scans known vulnerabilities and emits dependency inventory, SPDX SBOM, and checksums.
 
-Residual risks: UI Automation and WPF dispatcher COM calls cannot always be forcibly aborted in-process; custom-rendered screenshot text may evade UIA-based masking; regex/context PII classification cannot prove absence of all personal data; local administrators can tamper with binaries/audit files; official signing and externally attested provenance require operator/CI credentials. Keep screenshots and privileged diagnostics disabled unless explicitly needed, use minimal read roots/profiles, and treat signing as a release-promotion gate.
+Residual risks: UI Automation and WPF dispatcher COM calls cannot always be forcibly aborted in-process; custom-rendered screenshot text may evade UIA-based masking; regex/context PII classification cannot prove absence of all personal data; local administrators can tamper with binaries/audit files; official signing and externally attested provenance require operator credentials or a future trusted build service. Keep screenshots and privileged diagnostics disabled unless explicitly needed, use minimal read roots/profiles, and treat signing as a release-promotion gate.
 
 ## Stop conditions
 

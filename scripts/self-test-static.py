@@ -120,8 +120,8 @@ for policy_name in ['policy.example.json', 'policy.vscode-test.json']:
     check(policy.get('$schema') == './policy.schema.json' and policy.get('policyVersion') == 1,
           f"Versioned policy schema declared: {policy_name}")
 
-check((ROOT / '.github/workflows/ci.yml').exists() and (ROOT / 'build/release-hardening.ps1').exists(),
-      "CI and release hardening automation exist")
+check((ROOT / 'build/release-hardening.ps1').exists(),
+      "Local release hardening automation exists")
 
 print(f"\nStatic self-test: {len(passes)} passed, {len(failures)} failed")
 if failures:

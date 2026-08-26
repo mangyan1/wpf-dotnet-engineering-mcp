@@ -90,7 +90,7 @@ Workflow/recovery/navigation/feedback review. Every result labelled `HEURISTIC` 
 
 Code signing, SBOM, dependency scanning, provenance, fuzzing, resource-exhaustion tests, audit retention, policy/config versioning and threat-model review.
 
-**Implemented 2026-08-26:** locked NuGet dependency graphs, Windows CI build/test/static/vulnerability gates, SPDX SBOM/dependency inventory/checksums, optional Authenticode signing with a mandatory-release switch, versioned/validated policies, sticky audit-health denial, bounded HTTP/IPC, and oversized-frame tests. Official release signing and externally attested provenance still require CI certificate/identity configuration; the repository cannot manufacture those credentials.
+**Implemented 2026-08-26:** locked NuGet dependency graphs, Windows local build/test/static/vulnerability gates, SPDX SBOM/dependency inventory/checksums, optional Authenticode signing with a mandatory-release switch, versioned/validated policies, sticky audit-health denial, bounded HTTP/IPC, and oversized-frame tests. Official release signing and externally attested provenance still require operator certificate/identity configuration or a future trusted build service; the repository cannot manufacture those credentials.
 
 ## Do not build first
 
