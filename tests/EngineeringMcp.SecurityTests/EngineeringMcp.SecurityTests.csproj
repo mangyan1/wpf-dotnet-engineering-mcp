@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MSTest.TestFramework" />
+    <PackageReference Include="MSTest.TestAdapter" />
+    <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj" />
+  </ItemGroup>
+</Project>

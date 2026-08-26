@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" />
+    <PackageReference Include="Microsoft.Build.Locator" />
+    <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="runtime" PrivateAssets="all" />
+    <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj" />
+  </ItemGroup>
+</Project>

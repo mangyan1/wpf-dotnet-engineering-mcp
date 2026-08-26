@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>EngineeringMcp.Host</RootNamespace>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Audit/EngineeringMcp.Audit.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Wpf/EngineeringMcp.Wpf.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Wpf.WpfUi/EngineeringMcp.Wpf.WpfUi.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Diagnostics/EngineeringMcp.Diagnostics.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Source/EngineeringMcp.Source.csproj" />
+    <ProjectReference Include="../EngineeringMcp.AspNetCore/EngineeringMcp.AspNetCore.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Diagnosis/EngineeringMcp.Diagnosis.csproj" />
+  </ItemGroup>
+</Project>

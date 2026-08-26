@@ -1,0 +1,221 @@
+<ui:FluentWindow x:Class="EngineeringMcpFixture.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Engineering MCP Automation Fixture"
+        Width="1040"
+        Height="720"
+        MinWidth="900"
+        MinHeight="620"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        Background="{DynamicResource ApplicationBackgroundBrush}"
+        AutomationProperties.AutomationId="FixtureMainWindow">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Automation Fixture">
+            <ui:TitleBar.CenterContent>
+                <TextBlock Text="Intentionally instrumented target for UIA, probe, redaction and fault tests"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            </ui:TitleBar.CenterContent>
+        </ui:TitleBar>
+
+        <Grid Grid.Row="1" Margin="28,18,28,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left status rail -->
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="RUNTIME STATUS"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           Margin="2,0,0,10" />
+
+                <Border Padding="18" CornerRadius="12"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="WPF automation" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="UI Automation / UIA3"
+                                   Margin="0,5,0,14"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="● Ready" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,12,0,0" Padding="18" CornerRadius="12"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Security boundary" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="Secrets are denied and screenshots are redacted."
+                                   Margin="0,5,0,14" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="● Guardrails active" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Margin="0,12,0,0" Padding="18" CornerRadius="12"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Probe" FontSize="17" FontWeight="SemiBold" />
+                        <TextBlock Text="Binding, command, resource and exception telemetry."
+                                   Margin="0,5,0,14" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="● Local authenticated pipe" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Main test surface -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="Runtime workflow" FontSize="28" FontWeight="SemiBold" />
+                    <TextBlock Text="A real WPF-UI surface for validating semantic automation, state inspection, redaction and failure correlation."
+                               Margin="0,6,0,22"
+                               FontSize="14"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+                    <Border Padding="22" CornerRadius="14"
+                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock Text="Drive configuration" FontSize="19" FontWeight="SemiBold" />
+                            <TextBlock Text="These controls have stable AutomationIds for MCP testing."
+                                       Margin="0,4,0,18"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+                            <TextBlock Text="Mount path" FontWeight="SemiBold" Margin="0,0,0,7" />
+                            <ui:TextBox x:Name="MountPathBox"
+                                        Height="40"
+                                        PlaceholderText="C:\Mounts\EngineeringLab"
+                                        AutomationProperties.AutomationId="MountPathBox"
+                                        Text="{Binding Path=MountPath, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <TextBlock Text="Protected token field" FontWeight="SemiBold" Margin="0,16,0,7" />
+                            <PasswordBox x:Name="SecretBox"
+                                         Height="40"
+                                         Padding="10,7"
+                                         AutomationProperties.AutomationId="ApiTokenPasswordBox"
+                                         ToolTip="This field is intentionally denied to MCP interaction." />
+                            <TextBlock Text="MCP policy denies reads/writes against this AutomationId."
+                                       Margin="0,6,0,0"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                <ui:Button x:Name="SaveButton"
+                                           Content="Save configuration"
+                                           Appearance="Primary"
+                                           MinWidth="150"
+                                           AutomationProperties.AutomationId="SaveButton"
+                                           Command="{Binding SaveCommand}" />
+                                <ui:Button Content="Focus mount path"
+                                           Margin="10,0,0,0"
+                                           MinWidth="140"
+                                           AutomationProperties.AutomationId="FocusMountPathButton"
+                                           Click="FocusMountPathButton_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,16,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Padding="22" CornerRadius="14"
+                                AutomationProperties.AutomationId="TokenizedCard"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="Tokenized surface" FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                <TextBlock Text="Uses WPF-UI DynamicResource theme tokens so the MCP resource probe can trace effective styling."
+                                           Margin="0,6,0,0"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Padding="22" CornerRadius="14"
+                                Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="Fault injection" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Deliberately unsafe fixture actions for exception/redaction and static-XAML auditing."
+                                           Margin="0,6,0,14"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:Button x:Name="CrashButton"
+                                               Content="Trigger exception"
+                                               AutomationProperties.AutomationId="CrashButton"
+                                               Click="CrashButton_Click" />
+                                    <!-- Intentional anti-pattern: source analyzer must flag this hardcoded color. -->
+                                    <Button Content="Hardcoded style"
+                                            Background="#202020"
+                                            Foreground="White"
+                                            Margin="10,0,0,0"
+                                            Padding="12,6"
+                                            AutomationProperties.AutomationId="HardcodedStyleButton" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Intentional clipping defect retained for gui_audit validation. -->
+                    <Border Margin="0,16,0,0" Padding="16" CornerRadius="10"
+                            Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
+                        <StackPanel>
+                            <TextBlock Text="GUI audit fixture" FontWeight="SemiBold" />
+                            <TextBlock Height="5"
+                                       Margin="0,7,0,0"
+                                       Text="This sentence is intentionally clipped so gui_audit has a deterministic defect to detect." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Padding="28,12"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                Background="{DynamicResource LayerFillColorDefaultBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Local test fixture · no unrestricted shell · process allowlist enforced"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <TextBlock Grid.Column="1" Text=".NET 10 · WPF-UI 4.3"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

@@ -1,0 +1,61 @@
+{
+  "$schema": "./policy.schema.json",
+  "policyVersion": 1,
+  "enabledToolProfiles": [ "core", "wpf-read", "wpf-interact", "diagnostics", "source" ],
+  "permissionCeiling": "UiInteraction",
+  "processes": {
+    "allow": [
+      {
+        "name": "ApexDrive.exe",
+        "path": "C:\\Development\\ApexDrive\\bin\\Debug\\net10.0-windows\\ApexDrive.exe",
+        "sha256": null,
+        "publisher": null
+      }
+    ]
+  },
+  "filesystem": {
+    "readRoots": [
+      "C:\\Development\\ApexDrive"
+    ],
+    "denyGlobs": [
+      "**/.env",
+      "**/secrets.json",
+      "**/appsettings.Production.json",
+      "**/*.pfx",
+      "**/*.key",
+      "**/*.dmp",
+      "**/*.dump"
+    ]
+  },
+  "network": {
+    "default": "deny",
+    "allow": []
+  },
+  "pii": "Mask",
+  "audit": {
+    "enabled": true,
+    "directory": null,
+    "retentionDays": 30
+  },
+  "screenshots": {
+    "enabled": false,
+    "maskPasswordControls": true,
+    "maskSensitiveNames": true,
+    "failClosedOnRedactionError": true
+  },
+  "allowDestructiveActions": false,
+  "allowPrivilegedDiagnostics": false,
+  "uiActions": {
+    "denyAutomationIds": [
+      "ApiTokenPasswordBox"
+    ],
+    "destructiveAutomationIds": [
+      "DeleteDriveButton",
+      "FormatDriveButton"
+    ],
+    "statefulAutomationIds": [
+      "SaveSettingsButton",
+      "ConnectDriveButton"
+    ]
+  }
+}

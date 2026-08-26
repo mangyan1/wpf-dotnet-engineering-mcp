@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+  </ItemGroup>
+</Project>

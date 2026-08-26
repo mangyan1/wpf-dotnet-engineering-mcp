@@ -1,0 +1,68 @@
+# Tool Contracts
+
+## Global requirements for every tool
+
+Before a tool can be marked implemented, it must define:
+
+- purpose and capability ID;
+- permission level and risk class;
+- target scope;
+- input schema;
+- output schema;
+- timeouts/cancellation;
+- result size limits;
+- classification/redaction behavior;
+- audit behavior;
+- deterministic error codes;
+- success/failure/adversarial/security tests.
+
+Tools must never replace an error with a guessed result.
+
+## MCP wire contract
+
+- All tools use structured content and advertise an output schema.
+- Every input property has a description, and every tool has a display title plus read-only/destructive/idempotent/open-world annotations.
+- A domain `ToolResult` with `success=false` is emitted with MCP `isError=true`.
+- Sanitized screenshots use native MCP image content; structured output contains metadata rather than a second base64 copy.
+- Cancellation tokens are not exposed as schema inputs and are propagated into bounded waits, EventPipe, probes, semantic analysis, and diagnosis.
+- Long semantic/diagnosis operations report MCP progress when the client supplies a progress token.
+- Large source-reference results are available through `source_find_references_page` with `offset`, `pageSize`, and `nextOffset`.
+
+## Initial system tools
+
+### `system_version`
+
+Returns server version/runtime metadata. Permission 0, READ.
+
+### `system_health`
+
+Returns local server readiness only. It must not imply target application health. Permission 0, READ.
+
+### `system_capabilities`
+
+Returns capability manifest. Permission 0, READ.
+
+### `system_permissions`
+
+Returns active permission ceiling and policy mode without revealing secrets. Permission 0, READ.
+
+## Public tool prefixes
+
+Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use underscore prefixes: `wpf_`, `wpf_probe_`, `wpfui_`, `a11y_`, `gui_`, `ux_`, `dotnet_`, `source_`, `aspnet_`, `diagnose_`, and `system_`.
+
+Capability IDs are internal manifest identifiers and retain dotted names such as `wpf.uia.read` and `dotnet.eventpipe`.
+
+## Selector order
+
+1. AutomationId
+2. stable application semantic ID
+3. Name + ControlType
+4. UIA relationship
+5. structural selector
+6. coordinates only as a last resort and explicitly labelled as fragile
+
+## Diagnosis result vocabulary
+
+Every diagnosis uses `OBSERVED`, `CORRELATED`, `INFERRED`, `UNKNOWN`. Each non-UNKNOWN application claim should carry an evidence reference/correlation ID when the underlying adapter supports it.
+
+`diagnose_observe`, `diagnose_failure`, and `diagnose_workflow` are read-only current-state collectors. `diagnose_click` is the explicit action-replay path and remains risk/policy gated.

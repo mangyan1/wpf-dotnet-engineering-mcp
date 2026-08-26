@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows10.0.19041": {
+      "engineeringmcp.contracts": {
+        "type": "Project"
+      },
+      "engineeringmcp.redaction": {
+        "type": "Project",
+        "dependencies": {
+          "EngineeringMcp.Contracts": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

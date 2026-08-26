@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "dotnet-wpf-engineering": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["run", "--project", "src/EngineeringMcp.Host/EngineeringMcp.Host.csproj"]
+    }
+  }
+}

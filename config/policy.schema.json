@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/dotnet-engineering-mcp/policy.schema.json",
+  "title": "DotNetEngineeringMcp Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [ "policyVersion", "permissionCeiling", "processes", "filesystem", "network", "pii", "audit", "screenshots", "uiActions" ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "policyVersion": { "const": 1 },
+    "permissionCeiling": { "enum": [ "Metadata", "UiRead", "UiInteraction", "ApplicationDiagnostics", "SensitiveDiagnostics", "DebugMutation" ] },
+    "enabledToolProfiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": [ "core", "wpf-read", "wpf-interact", "diagnostics", "source" ] }
+    },
+    "enabledTools": { "type": [ "array", "null" ], "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9_-]+$" } },
+    "disabledTools": { "type": [ "array", "null" ], "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9_-]+$" } },
+    "processes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "allow" ],
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [ "name" ],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "path": { "type": [ "string", "null" ] },
+              "sha256": { "type": [ "string", "null" ], "pattern": "^[A-Fa-f0-9]{64}$" },
+              "publisher": { "type": [ "string", "null" ] }
+            }
+          }
+        }
+      }
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "readRoots", "denyGlobs" ],
+      "properties": {
+        "readRoots": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "denyGlobs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "default", "allow" ],
+      "properties": { "default": { "const": "deny" }, "allow": { "type": "array", "maxItems": 0 } }
+    },
+    "pii": { "enum": [ "Mask", "Hash", "Remove" ] },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "enabled", "retentionDays" ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "directory": { "type": [ "string", "null" ] },
+        "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 }
+      }
+    },
+    "screenshots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "enabled", "maskPasswordControls", "maskSensitiveNames", "failClosedOnRedactionError" ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "maskPasswordControls": { "const": true },
+        "maskSensitiveNames": { "type": "boolean" },
+        "failClosedOnRedactionError": { "const": true }
+      }
+    },
+    "allowDestructiveActions": { "type": "boolean" },
+    "allowPrivilegedDiagnostics": { "type": "boolean" },
+    "uiActions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [ "denyAutomationIds", "destructiveAutomationIds", "statefulAutomationIds" ],
+      "properties": {
+        "denyAutomationIds": { "type": "array", "items": { "type": "string" } },
+        "destructiveAutomationIds": { "type": "array", "items": { "type": "string" } },
+        "statefulAutomationIds": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

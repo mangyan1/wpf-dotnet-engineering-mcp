@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWPF>true</UseWPF>
+    <!-- Keep the fixture CLR namespace outside EngineeringMcp.* so generated WPF-UI references cannot bind to EngineeringMcp.Wpf.*. -->
+    <RootNamespace>EngineeringMcpFixture</RootNamespace>
+    <AssemblyName>EngineeringMcp.Wpf.TestApp</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" />
+    <ProjectReference Include="../../src/EngineeringMcp.Probe.Wpf/EngineeringMcp.Probe.Wpf.csproj" />
+  </ItemGroup>
+</Project>

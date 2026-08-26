@@ -1,0 +1,339 @@
+<ui:FluentWindow x:Class="EngineeringMcp.ControlCenter.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title=".NET/WPF Engineering MCP"
+        Width="1180"
+        Height="780"
+        MinWidth="960"
+        MinHeight="650"
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        Background="{DynamicResource ApplicationBackgroundBrush}">
+
+    <ui:FluentWindow.Resources>
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style x:Key="SmallCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
+            <Setter Property="Padding" Value="16" />
+        </Style>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="MutedTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="StatusLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="StatusValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,7,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title=".NET/WPF Engineering MCP" />
+
+        <Grid Grid.Row="1" Margin="24,12,24,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="12" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Developer Control Center" FontSize="15" FontWeight="SemiBold" />
+                    <TextBlock Text="Run and test the MCP server without typing commands."
+                               FontSize="11" Style="{StaticResource MutedTextStyle}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Theme" Margin="0,0,8,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <ComboBox x:Name="ThemeSelector" Width="105" SelectedIndex="0"
+                              SelectionChanged="ThemeSelector_SelectionChanged">
+                        <ComboBoxItem Content="System" Tag="System" />
+                        <ComboBoxItem Content="Light" Tag="Light" />
+                        <ComboBoxItem Content="Dark" Tag="Dark" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <TabControl x:Name="MainTabs" Grid.Row="2" Background="Transparent" BorderThickness="0">
+                <!-- HOME -->
+                <TabItem Header="Home">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,16,0,8">
+                            <Border Style="{StaticResource CardStyle}" Padding="24">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,28,0">
+                                        <TextBlock Text="MCP Server" FontSize="28" FontWeight="SemiBold" />
+                                        <TextBlock Margin="0,7,0,0" Style="{StaticResource MutedTextStyle}"
+                                                   Text="Run one shared local MCP server. Control Center and VS Code connect to the same server." />
+                                        <TextBlock x:Name="DevTestSummaryText" Text="Ready" Margin="0,16,0,0"
+                                                   FontSize="14" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <ui:Button Content="Run MCP Server" Appearance="Primary" MinWidth="165" Height="42"
+                                                   Click="RunMcpServer_Click" />
+                                        <ui:Button Content="Test MCP Server" MinWidth="165" Height="38" Margin="0,8,0,0"
+                                                   Click="RunMcpSelfTest_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="Status" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Style="{StaticResource SmallCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="MCP SERVER" Style="{StaticResource StatusLabelStyle}" />
+                                        <TextBlock x:Name="McpStatusText" Text="● Stopped" Style="{StaticResource StatusValueStyle}" />
+                                        <TextBlock Text="Shared localhost service" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Style="{StaticResource SmallCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="WPF TEST APP" Style="{StaticResource StatusLabelStyle}" />
+                                        <TextBlock x:Name="FixtureStatusText" Text="● Stopped" Style="{StaticResource StatusValueStyle}" />
+                                        <TextBlock Text="UI Automation + probe" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="4" Style="{StaticResource SmallCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="VS CODE" Style="{StaticResource StatusLabelStyle}" />
+                                        <TextBlock x:Name="VsCodeStatusText" Text="● Not connected" Style="{StaticResource StatusValueStyle}" />
+                                        <TextBlock Text="Optional editor integration" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="6" Style="{StaticResource SmallCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="SECURITY" Style="{StaticResource StatusLabelStyle}" />
+                                        <TextBlock x:Name="SecurityStatusText" Text="● Checking" Style="{StaticResource StatusValueStyle}" />
+                                        <TextBlock Text="Policy + guardrails" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Style="{StaticResource CardStyle}" Margin="0,20,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Full Self Test" Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource MutedTextStyle}"
+                                                   Text="Builds the solution, runs automated tests, tests MCP, launches the WPF test app and verifies UI Automation and the probe." />
+                                    </StackPanel>
+                                    <ui:Button Grid.Column="1" x:Name="RunAllDevTestsButton" Content="Run Full Self Test"
+                                               Appearance="Primary" MinWidth="160" Height="40" Margin="20,0,0,0"
+                                               Click="RunAllDevTests_Click" />
+                                </Grid>
+                            </Border>
+
+                            <!-- Kept for repository diagnostics, intentionally low emphasis. -->
+                            <TextBlock x:Name="RepositoryStatusText" Visibility="Collapsed" />
+                            <TextBlock x:Name="RootPathText" Visibility="Collapsed" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- SELF TEST -->
+                <TabItem Header="Self Test">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,16,0,8">
+                            <TextBlock Text="MCP Server" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,5,0,12" Style="{StaticResource MutedTextStyle}"
+                                       Text="Run the shared server, test it, view its logs, or repair it only when needed." />
+
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <WrapPanel>
+                                        <ui:Button Content="Run MCP Server" Appearance="Primary" MinWidth="150" Height="40" Click="RunMcpServer_Click" />
+                                        <ui:Button Content="Stop MCP Server" MinWidth="145" Height="40" Margin="8,0,0,0" Click="StopMcpServer_Click" />
+                                        <ui:Button Content="Test MCP Server" MinWidth="150" Height="40" Margin="8,0,0,0" Click="RunMcpSelfTest_Click" />
+                                        <ui:Button Content="MCP Server Logs" MinWidth="145" Height="40" Margin="8,0,0,0" Click="ShowMcpLogs_Click" />
+                                    </WrapPanel>
+                                    <Separator Margin="0,16,0,14" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Repair MCP Server" FontWeight="SemiBold" />
+                                            <TextBlock Margin="0,4,16,0" Style="{StaticResource MutedTextStyle}"
+                                                       Text="Use this only if Run MCP Server or Test MCP Server fails. It restores packages, rebuilds the host and refreshes the VS Code connection." />
+                                        </StackPanel>
+                                        <ui:Button Grid.Column="1" Content="Repair MCP Server" MinWidth="155" Height="38" Click="RepairMcpServer_Click" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="Complete Validation" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <WrapPanel>
+                                        <ui:Button Content="Run Full Self Test" Appearance="Primary" MinWidth="155" Click="RunAllDevTests_Click" />
+                                        <ui:Button Content="Test WPF End-to-End" MinWidth="155" Margin="8,0,0,0" Click="RunWpfEndToEnd_Click" />
+                                        <ui:Button Content="Launch WPF Test App" MinWidth="150" Margin="8,0,0,0" Click="LaunchFixture_Click" />
+                                        <ui:Button Content="Stop Test Apps" MinWidth="125" Margin="8,0,0,0" Click="StopFixtures_Click" />
+                                        <ui:Button x:Name="CancelDevTestButton" Content="Cancel Test" MinWidth="100" Margin="8,0,0,0"
+                                                   IsEnabled="False" Click="CancelDevTest_Click" />
+                                    </WrapPanel>
+                                    <WrapPanel Margin="0,10,0,0">
+                                        <ui:Button Content="Build Solution" MinWidth="120" Click="Build_Click" />
+                                        <ui:Button Content="Run Code Tests" MinWidth="120" Margin="8,0,0,0" Click="Test_Click" />
+                                        <ui:Button Content="Check Readiness" MinWidth="120" Margin="8,0,0,0" Click="RunReadiness_Click" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="Latest Results" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
+                            <DataGrid x:Name="DevTestGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" HeadersVisibility="Column" MinHeight="230"
+                                      Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                      BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Area" Binding="{Binding Area}" Width="150" />
+                                    <DataGridTextColumn Header="Check" Binding="{Binding Test}" Width="220" />
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" />
+                                    <DataGridTextColumn Header="Details" Binding="{Binding Detail}" Width="*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- INTEGRATION -->
+                <TabItem Header="Integration">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,16,0,8">
+                            <TextBlock Text="VS Code Integration" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Margin="0,5,0,12" Style="{StaticResource MutedTextStyle}"
+                                       Text="Connect once. VS Code will use the same MCP Server that you start from the Home tab, from ApexDrive or any other workspace." />
+
+                            <Border Style="{StaticResource CardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,20,0">
+                                        <TextBlock Text="Use MCP in VS Code" FontSize="20" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="VsCodeDetailText" Margin="0,7,0,0" Style="{StaticResource MutedTextStyle}" />
+                                        <TextBlock Margin="0,8,0,0" FontSize="11" Style="{StaticResource MutedTextStyle}"
+                                                   Text="Connect adds the local HTTP endpoint to your VS Code user profile. Keep MCP Server running while VS Code uses its tools." />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <ui:Button Content="Connect to VS Code" Appearance="Primary" MinWidth="165" Height="40" Click="ConnectVsCode_Click" />
+                                        <ui:Button Content="Open User MCP Config" MinWidth="165" Height="36" Margin="0,8,0,0" Click="OpenMcpConfig_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="Security" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
+                            <Border Style="{StaticResource CardStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="MCP Security Policy" FontWeight="SemiBold" FontSize="16" />
+                                        <TextBlock x:Name="PolicyPathText" Margin="0,7,16,0" FontSize="11" TextWrapping="Wrap"
+                                                   Style="{StaticResource MutedTextStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <ui:Button Content="Select Policy" MinWidth="105" Click="SelectPolicy_Click" />
+                                        <ui:Button Content="Open Policy" MinWidth="105" Margin="8,0,0,0" Click="OpenPolicy_Click" />
+                                        <ui:Button Content="Security Guide" MinWidth="110" Margin="8,0,0,0" Click="OpenSecurity_Click" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- LOGS -->
+                <TabItem x:Name="LogsTab" Header="Logs">
+                    <Grid Margin="0,16,0,8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="MCP Server Logs" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="Build output, MCP server messages and test evidence." Margin="0,4,0,0"
+                                           Style="{StaticResource MutedTextStyle}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:Button Content="Copy Logs" MinWidth="90" Click="CopyLog_Click" />
+                                <ui:Button Content="Clear Logs" MinWidth="90" Margin="8,0,0,0" Click="ClearLog_Click" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBox Grid.Row="2" x:Name="ActivityLog" IsReadOnly="True" AcceptsReturn="True"
+                                 TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas" FontSize="12" Padding="12"
+                                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" />
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+
+        <Border Grid.Row="2" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0"
+                Padding="24,9">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="OperationStatusText" Text="Ready." Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <TextBlock x:Name="FooterStatusText" Grid.Column="1" Text="Local dev mode" FontWeight="SemiBold" />
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

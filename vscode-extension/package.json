@@ -1,0 +1,34 @@
+{
+  "name": "dotnet-wpf-engineering-mcp",
+  "displayName": ".NET/WPF Engineering MCP",
+  "description": "Registers the shared local .NET/WPF Engineering MCP Streamable HTTP service with VS Code.",
+  "version": "0.2.0",
+  "publisher": "local-development",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Other",
+    "Testing"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:dotnetEngineeringMcp.showSetup"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "dotnetEngineeringMcp.provider",
+        "label": ".NET/WPF Engineering MCP"
+      }
+    ],
+    "commands": [
+      {
+        "command": "dotnetEngineeringMcp.showSetup",
+        "title": ".NET/WPF MCP: Show Connection Status"
+      }
+    ]
+  }
+}

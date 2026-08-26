@@ -1,0 +1,16 @@
+namespace EngineeringMcp.Contracts;
+
+/// <summary>
+/// Single source of truth for local MCP runtime endpoints and server identity.
+/// Keep client integrations aligned with these values instead of duplicating ports/routes.
+/// </summary>
+public static class McpRuntimeDefaults
+{
+    public const string ServerName = "dotnetWpfEngineering";
+    public const string HttpTokenEnvironmentVariable = "ENGINEERING_MCP_HTTP_TOKEN";
+    public const string ListenUrl = "http://127.0.0.1:8765";
+    public const string McpPath = "/mcp";
+    public const string HealthPath = "/healthz";
+    public const string McpEndpoint = ListenUrl + McpPath;
+    public const string HealthEndpoint = ListenUrl + HealthPath;
+}

@@ -1,0 +1,79 @@
+using EngineeringMcp.Audit;
+using EngineeringMcp.Contracts;
+using EngineeringMcp.Redaction;
+using EngineeringMcp.Security;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+namespace EngineeringMcp.Host;
+
+public interface IToolAuthorization
+{
+    ToolResult<string> Authorize(ToolPolicy policy, string? target = null);
+    void Complete(string correlationId, ToolPolicy policy, string? target, bool success, string resultCode, long durationMs = 0);
+}
+
+public sealed class ToolAuthorization(
+    IToolGate gate,
+    ICapabilityRegistry capabilities,
+    IAuditSink audit,
+    ISessionContext session,
+    IPolicyProvider policyProvider,
+    IRedactionService redaction) : IToolAuthorization
+{
+    private int _auditHealthy = 1;
+    private long _auditSequence;
+    private readonly string _policyFingerprint = Convert.ToHexString(SHA256.HashData(
+        Encoding.UTF8.GetBytes(JsonSerializer.Serialize(policyProvider.Current))))[..16];
+
+    public ToolResult<string> Authorize(ToolPolicy policy, string? target = null)
+    {
+        if (policyProvider.Current.Audit.Enabled && Volatile.Read(ref _auditHealthy) == 0)
+            return ToolResult<string>.Fail("AUDIT_UNAVAILABLE", "Operation was denied because the required audit trail is unhealthy. Restart after repairing the audit destination.");
+
+        var correlation = Guid.NewGuid().ToString("N");
+        var decision = gate.Authorize(policy, capabilities.IsAvailable(policy.CapabilityId));
+        var sanitizedTarget = target is null ? null : redaction.Redact(target, policyProvider.Current.Pii);
+        var auditWritten = TryWrite(new AuditEvent(DateTimeOffset.UtcNow, session.SessionId, policy.ToolName, sanitizedTarget,
+            policy.RequiredPermission, policy.Risk, decision.Allowed ? "ALLOW" : "DENY",
+            decision.Code, correlation, ClientId: session.ClientId, PolicyFingerprint: _policyFingerprint,
+            Sequence: Interlocked.Increment(ref _auditSequence)));
+
+        // Audit-enabled policy is a hard boundary: sensitive reads must not become invisible
+        // merely because the audit destination is unavailable or full.
+        if (!auditWritten && policyProvider.Current.Audit.Enabled)
+        {
+            Volatile.Write(ref _auditHealthy, 0);
+            return ToolResult<string>.Fail("AUDIT_UNAVAILABLE", "Operation was denied because the required audit record could not be persisted.");
+        }
+
+        return decision.Allowed
+            ? ToolResult<string>.Ok(correlation)
+            : ToolResult<string>.Fail(decision.Code, decision.Reason);
+    }
+
+    public void Complete(string correlationId, ToolPolicy policy, string? target, bool success, string resultCode, long durationMs = 0)
+    {
+        var sanitizedTarget = target is null ? null : redaction.Redact(target, policyProvider.Current.Pii);
+        var written = TryWrite(new AuditEvent(DateTimeOffset.UtcNow, session.SessionId, policy.ToolName, sanitizedTarget,
+            policy.RequiredPermission, policy.Risk, "EXECUTE", success ? resultCode : $"FAILED:{resultCode}", correlationId, durationMs,
+            session.ClientId, _policyFingerprint, Interlocked.Increment(ref _auditSequence)));
+        if (!written && policyProvider.Current.Audit.Enabled)
+            Volatile.Write(ref _auditHealthy, 0);
+    }
+
+    private bool TryWrite(AuditEvent evt)
+    {
+        try
+        {
+            audit.WriteAsync(evt).AsTask().GetAwaiter().GetResult();
+            return true;
+        }
+        catch
+        {
+            // Do not leak audit backend details into MCP results. Authorize() decides whether failure must block execution.
+            return false;
+        }
+    }
+}

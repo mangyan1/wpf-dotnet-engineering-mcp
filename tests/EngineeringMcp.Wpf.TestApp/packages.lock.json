@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0-windows10.0.19041": {
+      "WPF-UI": {
+        "type": "Direct",
+        "requested": "[4.3.0, )",
+        "resolved": "4.3.0",
+        "contentHash": "SIHhc8lIrhEQ/1cLFZN6Dtf8cqsLm4myBULj9obnacd9TyDs2vizhKYzRzTlcPEcnzb3L4EstvPN3M6kcXbJCA==",
+        "dependencies": {
+          "WPF-UI.Abstractions": "4.3.0"
+        }
+      },
+      "WPF-UI.Abstractions": {
+        "type": "Transitive",
+        "resolved": "4.3.0",
+        "contentHash": "/MHSmCfIHtVnPXTArurXAp8nJGNl/eyhS7Dy8q/fRwuq/rNiqSxcC68/fRsdiO7lfRIU9ZnU9nXQAwSEZoO3rg=="
+      },
+      "engineeringmcp.contracts": {
+        "type": "Project"
+      },
+      "engineeringmcp.probe.wpf": {
+        "type": "Project",
+        "dependencies": {
+          "EngineeringMcp.Contracts": "[1.0.0, )",
+          "EngineeringMcp.Redaction": "[1.0.0, )"
+        }
+      },
+      "engineeringmcp.redaction": {
+        "type": "Project",
+        "dependencies": {
+          "EngineeringMcp.Contracts": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "./policy.schema.json",
+  "policyVersion": 1,
+  "enabledToolProfiles": [ "core", "wpf-read", "wpf-interact", "diagnostics", "source" ],
+  "permissionCeiling": "ApplicationDiagnostics",
+  "processes": {
+    "allow": [
+      {
+        "name": "EngineeringMcp.Wpf.TestApp.exe",
+        "path": null,
+        "sha256": null,
+        "publisher": null
+      }
+    ]
+  },
+  "filesystem": {
+    "readRoots": [
+      ".."
+    ],
+    "denyGlobs": [
+      "**/.env",
+      "**/secrets.json",
+      "**/appsettings.Production.json",
+      "**/*.pfx",
+      "**/*.key",
+      "**/*.dmp",
+      "**/*.dump",
+      "**/.git/**"
+    ]
+  },
+  "network": {
+    "default": "deny",
+    "allow": []
+  },
+  "pii": "Mask",
+  "audit": {
+    "enabled": true,
+    "directory": null,
+    "retentionDays": 7
+  },
+  "screenshots": {
+    "enabled": true,
+    "maskPasswordControls": true,
+    "maskSensitiveNames": true,
+    "failClosedOnRedactionError": true
+  },
+  "allowDestructiveActions": false,
+  "allowPrivilegedDiagnostics": false,
+  "uiActions": {
+    "denyAutomationIds": [
+      "ApiTokenPasswordBox"
+    ],
+    "destructiveAutomationIds": [],
+    "statefulAutomationIds": [
+      "SaveButton",
+      "CrashButton"
+    ]
+  }
+}
