@@ -50,7 +50,11 @@ Returns active permission ceiling and policy mode without revealing secrets. Per
 
 ## Public tool prefixes
 
-Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use underscore prefixes: `wpf_`, `wpfui_`, `a11y_`, `gui_`, `ux_`, `dotnet_`, `source_`, `aspnet_`, `diagnose_`, and `system_`. Family tools take an explicit `operation` discriminator (`wpf_probe`, `wpfui_inspect`) instead of one tool per operation, so the model-facing tool list stays small.
+Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use underscore prefixes: `wpf_`, `wpfui_`, `a11y_`, `gui_`, `ux_`, `dotnet_`, `source_`, `aspnet_`, `diagnose_`, and `system_`. Family tools retain an explicit `operation` discriminator (`wpf_probe`, `wpfui_inspect`) for advanced and backward-compatible access. Dedicated tools are added only for high-value workflows where a narrow schema materially improves discoverability or enforces a stricter metadata-only result contract.
+
+## Metadata-only advanced WPF boundary
+
+Advanced grid, tree, item, selector, accessibility, window, wait, and assertion tools must not return element names, AutomationIds, row labels, cell text, values, ViewModel property values, validation messages, clipboard content, or raw screenshots. They may return bounded counts, booleans, control/pattern types, geometry, opaque session references, and non-reversible identifier fingerprints. Probe-backed tools may expose code-level binding paths and CLR type names, but never evaluate commands or return bound runtime values.
 
 Capability IDs are internal manifest identifiers and retain dotted names such as `wpf.uia.read` and `dotnet.eventpipe`.
 

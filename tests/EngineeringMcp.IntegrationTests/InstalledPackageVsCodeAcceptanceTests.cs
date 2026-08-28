@@ -115,7 +115,7 @@ public sealed partial class McpHttpIntegrationTests
                     .Select(tool => tool.GetProperty("name").GetString())
                     .Where(name => name is not null)
                     .ToArray();
-                Assert.HasCount(54, names);
+                Assert.HasCount(75, names);
                 CollectionAssert.IsSubsetOf(
                     new[] { "system_health", "system_policy_diagnostics", "dotnet_runtime_info", "dotnet_capture_dump" },
                     names!);

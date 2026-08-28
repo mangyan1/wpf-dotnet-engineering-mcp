@@ -523,7 +523,7 @@
                                 <TextBlock Text="Tools" Margin="11,0,0,0" VerticalAlignment="Center" />
                                 <TextBlock DockPanel.Dock="Right" FontFamily="{DynamicResource FontMono}"
                                            FontSize="10" Foreground="{DynamicResource Text3Brush}"
-                                           VerticalAlignment="Center" Text="54" />
+                                           VerticalAlignment="Center" Text="75" />
                             </DockPanel>
                         </RadioButton>
                         <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="4"
@@ -720,7 +720,7 @@
                                                 <StackPanel Margin="0,0,22,0">
                                                     <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="TOOLS EXPOSED" />
                                                     <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="12"
-                                                               Foreground="{DynamicResource Text2Brush}" Margin="0,4,0,0" Text="54" />
+                                                               Foreground="{DynamicResource Text2Brush}" Margin="0,4,0,0" Text="75" />
                                                 </StackPanel>
                                                 <Border Margin="0,0,22,0" BorderBrush="{DynamicResource HairBrush}"
                                                         BorderThickness="1,0,0,0" Padding="22,0">
@@ -1275,7 +1275,7 @@
                                                     <StackPanel>
                                                         <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Reload VS Code" />
                                                         <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12" TextWrapping="Wrap"
-                                                                   Margin="0,3,0,0" Text="The Tools panel lists all 54 tools once the connection is live." />
+                                                                   Margin="0,3,0,0" Text="The Tools panel lists all 75 tools once the connection is live." />
                                                     </StackPanel>
                                                 </StackPanel>
                                             </StackPanel>
@@ -1330,7 +1330,7 @@
                                                        Foreground="{DynamicResource TextBrush}" Margin="0,9,0,12" Text="tools/list handshake" />
                                             <Border Grid.Row="3" Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
                                                     Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
-                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="54 EXPOSED" />
+                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="75 EXPOSED" />
                                             </Border>
                                             <TextBlock Grid.Row="3" Grid.Column="3" FontFamily="{DynamicResource FontMono}" FontSize="11"
                                                        Foreground="{DynamicResource Text2Brush}" Margin="16,9,0,12" Text="default-deny policy" />
@@ -1382,7 +1382,7 @@
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
                                             <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
-                                                       Foreground="{DynamicResource Text2Brush}" Text="54 EXPOSED · DEFAULT-DENY" />
+                                                       Foreground="{DynamicResource Text2Brush}" Text="75 EXPOSED · DEFAULT-DENY" />
                                         </StackPanel>
                                     </Border>
                                 </Grid>

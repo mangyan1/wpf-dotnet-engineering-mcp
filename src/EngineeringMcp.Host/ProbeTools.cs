@@ -9,10 +9,10 @@ namespace EngineeringMcp.Host;
 [McpServerToolType]
 public static class ProbeTools
 {
-    [McpServerTool(Name = "wpf_probe", UseStructuredContent = true), Description("Authorized in-process WPF probe; one bounded operation per call. Operations: status (probe health), visual_tree, logical_tree, datacontext (TYPE evidence only, never ViewModel values), binding (needs property), binding_errors, command (never invokes commands or CanExecute), validation, resource (needs resourceKey), property (needs property; allowlisted names only, PasswordBox refused), dispatcher, exceptions. The probe is explicitly installed; it is never injected by this MCP server.")]
+    [McpServerTool(Name = "wpf_probe", UseStructuredContent = true), Description("Authorized in-process WPF probe; one bounded operation per call. Operations: status (probe health), visual_tree, logical_tree, datacontext (TYPE evidence only, never ViewModel values), binding (needs property), binding_errors, command (never invokes commands or CanExecute), validation, validation_summary (counts/rule types only), resource (needs resourceKey), property (needs property; allowlisted names only, PasswordBox refused), dispatcher, exceptions. The probe is explicitly installed; it is never injected by this MCP server.")]
     public static Task<ToolResult<ProbeResponse>> Probe(
         [Description("Operating-system process identifier of an allowlisted target process.")] int processId,
-        [Description("Probe operation: status, visual_tree, logical_tree, datacontext, binding, binding_errors, command, validation, resource, property, dispatcher, or exceptions.")] string operation,
+        [Description("Probe operation: status, visual_tree, logical_tree, datacontext, binding, binding_errors, command, validation, validation_summary, resource, property, dispatcher, or exceptions.")] string operation,
         WpfProbeClient probe,
         ToolAuthorization auth,
         CancellationToken cancellationToken,
@@ -37,9 +37,9 @@ public static class ProbeTools
         op = operation.Trim().ToLowerInvariant().Replace('-', '_');
         error = null;
         var known = op is "status" or "visual_tree" or "logical_tree" or "datacontext" or "binding" or "binding_errors"
-            or "command" or "validation" or "resource" or "property" or "dispatcher" or "exceptions";
+            or "command" or "validation" or "validation_summary" or "resource" or "property" or "dispatcher" or "exceptions";
         if (known) return true;
-        error = "Unknown probe operation. Allowed: status, visual_tree, logical_tree, datacontext, binding, binding_errors, command, validation, resource, property, dispatcher, exceptions.";
+        error = "Unknown probe operation. Allowed: status, visual_tree, logical_tree, datacontext, binding, binding_errors, command, validation, validation_summary, resource, property, dispatcher, exceptions.";
         return false;
     }
 }

@@ -171,6 +171,7 @@ internal sealed class WpfProbeServer : IDisposable
             "binding_errors" => BindingErrors(request),
             "command" => Command(request),
             "validation" => ValidationErrors(request),
+            "validation_summary" => ValidationSummary(request),
             "resource" => Resource(request),
             "property" => Property(request),
             "dispatcher" => new ProbeResponse(true, new { threadId = Environment.CurrentManagedThreadId, hasAccess = Application.Current!.Dispatcher.CheckAccess(), shutdownStarted = Application.Current!.Dispatcher.HasShutdownStarted }),
@@ -312,6 +313,33 @@ internal sealed class WpfProbeServer : IDisposable
             }
         }
         return new ProbeResponse(true, list);
+    }
+
+    private ProbeResponse ValidationSummary(ProbeRequest request)
+    {
+        var root = Resolve(request);
+        if (root is null) return NotFound();
+        var affectedElements = 0;
+        var errorCount = 0;
+        var ruleTypes = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in EnumerateVisual(root, _options.MaxTreeElements))
+        {
+            if (node is not FrameworkElement fe || !Validation.GetHasError(fe)) continue;
+            affectedElements++;
+            foreach (var error in Validation.GetErrors(fe))
+            {
+                errorCount++;
+                if (error.RuleInError?.GetType().FullName is { Length: > 0 } ruleType)
+                    ruleTypes.Add(ruleType);
+            }
+        }
+        return new ProbeResponse(true, new
+        {
+            errorCount,
+            affectedElements,
+            ruleTypes = ruleTypes.OrderBy(value => value, StringComparer.Ordinal).Take(32).ToArray(),
+            metadataOnly = true
+        });
     }
 
     private ProbeResponse Resource(ProbeRequest request)

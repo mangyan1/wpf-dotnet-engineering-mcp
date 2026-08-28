@@ -68,3 +68,103 @@ public sealed record UiAssertionResult(
     bool Passed,
     UiElementSnapshot Actual,
     IReadOnlyList<string> Failures);
+
+public sealed record SafeUiElementState(
+    string Reference,
+    string ControlType,
+    bool IsEnabled,
+    bool IsOffscreen,
+    bool IsKeyboardFocusable,
+    bool IsPassword,
+    IReadOnlyList<string> SupportedPatterns);
+
+public sealed record UiConditionResult(
+    bool Satisfied,
+    string Condition,
+    SafeUiElementState? Element,
+    string Observation);
+
+public sealed record SafeUiAssertionResult(
+    bool Passed,
+    string Assertion,
+    SafeUiElementState? Element,
+    IReadOnlyList<string> Failures);
+
+public sealed record SelectorAuditFinding(
+    string Severity,
+    string Issue,
+    string ElementReference,
+    string ControlType);
+
+public sealed record SelectorAuditSummary(
+    int ElementCount,
+    int ActionableElementCount,
+    int StableSelectorCount,
+    int MissingAutomationIdCount,
+    int DuplicateAutomationIdGroupCount,
+    IReadOnlyList<SelectorAuditFinding> Findings,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record DuplicateAutomationIdGroup(
+    string IdentifierFingerprint,
+    int Count,
+    IReadOnlyList<string> ElementReferences);
+
+public sealed record DuplicateAutomationIdSummary(
+    int DuplicateGroupCount,
+    IReadOnlyList<DuplicateAutomationIdGroup> Groups,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record UiCountEntry(string Key, int Count);
+
+public sealed record UiInventorySummary(
+    int ElementCount,
+    IReadOnlyList<UiCountEntry> Counts,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record GridMetadataSummary(
+    int RowCount,
+    int ColumnHeaderCount,
+    int CellLikeElementCount,
+    int VisibleRowCount,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record TreeMetadataSummary(
+    int NodeCount,
+    int VisibleNodeCount,
+    int ExpandableNodeCount,
+    int MaximumObservedDepth,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record ItemsMetadataSummary(
+    int ItemCount,
+    int VisibleItemCount,
+    int EnabledItemCount,
+    int SelectableItemCount,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record AccessibilityMetadataSummary(
+    int InteractiveElementCount,
+    int MissingAccessibleIdentityCount,
+    int KeyboardInaccessibleCount,
+    int PasswordControlCount,
+    int OffscreenInteractiveCount,
+    bool Truncated,
+    bool MetadataOnly = true);
+
+public sealed record SafeWindowState(
+    string Reference,
+    RectDto Bounds,
+    bool IsEnabled,
+    bool IsOffscreen);
+
+public sealed record WindowStateSummary(
+    int WindowCount,
+    IReadOnlyList<SafeWindowState> Windows,
+    bool MetadataOnly = true);

@@ -199,6 +199,7 @@ static void RegisterEngineeringServices(IServiceCollection services)
     services.AddSingleton<ProcessOperationCoordinator>();
     services.AddSingleton<ToolAuthorization>();
     services.AddSingleton<WpfAutomationService>();
+    services.AddSingleton<WpfSafeInspectionService>();
     services.AddSingleton<WpfProbeClient>();
     services.AddSingleton<WpfUiInspectionService>();
     services.AddSingleton<UiAuditService>();

@@ -7,12 +7,12 @@ Last updated: 2026-08-28
 Verified on Windows on 2026-08-28 with .NET SDK 10.0.400:
 
 - `dotnet build DotNetEngineeringMcp.sln --no-restore`: passed with 0 warnings and 0 errors.
-- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 23 normal-suite tests passed and the opt-in installed-package acceptance test skipped by design; the installed acceptance passed separately after exercising install, uninstall, and reinstall.
-- Release hardening produced the self-contained 0.3.4 ZIP and MSI with zero installer warnings/errors and development self-signed, timestamped Authenticode signatures.
-- Live authenticated Streamable HTTP initialization and `tools/list`: HTTP 200, protocol `2025-06-18`, 54 tools.
+- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 25 normal-suite tests passed and the opt-in installed-package acceptance test skipped by design; the installed acceptance passed separately after exercising install, uninstall, and reinstall.
+- Release hardening produced the self-contained 0.3.5 ZIP and MSI with zero installer warnings/errors and required development self-signed, timestamped Authenticode signatures.
+- Live authenticated Streamable HTTP initialization and `tools/list`: HTTP 200, protocol `2025-06-18`, 75 tools.
 - Live contract gate: every tool has an output schema, title, annotations, and descriptions for every input property; a deterministic domain failure returned MCP `isError=true`.
 - WPF runtime smoke: allowlisted attach succeeded, a 50-element semantic snapshot succeeded, framed WPF probe status succeeded, and screenshot output contained one native MCP image block plus metadata with no structured base64 duplicate.
-- The installed 0.3.4 host passed VS Code-style initialization, 54-tool discovery, policy diagnostics, runtime diagnostics against an allowlisted process, and a fail-closed privileged call with actionable remediation.
+- The installed 0.3.5 host passed VS Code-style initialization, 75-tool discovery, policy diagnostics, runtime diagnostics against an allowlisted process, and a fail-closed privileged call with actionable remediation.
 - The real MSI install/uninstall/reinstall lifecycle preserved the durable policy and VS Code configuration byte-for-byte.
 - Live tool-name contract: 0 invalid names, 0 dotted names, `wpf_attach` present, legacy `wpf.attach` absent.
 - Authentication negative checks: missing and invalid bearer tokens both returned HTTP 401.
@@ -26,6 +26,7 @@ Verified on Windows on 2026-08-28 with .NET SDK 10.0.400:
 | Policy/process/filesystem guardrails | IMPLEMENTED | default-deny security control plane |
 | Redaction/audit | IMPLEMENTED | secret/PII redaction and structured audit path |
 | WPF UIA/FlaUI | IMPLEMENTED | semantic read and interaction tool surface |
+| Advanced WPF metadata tools | IMPLEMENTED, VERIFIED | 21 read-only tools; synthetic leak checks prove no UI text, business values, raw identifiers, titles, validation messages, clipboard, or raw screenshot output |
 | Screenshot redaction | IMPLEMENTED, DEFAULT OFF | PII-aware UIA masking; policy opt-in due to custom-rendering/OCR residual risk |
 | WPF in-process probe | IMPLEMENTED | explicit named-pipe probe, no injection/arbitrary reflection API |
 | WPF-UI adapter | IMPLEMENTED | resource/property/theme evidence and audits |

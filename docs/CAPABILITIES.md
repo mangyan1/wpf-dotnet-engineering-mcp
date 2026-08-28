@@ -39,3 +39,5 @@ Policy version 1 may restrict the published and callable tool surface with `enab
 Omitting the profile list preserves the full surface for backward compatibility. `enabledTools` and `disabledTools` provide an additional exact-name allow/deny layer. Tool visibility is convenience only; authorization still enforces permission, process, capability, filesystem, and risk policy at invocation time.
 
 The runtime `system_capabilities` result is authoritative. Optional adapters can remain unavailable even when their tool profile is visible.
+
+The `wpf.uia.read` capability includes metadata-only grid/tree/item summaries, selector audits, control/pattern inventories, richer wait/assert conditions, accessibility aggregates, and title-free window state. The `wpf.probe` capability includes dedicated binding, command, validation-summary, DataContext-type, and dispatcher tools. These tools deliberately omit application text and business values.

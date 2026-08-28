@@ -435,8 +435,8 @@
       "engineeringmcp.diagnostics": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.4, )",
-          "EngineeringMcp.Security": "[0.3.4, )",
+          "EngineeringMcp.Contracts": "[0.3.5, )",
+          "EngineeringMcp.Security": "[0.3.5, )",
           "Microsoft.Diagnostics.NETCore.Client": "[0.2.661903, )",
           "Microsoft.Diagnostics.Runtime": "[4.0.732401, )",
           "Microsoft.Diagnostics.Tracing.TraceEvent": "[3.2.6, )"
@@ -445,22 +445,22 @@
       "engineeringmcp.failurecorrelation": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.4, )",
-          "EngineeringMcp.Diagnostics": "[0.3.4, )",
-          "EngineeringMcp.Security": "[0.3.4, )",
-          "EngineeringMcp.Source": "[0.3.4, )",
-          "EngineeringMcp.Wpf": "[0.3.4, )"
+          "EngineeringMcp.Contracts": "[0.3.5, )",
+          "EngineeringMcp.Diagnostics": "[0.3.5, )",
+          "EngineeringMcp.Security": "[0.3.5, )",
+          "EngineeringMcp.Source": "[0.3.5, )",
+          "EngineeringMcp.Wpf": "[0.3.5, )"
         }
       },
       "engineeringmcp.host": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.4, )",
-          "EngineeringMcp.Diagnostics": "[0.3.4, )",
-          "EngineeringMcp.FailureCorrelation": "[0.3.4, )",
-          "EngineeringMcp.Security": "[0.3.4, )",
-          "EngineeringMcp.Source": "[0.3.4, )",
-          "EngineeringMcp.Wpf": "[0.3.4, )",
+          "EngineeringMcp.Contracts": "[0.3.5, )",
+          "EngineeringMcp.Diagnostics": "[0.3.5, )",
+          "EngineeringMcp.FailureCorrelation": "[0.3.5, )",
+          "EngineeringMcp.Security": "[0.3.5, )",
+          "EngineeringMcp.Source": "[0.3.5, )",
+          "EngineeringMcp.Wpf": "[0.3.5, )",
           "ModelContextProtocol": "[2.2.0, )",
           "ModelContextProtocol.AspNetCore": "[2.2.0, )"
         }
@@ -468,14 +468,14 @@
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.4, )"
+          "EngineeringMcp.Contracts": "[0.3.5, )"
         }
       },
       "engineeringmcp.source": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.4, )",
-          "EngineeringMcp.Security": "[0.3.4, )",
+          "EngineeringMcp.Contracts": "[0.3.5, )",
+          "EngineeringMcp.Security": "[0.3.5, )",
           "Microsoft.Build.Locator": "[1.11.2, )",
           "Microsoft.CodeAnalysis.CSharp.Workspaces": "[5.9.0, )",
           "Microsoft.CodeAnalysis.Workspaces.MSBuild": "[5.9.0, )"
@@ -484,8 +484,8 @@
       "engineeringmcp.wpf": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.4, )",
-          "EngineeringMcp.Security": "[0.3.4, )",
+          "EngineeringMcp.Contracts": "[0.3.5, )",
+          "EngineeringMcp.Security": "[0.3.5, )",
           "FlaUI.Core": "[5.0.0, )",
           "FlaUI.UIA3": "[5.0.0, )",
           "System.Drawing.Common": "[10.0.11, )"

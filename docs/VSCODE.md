@@ -68,4 +68,6 @@ If VS Code lists the server but tools are unavailable:
 
 Engineering MCP child processes use a minimal environment. Relative and UNC/network entries are removed from inherited `PATH` values before the host, tests, or maintenance commands start. This prevents stale network tool paths from leaking into WSL or diagnostic subprocesses while retaining local absolute tool paths.
 
+The 75-tool surface includes metadata-only WPF grid/tree/item summaries, selector diagnostics, richer waits/assertions, and probe-backed binding/command/validation diagnostics. Advanced tools never return grid cell text, item labels, ViewModel values, validation messages, raw AutomationIds, window titles, clipboard content, or unredacted artifacts.
+
 Do not copy workspace-relative stdio configuration into ApexDrive. The shared HTTP endpoint is deliberately independent of the active workspace.

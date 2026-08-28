@@ -12,7 +12,7 @@ namespace EngineeringMcp.ControlCenter;
 
 /// <summary>
 /// Pages beyond the core shell: Tools registry (static catalog mirroring the host's
-/// 54 tools), Logs stream presentation, Integration helpers and value converters.
+/// 75 tools), Logs stream presentation, Integration helpers and value converters.
 /// </summary>
 public partial class MainWindow
 {
@@ -48,6 +48,27 @@ public partial class MainWindow
         ("wpf_screenshot","Capture the window as an image","wpf","read"),
         ("wpf_detach","Detach the UI Automation session","wpf","read"),
         ("wpf_probe","Handshake with the in-app probe endpoint","wpf","read"),
+        ("wpf_wait_absent","Wait until a selected element is absent (metadata only)","wpf","read"),
+        ("wpf_wait_hidden","Wait until a selected element is hidden (metadata only)","wpf","read"),
+        ("wpf_wait_disabled","Wait until a selected element is disabled","wpf","read"),
+        ("wpf_assert_exists","Assert that a selected element exists","wpf","read"),
+        ("wpf_assert_not_exists","Assert that a selected element is absent","wpf","read"),
+        ("wpf_assert_pattern","Assert an observed UI Automation pattern","wpf","read"),
+        ("wpf_selector_audit","Audit selector stability without returning identifiers","wpf","read"),
+        ("wpf_duplicate_automation_ids","Find duplicate IDs using fingerprints only","wpf","read"),
+        ("wpf_control_inventory","Count UI Automation control types","wpf","read"),
+        ("wpf_pattern_inventory","Count observed UI Automation patterns","wpf","read"),
+        ("wpf_grid_summary","Summarize grid structure without cell values","wpf","read"),
+        ("wpf_tree_summary","Summarize tree structure without node labels","wpf","read"),
+        ("wpf_items_summary","Summarize item controls without item text","wpf","read"),
+        ("wpf_accessibility_summary","Aggregate accessibility metadata without names","wpf","read"),
+        ("wpf_window_state","Read window geometry/state without titles","wpf","read"),
+        ("wpf_binding_info","Read binding metadata without bound values","wpf","read"),
+        ("wpf_binding_errors","Read bounded binding error metadata","wpf","read"),
+        ("wpf_command_state","Read command type/presence without invocation","wpf","read"),
+        ("wpf_validation_summary","Count validation errors without messages/values","wpf","read"),
+        ("wpf_datacontext_type","Read DataContext type only","wpf","read"),
+        ("wpf_dispatcher_status","Read dispatcher status metadata","wpf","read"),
         ("wpfui_inspect","Inspect WPF-UI themed control metadata","wpf","read"),
         ("dotnet_runtime_info","Runtime version, GC mode, RID of a process","dotnet","read"),
         ("dotnet_counters","Read EventCounters from a live process","dotnet","read"),

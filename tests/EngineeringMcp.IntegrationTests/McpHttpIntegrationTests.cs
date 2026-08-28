@@ -129,6 +129,13 @@ public sealed partial class McpHttpIntegrationTests
             Assert.IsTrue(names.Contains("diagnose", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("source_find_references_semantic", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("system_policy_diagnostics", StringComparer.Ordinal));
+            Assert.HasCount(75, names);
+            foreach (var required in new[]
+                     {
+                         "wpf_grid_summary", "wpf_selector_audit", "wpf_binding_errors",
+                         "wpf_validation_summary", "wpf_wait_absent", "wpf_assert_pattern"
+                     })
+                Assert.IsTrue(names.Contains(required, StringComparer.Ordinal), $"Missing advanced safe WPF tool: {required}");
 
             foreach (var tool in tools)
             {
