@@ -61,6 +61,65 @@ function Invoke-Msi([string]$Mode) {
     }
 }
 
+function Get-EngineeringMcpRegistrations {
+    $registryRoots = @(
+        'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+
+    return @(
+        foreach ($root in $registryRoots) {
+            Get-ItemProperty $root -ErrorAction SilentlyContinue |
+                Where-Object DisplayName -eq 'Engineering MCP'
+        }
+    )
+}
+
+function Get-CandidateHostHash([string]$PackagePath) {
+    $inspectionRoot = Join-Path ([IO.Path]::GetTempPath()) ('EngineeringMcp-MsiInspect-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $inspectionRoot | Out-Null
+
+    try {
+        $arguments = @('/a', ('"' + $PackagePath + '"'), '/qn', '/norestart', ('TARGETDIR="' + $inspectionRoot + '"'))
+        $installer = Start-Process -FilePath 'msiexec.exe' -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+        if ($installer.ExitCode -notin @(0, 3010)) {
+            throw "Windows Installer administrative extraction failed with exit code $($installer.ExitCode)."
+        }
+
+        $candidateHost = Get-ChildItem -LiteralPath $inspectionRoot -Filter 'EngineeringMcp.Host.exe' -File -Recurse |
+            Select-Object -First 1
+        if ($null -eq $candidateHost) { throw 'The candidate MSI does not contain EngineeringMcp.Host.exe.' }
+        return (Get-FileHash -Algorithm SHA256 -LiteralPath $candidateHost.FullName).Hash
+    }
+    finally {
+        $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+        $resolvedInspectionRoot = [IO.Path]::GetFullPath($inspectionRoot)
+        if (-not $resolvedInspectionRoot.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -or
+            -not [IO.Path]::GetFileName($resolvedInspectionRoot).StartsWith('EngineeringMcp-MsiInspect-', [StringComparison]::Ordinal)) {
+            throw 'Refused to remove an unverified MSI inspection directory.'
+        }
+        Remove-Item -LiteralPath $resolvedInspectionRoot -Recurse -Force
+    }
+}
+
+function Assert-CandidateInstalled([string]$CandidateHostHash) {
+    $installedHost = Join-Path $script:installRoot 'host\EngineeringMcp.Host.exe'
+    if (-not (Test-Path -LiteralPath $installedHost -PathType Leaf)) {
+        throw 'The candidate install did not create EngineeringMcp.Host.exe.'
+    }
+
+    $installedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installedHost).Hash
+    if ($installedHash -ne $CandidateHostHash) {
+        throw 'The installed MCP host does not match the candidate MSI payload.'
+    }
+
+    $registrations = @(Get-EngineeringMcpRegistrations)
+    if ($registrations.Count -ne 1) {
+        throw "Expected one Engineering MCP installer registration, but found $($registrations.Count)."
+    }
+}
+
 $policyPath = Resolve-RequiredFile $PolicyPath 'Durable MCP policy'
 $vsCodeConfigPath = Resolve-RequiredFile $VsCodeConfigPath 'VS Code MCP configuration'
 if (Test-UnderDirectory $policyPath $installRoot) {
@@ -72,19 +131,25 @@ $vsCodeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $vsCodeConfigPath).Ha
 
 if ($ExerciseReinstall) {
     $msiPath = Resolve-RequiredFile $MsiPath 'MSI package'
+    $candidateHostHash = Get-CandidateHostHash $msiPath
     try {
         Write-Host 'Installing the candidate MSI...'
         Stop-VerifiedEngineeringMcpProcesses
         Invoke-Msi 'install'
+        Assert-CandidateInstalled $candidateHostHash
         Assert-PersistentConfiguration $policyHash $vsCodeHash
 
         Write-Host 'Uninstalling the candidate MSI...'
         Stop-VerifiedEngineeringMcpProcesses
         Invoke-Msi 'uninstall'
+        if (@(Get-EngineeringMcpRegistrations).Count -ne 0) {
+            throw 'Engineering MCP remained registered after uninstall.'
+        }
         Assert-PersistentConfiguration $policyHash $vsCodeHash
 
         Write-Host 'Reinstalling the candidate MSI...'
         Invoke-Msi 'install'
+        Assert-CandidateInstalled $candidateHostHash
         Assert-PersistentConfiguration $policyHash $vsCodeHash
     }
     finally {
@@ -92,6 +157,7 @@ if ($ExerciseReinstall) {
         if (-not (Test-Path -LiteralPath $hostExecutable -PathType Leaf) -and -not [string]::IsNullOrWhiteSpace($msiPath)) {
             Write-Warning 'The acceptance sequence did not leave Engineering MCP installed; attempting recovery reinstall.'
             Invoke-Msi 'install'
+            Assert-CandidateInstalled $candidateHostHash
         }
     }
 }

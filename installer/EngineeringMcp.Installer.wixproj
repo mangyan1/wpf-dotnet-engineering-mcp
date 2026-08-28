@@ -4,7 +4,9 @@
     <OutputType>Package</OutputType>
     <OutputName Condition="'$(OutputName)' == ''">EngineeringMcp-Setup</OutputName>
     <DefineConstants>ProductVersion=$(ProductVersion);RepositoryRoot=$(RepositoryRoot);LicenseRtf=$(LicenseRtf)</DefineConstants>
-    <SuppressIces>ICE38;ICE64;ICE91</SuppressIces>
+    <!-- ICE61 conflicts with the intentional inclusive upgrade range used to replace
+         stale same-version development builds; all other ICE validation remains active. -->
+    <SuppressIces>ICE38;ICE61;ICE64;ICE91</SuppressIces>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="WixToolset.UI.wixext" />

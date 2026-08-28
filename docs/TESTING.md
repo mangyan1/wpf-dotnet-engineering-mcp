@@ -26,7 +26,9 @@ powershell -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
   -ExerciseReinstall
 ```
 
-The lifecycle gate stops only Engineering MCP processes whose executable path is beneath the selected installation root. It verifies that the per-user policy and VS Code `mcp.json` hashes remain unchanged through install, uninstall, and reinstall. It then starts the installed host on an isolated loopback port and performs a VS Code-style initialize, 54-tool discovery, policy-diagnostic call, successful runtime diagnostic, and intentionally denied privileged call with actionable remediation. The test never prints bearer tokens or policy contents.
+The lifecycle gate stops only Engineering MCP processes whose executable path is beneath the selected installation root. It verifies that the per-user policy and VS Code `mcp.json` hashes remain unchanged through install, uninstall, and reinstall. It extracts the candidate MSI to a verified temporary directory, compares the installed host hash with that payload, and requires exactly one installer registration so stale same-version development builds cannot pass. It then starts the installed host on an isolated loopback port and performs a VS Code-style initialize, 54-tool discovery, policy-diagnostic call, successful runtime diagnostic, and intentionally denied privileged call with actionable remediation. The test never prints bearer tokens or policy contents.
+
+The installer intentionally allows equal-version upgrades for development and pre-release rebuilds. WiX ICE61 conflicts with that inclusive upgrade range, so only ICE61 is suppressed for this documented case; the remaining installer validation stays enabled.
 
 Release validation also runs the static contract script, NuGet vulnerable-package scan, locked dependency restore, Release packaging, SPDX SBOM generation, checksum generation, and installed-package acceptance. Authenticode signing is a promotion gate and requires an operator-provided certificate thumbprint or the explicitly labelled development self-signing mode.
 

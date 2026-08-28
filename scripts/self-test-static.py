@@ -145,6 +145,10 @@ check((ROOT / 'build/release-hardening.ps1').exists(),
       "Local release hardening automation exists")
 check((ROOT / 'scripts/test-installed-vscode.ps1').exists(),
       "Installed-package VS Code acceptance automation exists")
+check('AllowSameVersionUpgrades="yes"' in (ROOT / 'installer/Package.wxs').read_text(encoding='utf-8'),
+      "MSI replaces same-version development builds")
+check('ICE61' in (ROOT / 'installer/EngineeringMcp.Installer.wixproj').read_text(encoding='utf-8'),
+      "Same-version MSI validation exception is explicitly scoped")
 check('ProcessEnvironmentSanitizer.SanitizePathInPlace' in selftest and
       'remediation' in (ROOT / 'src/EngineeringMcp.Contracts/SecurityModels.cs').read_text(encoding='utf-8').lower(),
       "Child environment sanitization and actionable failure contract are wired")

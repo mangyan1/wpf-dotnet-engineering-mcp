@@ -14,7 +14,9 @@
     <SummaryInformation
       Description="Engineering MCP Control Center and local MCP host"
       Keywords="Engineering,MCP,.NET,WPF,VS Code" />
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Engineering MCP is already installed." />
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of Engineering MCP is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Icon Id="EngineeringMcpIcon" SourceFile="$(var.RepositoryRoot)\src\EngineeringMcp.ControlCenter\Assets\AppIcon.ico" />
