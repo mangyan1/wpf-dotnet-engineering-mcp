@@ -32,6 +32,11 @@ The same release command also creates `EngineeringMcp-<version>-win-x64-Setup.ms
 
 Standalone mode keeps live MCP server control, protocol testing, policy selection, and the global **Connect to VS Code** action. Source builds, fixtures, and repository validation remain available only when the Control Center is launched from this checkout. The package manifest contains a reserved stable-channel update field, but automatic updating is intentionally inactive until a trusted release feed is configured.
 
+For a durable ApexDrive integration, use **Configure ApexDrive** in the Control Center and select the
+repository root. This explicit action generates a least-privilege per-user policy outside the install
+directory, activates it, and restarts the MCP host. The policy and environment selection survive an
+uninstall/reinstall; the installer itself continues to default to metadata-only access.
+
 ## Control Center (recommended)
 
 For normal local operation, use the WPF Control Center instead of typing maintenance commands. On Windows, double-click `Start-ControlCenter.cmd` or run the `EngineeringMcp.ControlCenter` project from Visual Studio.

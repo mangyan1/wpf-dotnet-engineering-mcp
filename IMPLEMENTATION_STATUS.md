@@ -1,13 +1,14 @@
 # Implementation Status
 
-Last updated: 2026-08-27
+Last updated: 2026-08-28
 
 ## Verification state
 
 Verified on Windows on 2026-08-27 with .NET SDK 10.0.400:
 
 - `dotnet build DotNetEngineeringMcp.sln --no-restore`: passed with 0 warnings and 0 errors.
-- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 18 tests passed across security, adversarial, and integration suites, including an approved-root MSBuild/Roslyn semantic-reference resolution test.
+- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 20 tests passed across security, adversarial, and integration suites, including durable ApexDrive policy provisioning and an approved-root MSBuild/Roslyn semantic-reference resolution test.
+- Release hardening produced the self-contained 0.3.3 ZIP and MSI with zero installer warnings/errors; the local package is unsigned and must not be promoted as an official signed release.
 - Live authenticated Streamable HTTP initialization and `tools/list`: HTTP 200, protocol `2025-06-18`, 53 tools.
 - Live contract gate: every tool has an output schema, title, annotations, and descriptions for every input property; a deterministic domain failure returned MCP `isError=true`.
 - WPF runtime smoke: allowlisted attach succeeded, a 50-element semantic snapshot succeeded, framed WPF probe status succeeded, and screenshot output contained one native MCP image block plus metadata with no structured base64 duplicate.
@@ -35,6 +36,7 @@ Verified on Windows on 2026-08-27 with .NET SDK 10.0.400:
 | ClrMD/dump analysis | IMPLEMENTED, PRIVILEGED | policy-gated sensitive diagnostic path |
 | UX heuristics | IMPLEMENTED | explicitly heuristic output |
 | VS Code integration | IMPLEMENTED | authenticated HTTP definition and environment-backed bearer token |
+| Durable ApexDrive policy provisioning | IMPLEMENTED | explicit Control Center action writes a validated per-user policy outside the install directory and restarts MCP; reinstall-safe without weakening packaged default-deny behavior |
 | Codex integration | IMPLEMENTED, VERIFIED CONFIG | global `dotnetWpfEngineering` entry uses bearer-token environment variable |
 | Developer Control Center | IMPLEMENTED, BUILD VERIFIED | authenticated MCP self-test + WPF end-to-end button-driven lab + policy selection |
 | Protocol hardening | IMPLEMENTED, VERIFIED | structured output/error signaling, schemas, annotations, native images, progress, pagination |

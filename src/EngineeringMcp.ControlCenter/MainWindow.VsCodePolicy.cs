@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows;
 using EngineeringMcp.Contracts;
+using EngineeringMcp.Security;
 using Microsoft.Win32;
 using Wpf.Ui.Controls;
 
@@ -188,6 +189,52 @@ public partial class MainWindow
         RefreshStatus();
         AppendLog("Selected MCP policy: " + selected);
         SetStatus("MCP policy selected. Restart the MCP server to apply it.");
+    }
+
+    private async void ConfigureApexDrivePolicy_Click(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureReady() || _busy) return;
+
+        var suggestedRoot = ApexDrivePolicyProvisioner.FindSuggestedRepositoryRoot();
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Select the ApexDrive repository",
+            Multiselect = false,
+            InitialDirectory = suggestedRoot
+        };
+
+        if (dialog.ShowDialog(this) is not true)
+            return;
+
+        try
+        {
+            var provisioned = ApexDrivePolicyProvisioner.Provision(dialog.FolderName);
+            Environment.SetEnvironmentVariable(
+                "ENGINEERING_MCP_POLICY",
+                provisioned.PolicyPath,
+                EnvironmentVariableTarget.User);
+            Environment.SetEnvironmentVariable(
+                "ENGINEERING_MCP_POLICY",
+                provisioned.PolicyPath,
+                EnvironmentVariableTarget.Process);
+
+            _layout = _layout with { Policy = provisioned.PolicyPath };
+            PolicyPathText.Text = provisioned.PolicyPath;
+            RefreshStatus();
+            AppendLog("Provisioned durable ApexDrive MCP policy: " + provisioned.PolicyPath);
+            AppendLog("ApexDrive workstation allowlist target: " + provisioned.WorkstationExecutable);
+
+            if (await StartMcpServerAsync(restart: true, CancellationToken.None))
+                SetStatus("ApexDrive policy installed. MCP restarted and ready for VS Code.");
+            else
+                SetStatus("ApexDrive policy installed, but MCP restart failed. See Logs.");
+        }
+        catch (Exception ex)
+        {
+            AppendLog("Configure ApexDrive failed: " + ex.GetType().Name + ": " + ex.Message);
+            SetStatus("Could not configure the ApexDrive policy. See Logs.");
+            MainTabs.SelectedItem = LogsTab;
+        }
     }
 
     private void OpenPolicy_Click(object sender, RoutedEventArgs e) => OpenFile(_layout.Policy);

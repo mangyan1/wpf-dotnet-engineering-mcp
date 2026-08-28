@@ -12,6 +12,13 @@ The Engineering MCP now uses a **shared local Streamable HTTP service** for norm
 6. Open ApexDrive or any other workspace that uses the same VS Code profile.
 7. VS Code connects to the already-running local service. It does not launch a second MCP host.
 
+For ApexDrive development, open **Integrations**, select **Configure ApexDrive**, and choose the
+ApexDrive repository root. The Control Center creates a validated least-privilege policy under the
+current user's local application-data directory, records it in `ENGINEERING_MCP_POLICY`, and restarts
+the MCP host. The generated policy survives application uninstall/reinstall because it is stored
+outside the installation directory. The default packaged policy remains metadata-only until this
+explicit configuration action is completed.
+
 The user-profile registration is intentionally cross-workspace. The security policy separately decides which processes and source roots the MCP may inspect.
 
 ## Installed VS Code entry
@@ -54,5 +61,6 @@ If VS Code lists the server but tools are unavailable:
 4. If that fails, use **Repair MCP Server** and then **Run MCP Server**.
 5. Use the Logs tab for the server output.
 6. If the log shows HTTP 401, fully exit and restart VS Code so it inherits `ENGINEERING_MCP_HTTP_TOKEN`.
+7. If diagnostic or WPF tools return a policy error, use **Configure ApexDrive** and select the repository root.
 
 Do not copy workspace-relative stdio configuration into ApexDrive. The shared HTTP endpoint is deliberately independent of the active workspace.

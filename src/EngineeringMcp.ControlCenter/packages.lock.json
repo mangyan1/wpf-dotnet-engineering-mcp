@@ -115,6 +115,12 @@
       },
       "engineeringmcp.contracts": {
         "type": "Project"
+      },
+      "engineeringmcp.security": {
+        "type": "Project",
+        "dependencies": {
+          "EngineeringMcp.Contracts": "[0.3.3, )"
+        }
       }
     },
     "net10.0-windows10.0.19041/win-x64": {}

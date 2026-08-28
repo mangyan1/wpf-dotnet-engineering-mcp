@@ -106,6 +106,7 @@ check(tabs == ['Home', 'Validation', 'Integration', 'Tools', 'Logs', 'Security']
       "Control Center has the expected six dashboard pages", str(tabs))
 for label in ['Run MCP Server', 'Test MCP Server', 'Repair MCP Server', 'Connect to VS Code', 'MCP Server Logs']:
     check(f'Content="{label}"' in xaml, f'GUI action present: {label}')
+check('Text="Configure ApexDrive"' in xaml, 'GUI action present: Configure ApexDrive')
 
 handlers = set(re.findall(r'(?:Click|SelectionChanged)="([A-Za-z_][A-Za-z0-9_]*)"', xaml))
 missing_handlers = [h for h in sorted(handlers) if re.search(rf'\b{re.escape(h)}\s*\(', maincs) is None]
