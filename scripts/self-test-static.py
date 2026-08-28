@@ -45,7 +45,8 @@ program = (ROOT / "src/EngineeringMcp.Host/Program.cs").read_text(encoding="utf-
 packages = (ROOT / "Directory.Packages.props").read_text(encoding="utf-8")
 host_csproj = (ROOT / "src/EngineeringMcp.Host/EngineeringMcp.Host.csproj").read_text(encoding="utf-8")
 selftest = (ROOT / "src/EngineeringMcp.ControlCenter/McpSelfTestService.cs").read_text(encoding="utf-8")
-maincs = (ROOT / "src/EngineeringMcp.ControlCenter/MainWindow.xaml.cs").read_text(encoding="utf-8")
+maincs = "\n".join(path.read_text(encoding="utf-8") for path in
+                   sorted((ROOT / "src/EngineeringMcp.ControlCenter").glob("MainWindow*.cs")))
 xaml = (ROOT / "src/EngineeringMcp.ControlCenter/MainWindow.xaml").read_text(encoding="utf-8")
 runtime = (ROOT / "src/EngineeringMcp.Contracts/McpRuntimeDefaults.cs").read_text(encoding="utf-8")
 artifact_layout = (ROOT / "src/EngineeringMcp.ControlCenter/SelfTestArtifactLayout.cs").read_text(encoding="utf-8")
@@ -84,7 +85,7 @@ check('EngineeringMcp.Host.exe' in (ROOT / 'src/EngineeringMcp.ControlCenter/Pro
       "Control Center launches built host executable")
 check('startInfo.ArgumentList.Add("http")' in maincs and 'StartMcpServerAsync' in maincs,
       "Run MCP Server starts background HTTP host")
-check('["type"] = "http"' in maincs and '["url"] = McpRuntimeDefaults.McpEndpoint' in maincs,
+check('["type"] = "http"' in maincs and '["url"] = McpRuntimeDefaults.VsCodeMcpEndpoint' in maincs,
       "VS Code integration writes HTTP user-profile entry")
 check('_liveMcpClient' not in maincs and 'OpenSessionAsync' not in maincs,
       "Old Control Center-owned stdio session removed")
@@ -92,16 +93,17 @@ check('_liveMcpClient' not in maincs and 'OpenSessionAsync' not in maincs,
 # Workspace config should point to HTTP, never workspace-relative host process.
 workspace_cfg = json.loads((ROOT / '.vscode/mcp.json').read_text(encoding='utf-8'))
 server = workspace_cfg.get('servers', {}).get('dotnetWpfEngineering', {})
-check(server.get('type') == 'http' and server.get('url') == 'http://127.0.0.1:8765/mcp',
+check(server.get('type') == 'http' and server.get('url') == 'http://127.0.0.1:8765/mcp?vscode',
       "Workspace MCP example uses shared HTTP endpoint")
 check(server.get('headers', {}).get('X-Engineering-Mcp-Client') == 'vscode',
       "Workspace MCP example identifies live VS Code traffic")
 check('${workspaceFolder}' not in json.dumps(workspace_cfg),
       "Workspace MCP example has no repository-path coupling")
 
-# Four-tab UX and event handlers.
+# Dashboard pages and event handlers.
 tabs = re.findall(r'<TabItem(?:\s+x:Name="[^"]+")?\s+Header="([^"]+)"', xaml)
-check(tabs == ['Home', 'Self Test', 'Integration', 'Logs'], "Control Center has exactly four simple tabs", str(tabs))
+check(tabs == ['Home', 'Validation', 'Integration', 'Tools', 'Logs', 'Security'],
+      "Control Center has the expected six dashboard pages", str(tabs))
 for label in ['Run MCP Server', 'Test MCP Server', 'Repair MCP Server', 'Connect to VS Code', 'MCP Server Logs']:
     check(f'Content="{label}"' in xaml, f'GUI action present: {label}')
 

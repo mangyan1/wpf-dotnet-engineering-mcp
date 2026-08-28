@@ -2,7 +2,7 @@
   "servers": {
     "dotnetWpfEngineering": {
       "type": "http",
-      "url": "http://127.0.0.1:8765/mcp",
+      "url": "http://127.0.0.1:8765/mcp?vscode",
       "headers": {
         "Authorization": "Bearer ${env:ENGINEERING_MCP_HTTP_TOKEN}",
         "X-Engineering-Mcp-Client": "vscode"

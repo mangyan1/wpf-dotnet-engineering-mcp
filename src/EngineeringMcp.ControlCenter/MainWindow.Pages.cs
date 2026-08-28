@@ -213,7 +213,7 @@ public partial class MainWindow
                 [McpRuntimeDefaults.ServerName] = new
                 {
                     type = "http",
-                    url = McpRuntimeDefaults.McpEndpoint,
+                    url = McpRuntimeDefaults.VsCodeMcpEndpoint,
                     headers = new Dictionary<string, string>
                     {
                         ["Authorization"] = $"Bearer ${{env:{McpRuntimeDefaults.HttpTokenEnvironmentVariable}}}"

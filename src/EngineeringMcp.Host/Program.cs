@@ -129,8 +129,11 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
             }
 
             context.Response.Headers.CacheControl = "no-store";
+            var clientName = context.Request.Headers[McpRuntimeDefaults.ClientNameHeader].ToString();
+            if (string.IsNullOrWhiteSpace(clientName) && context.Request.Query.ContainsKey(McpRuntimeDefaults.VsCodeClientQueryFlag))
+                clientName = McpRuntimeDefaults.VsCodeClientName;
             using var activityScope = context.Request.Path.StartsWithSegments(McpRuntimeDefaults.McpPath)
-                ? clientActivity.BeginRequest(context.Request.Headers[McpRuntimeDefaults.ClientNameHeader].ToString())
+                ? clientActivity.BeginRequest(clientName)
                 : null;
             using var clientScope = app.Services.GetRequiredService<SessionContext>()
                 .BeginClientScope(HttpBearerAuthentication.DeriveClientId(httpToken));

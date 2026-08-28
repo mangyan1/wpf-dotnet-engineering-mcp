@@ -2,7 +2,7 @@
 
 This optional extension registers the shared local Streamable HTTP MCP endpoint:
 
-`http://127.0.0.1:8765/mcp`
+`http://127.0.0.1:8765/mcp?vscode`
 
 Start the actual server from **Developer Control Center → Run MCP Server**. The extension does not spawn a second host process and does not depend on the currently open workspace.
 

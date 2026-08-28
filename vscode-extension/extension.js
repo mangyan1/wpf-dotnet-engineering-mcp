@@ -3,7 +3,7 @@
 const vscode = require('vscode');
 
 const PROVIDER_ID = 'dotnetEngineeringMcp.provider';
-const ENDPOINT = 'http://127.0.0.1:8765/mcp';
+const ENDPOINT = 'http://127.0.0.1:8765/mcp?vscode';
 const TOKEN_ENVIRONMENT_VARIABLE = 'ENGINEERING_MCP_HTTP_TOKEN';
 
 /** @param {vscode.ExtensionContext} context */
@@ -43,7 +43,7 @@ async function activate(context) {
         '.NET/WPF Engineering MCP',
         vscode.Uri.parse(ENDPOINT),
         { Authorization: `Bearer ${token}` },
-        '0.3.0'
+        '0.3.2'
       )];
     },
     resolveMcpServerDefinition: async server => server

@@ -53,6 +53,7 @@ public partial class MainWindow
 
         var amber = (Brush)FindResource("AmberBrush");
         var green = (Brush)FindResource("GreenBrush");
+        var cyan = (Brush)FindResource("CyanBrush");
         var text2 = (Brush)FindResource("Text2Brush");
         var text3 = (Brush)FindResource("Text3Brush");
         var hair = (Brush)FindResource("HairBrush");
@@ -61,13 +62,15 @@ public partial class MainWindow
         var amberGlow = (Brush)FindResource("AmberGlowBrush");
 
         SetConnectionState(ControlCenterConnection, serverLive, true, amber, text3, hair);
-        SetConnectionState(VsCodeConnection, vsCodeLive, vsCodeConfigured, green, text3, hair);
+        SetConnectionState(VsCodeConnection, vsCodeLive, vsCodeConfigured, green, cyan, hair);
         SetConnectionState(FixtureConnection, serverLive && fixtureLive, fixtureLive, green, text3, hair);
         SetConnectionState(PolicyConnection, serverLive && policyReady, policyReady, green, text3, hair);
 
         SetNodeState(TopologyControlNode, true, text2, raised, panel, hair);
         SetNodeState(TopologyServerNode, serverLive, amber, amberGlow, panel, hair);
-        SetNodeState(TopologyVsCodeNode, vsCodeLive, green, raised, panel, vsCodeConfigured ? text3 : hair);
+        SetNodeState(TopologyVsCodeNode, vsCodeLive, green, raised, panel, vsCodeConfigured ? cyan : hair);
+        if (vsCodeConfigured && !vsCodeLive)
+            TopologyVsCodeNode.Opacity = 0.9;
         SetNodeState(TopologyFixtureNode, fixtureLive, green, raised, panel, hair);
         SetNodeState(TopologyPolicyNode, policyReady, green, raised, panel, hair);
 
@@ -106,7 +109,7 @@ public partial class MainWindow
         Brush inactiveBrush)
     {
         connection.Stroke = active ? activeBrush : ready ? readyBrush : inactiveBrush;
-        connection.Opacity = active ? 0.95 : ready ? 0.52 : 0.22;
+        connection.Opacity = active ? 0.95 : ready ? 0.72 : 0.22;
 
         if (_topologyConnectionStates.TryGetValue(connection, out var wasActive) && wasActive == active)
             return;

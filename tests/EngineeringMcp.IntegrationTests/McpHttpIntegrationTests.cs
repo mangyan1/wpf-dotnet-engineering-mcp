@@ -89,8 +89,7 @@ public sealed partial class McpHttpIntegrationTests
             Assert.AreEqual(HttpStatusCode.Forbidden, crossOrigin.StatusCode);
 
             using var client = CreateMcpClient(token);
-            client.DefaultRequestHeaders.Add(McpRuntimeDefaults.ClientNameHeader, McpRuntimeDefaults.VsCodeClientName);
-            using var initialized = await client.PostAsync(endpoint, JsonContent(new
+            using var initialized = await client.PostAsync(McpRuntimeDefaults.WithVsCodeClientMarker(endpoint), JsonContent(new
             {
                 jsonrpc = "2.0",
                 id = 1,

@@ -1216,7 +1216,7 @@
                                                     <Run Text="  " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;servers&quot;" /><Run Text=": {" /><LineBreak />
                                                     <Run Text="    " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;dotnetWpfEngineering&quot;" /><Run Text=": {" /><LineBreak />
                                                     <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;type&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;http&quot;" /><Run Text="," /><LineBreak />
-                                                    <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;url&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;http://127.0.0.1:8765/mcp&quot;" /><Run Text="," /><LineBreak />
+                                                    <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;url&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;http://127.0.0.1:8765/mcp?vscode&quot;" /><Run Text="," /><LineBreak />
                                                     <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;headers&quot;" /><Run Text=": {" /><LineBreak />
                                                     <Run Text="        " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;Authorization&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;Bearer ${env:MCP_HTTP_TOKEN}&quot;" /><LineBreak />
                                                     <Run Text="    }" /><LineBreak />

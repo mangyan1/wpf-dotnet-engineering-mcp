@@ -314,8 +314,8 @@
       "engineeringmcp.diagnostics": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )",
-          "EngineeringMcp.Security": "[0.3.0, )",
+          "EngineeringMcp.Contracts": "[0.3.2, )",
+          "EngineeringMcp.Security": "[0.3.2, )",
           "Microsoft.Diagnostics.NETCore.Client": "[0.2.661903, )",
           "Microsoft.Diagnostics.Runtime": "[4.0.732401, )",
           "Microsoft.Diagnostics.Tracing.TraceEvent": "[3.2.6, )"
@@ -324,14 +324,14 @@
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )"
+          "EngineeringMcp.Contracts": "[0.3.2, )"
         }
       },
       "engineeringmcp.source": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )",
-          "EngineeringMcp.Security": "[0.3.0, )",
+          "EngineeringMcp.Contracts": "[0.3.2, )",
+          "EngineeringMcp.Security": "[0.3.2, )",
           "Microsoft.Build.Locator": "[1.11.2, )",
           "Microsoft.CodeAnalysis.CSharp.Workspaces": "[5.9.0, )",
           "Microsoft.CodeAnalysis.Workspaces.MSBuild": "[5.9.0, )"
@@ -340,8 +340,8 @@
       "engineeringmcp.wpf": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )",
-          "EngineeringMcp.Security": "[0.3.0, )",
+          "EngineeringMcp.Contracts": "[0.3.2, )",
+          "EngineeringMcp.Security": "[0.3.2, )",
           "FlaUI.Core": "[5.0.0, )",
           "FlaUI.UIA3": "[5.0.0, )",
           "System.Drawing.Common": "[10.0.11, )"

@@ -64,7 +64,7 @@ public partial class MainWindow
         var server = new JsonObject
         {
             ["type"] = "http",
-            ["url"] = McpRuntimeDefaults.McpEndpoint,
+            ["url"] = McpRuntimeDefaults.VsCodeMcpEndpoint,
             ["headers"] = new JsonObject
             {
                 ["Authorization"] = $"Bearer ${{env:{McpRuntimeDefaults.HttpTokenEnvironmentVariable}}}",
@@ -107,8 +107,10 @@ public partial class MainWindow
             if (!File.Exists(configPath)) return false;
             var document = JsonNode.Parse(File.ReadAllText(configPath)) as JsonObject;
             var server = document?["servers"]?[McpRuntimeDefaults.ServerName] as JsonObject;
+            var url = server?["url"]?.GetValue<string>();
             return string.Equals(server?["type"]?.GetValue<string>(), "http", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(server?["url"]?.GetValue<string>(), McpRuntimeDefaults.McpEndpoint, StringComparison.OrdinalIgnoreCase);
+                && (string.Equals(url, McpRuntimeDefaults.McpEndpoint, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(url, McpRuntimeDefaults.VsCodeMcpEndpoint, StringComparison.OrdinalIgnoreCase));
         }
         catch
         {
@@ -123,8 +125,10 @@ public partial class MainWindow
             var configPath = GetVsCodeUserMcpConfigPath();
             if (!File.Exists(configPath)) return false;
             var document = JsonNode.Parse(File.ReadAllText(configPath)) as JsonObject;
-            var headers = document?["servers"]?[McpRuntimeDefaults.ServerName]?["headers"] as JsonObject;
-            return string.Equals(
+            var server = document?["servers"]?[McpRuntimeDefaults.ServerName] as JsonObject;
+            var headers = server?["headers"] as JsonObject;
+            return string.Equals(server?["url"]?.GetValue<string>(), McpRuntimeDefaults.VsCodeMcpEndpoint, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
                 headers?[McpRuntimeDefaults.ClientNameHeader]?.GetValue<string>(),
                 McpRuntimeDefaults.VsCodeClientName,
                 StringComparison.OrdinalIgnoreCase);

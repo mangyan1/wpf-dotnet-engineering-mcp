@@ -14,7 +14,12 @@ public static class McpRuntimeDefaults
     public const string McpPath = "/mcp";
     public const string HealthPath = "/healthz";
     public const string ClientNameHeader = "X-Engineering-Mcp-Client";
+    public const string VsCodeClientQueryFlag = "vscode";
     public const string VsCodeClientName = "vscode";
     public const string McpEndpoint = ListenUrl + McpPath;
+    public const string VsCodeMcpEndpoint = McpEndpoint + "?" + VsCodeClientQueryFlag;
     public const string HealthEndpoint = ListenUrl + HealthPath;
+
+    public static string WithVsCodeClientMarker(string endpoint)
+        => endpoint + (endpoint.Contains('?') ? "&" : "?") + VsCodeClientQueryFlag;
 }

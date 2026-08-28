@@ -21,9 +21,10 @@ The user-profile registration is intentionally cross-workspace. The security pol
   "servers": {
     "dotnetWpfEngineering": {
       "type": "http",
-      "url": "http://127.0.0.1:8765/mcp",
+      "url": "http://127.0.0.1:8765/mcp?vscode",
       "headers": {
-        "Authorization": "Bearer ${env:ENGINEERING_MCP_HTTP_TOKEN}"
+        "Authorization": "Bearer ${env:ENGINEERING_MCP_HTTP_TOKEN}",
+        "X-Engineering-Mcp-Client": "vscode"
       }
     }
   }
@@ -31,6 +32,8 @@ The user-profile registration is intentionally cross-workspace. The security pol
 ```
 
 VS Code supports Streamable HTTP servers in user-profile MCP configuration. It may require a one-time trust approval when the server configuration is first used or changes.
+
+The non-secret `vscode` query flag lets the Control Center distinguish real VS Code MCP traffic from its own health checks and self-tests. The header is retained as a compatibility signal for clients that preserve custom headers.
 
 ## Transport model
 
