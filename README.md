@@ -10,7 +10,7 @@ Normal development now uses **one shared local MCP service**. Start it from the 
 
 For normal development, do not type routine build/test/MCP commands. Double-click `Start-ControlCenter.cmd` in the repository root.
 
-The Dev Lab can run the complete local validation path with buttons: solution build, automated tests, a real MCP stdio client/server self-test, WPF fixture launch, FlaUI/UIA attach and snapshot, semantic interaction/assertion, WPF probe checks, and sanitized screenshot verification. VS Code is tested after the MCP itself is known-good.
+The Dev Lab can run the complete local validation path with buttons: solution build, automated tests, a real MCP stdio client/server self-test, WPF fixture launch, FlaUI/UIA attach and snapshot, semantic interaction/assertion, WPF probe checks, and sanitized screenshot verification. In-process build, test, readiness, and end-to-end actions compile into a unique temporary artifacts directory. Runtime validation executes every transport and fixture from that same fresh build, then removes the artifacts and restores the previous local MCP runtime state. This prevents Windows file locks from the running Control Center or host from invalidating validation. VS Code is tested after the MCP itself is known-good.
 
 Optional: double-click `Install-ControlCenter-Shortcut.cmd` once to create a Desktop shortcut. See `docs/DEV-CONTROL-CENTER.md`.
 
@@ -68,7 +68,7 @@ The project files target .NET 10 and pin the official `ModelContextProtocol` pac
 ## VS Code
 
 - The Control Center **Connect to VS Code** action installs the MCP at VS Code user-profile scope for cross-workspace use. `.vscode/mcp.json` remains a repository-local development example.
-- `vscode-extension/` contains a development VS Code extension that registers the server programmatically and launches the WPF fixture with probe credentials held in VS Code Secret Storage.
+- `vscode-extension/` contains a development VS Code extension that registers the HTTP MCP server programmatically and requires `ENGINEERING_MCP_HTTP_TOKEN` (set by the Control Center in the user environment) to already be inherited by VS Code.
 - See `docs/VSCODE.md` for the first runtime test.
 
 See `docs/ROADMAP.md` for phase gates and `IMPLEMENTATION_STATUS.md` for exact completion state.

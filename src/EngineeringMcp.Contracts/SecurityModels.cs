@@ -1,5 +1,7 @@
 namespace EngineeringMcp.Contracts;
 
+using System.Text.Json.Serialization;
+
 public enum PermissionLevel
 {
     Metadata = 0,
@@ -48,7 +50,10 @@ public enum PiiMode
 
 public sealed record ToolFailure(string Code, string Message, bool Retryable = false);
 
-public sealed record ToolResult<T>(bool Success, T? Value = default, ToolFailure? Error = null)
+public sealed record ToolResult<T>(
+    bool Success,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] T? Value = default,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ToolFailure? Error = null)
 {
     public static ToolResult<T> Ok(T value) => new(true, value);
     public static ToolResult<T> Fail(string code, string message, bool retryable = false)

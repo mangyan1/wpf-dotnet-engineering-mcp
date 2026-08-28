@@ -1,16 +1,10 @@
 using System.IO.Pipes;
 using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
-using EngineeringMcp.Redaction;
 
 namespace EngineeringMcp.Wpf;
 
-public interface IWpfProbeClient
-{
-    Task<ToolResult<ProbeResponse>> RequestAsync(int processId, ProbeRequest request, CancellationToken cancellationToken = default);
-}
-
-public sealed class WpfProbeClient(IProcessGuard processGuard, IRedactionService redactor, IPolicyProvider policyProvider) : IWpfProbeClient
+public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService redactor, FilePolicyProvider policyProvider)
 {
     private const int MaxRequestBytes = 64 * 1024;
     private const int MaxResponseBytes = 4 * 1024 * 1024;

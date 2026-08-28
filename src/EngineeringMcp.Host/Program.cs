@@ -1,15 +1,11 @@
 using System.Net;
-using EngineeringMcp.AspNetCore;
-using EngineeringMcp.Audit;
-using EngineeringMcp.Contracts;
-using EngineeringMcp.Diagnosis;
-using EngineeringMcp.Diagnostics;
 using EngineeringMcp.Host;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
+using EngineeringMcp.Contracts;
+using EngineeringMcp.FailureCorrelation;
+using EngineeringMcp.Diagnostics;
 using EngineeringMcp.Source;
 using EngineeringMcp.Wpf;
-using EngineeringMcp.Wpf.WpfUi;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +33,7 @@ static async Task RunStdioAsync(string[] args)
     // stdio MCP requires stdout to remain protocol-clean, so logs go to stderr.
     builder.Logging.ClearProviders();
     builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+    builder.Logging.AddProvider(new EngineeringFileLoggerProvider());
 
     RegisterEngineeringServices(builder.Services);
     builder.Services
@@ -61,6 +58,7 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
     var builder = WebApplication.CreateBuilder(args);
     builder.Logging.ClearProviders();
     builder.Logging.AddConsole();
+    builder.Logging.AddProvider(new EngineeringFileLoggerProvider());
 
     // The shared development service is deliberately loopback-only. It is not a LAN/remote server.
     builder.WebHost.UseUrls(launch.ListenUrl);
@@ -77,6 +75,7 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
     var app = builder.Build();
     var requestGate = new SemaphoreSlim(8, 8);
     var allowedOrigin = new Uri(launch.ListenUrl).GetLeftPart(UriPartial.Authority);
+    var clientActivity = app.Services.GetRequiredService<McpClientActivityTracker>();
 
     // Defense in depth for a local engineering server: reject non-loopback peers and Host headers.
     // No CORS middleware is enabled, so browser origins are not granted access.
@@ -109,14 +108,8 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
             return;
         }
 
-        if (context.Request.Path.StartsWithSegments(McpRuntimeDefaults.McpPath) &&
-            !HttpBearerAuthentication.IsAuthorized(context.Request.Headers.Authorization, httpToken))
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.Headers.WWWAuthenticate = "Bearer";
-            return;
-        }
-
+        // The concurrency gate is taken before the bearer check so that token-guessing traffic is
+        // rate-limited by the same semaphore as authorized traffic.
         if (!await requestGate.WaitAsync(TimeSpan.FromSeconds(2), context.RequestAborted))
         {
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -126,8 +119,20 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
 
         try
         {
+            var isProtectedPath = context.Request.Path.StartsWithSegments(McpRuntimeDefaults.McpPath) ||
+                                  context.Request.Path.StartsWithSegments(McpRuntimeDefaults.HealthPath);
+            if (isProtectedPath && !HttpBearerAuthentication.IsAuthorized(context.Request.Headers.Authorization, httpToken))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.WWWAuthenticate = "Bearer";
+                return;
+            }
+
             context.Response.Headers.CacheControl = "no-store";
-            using var clientScope = app.Services.GetRequiredService<ISessionContext>()
+            using var activityScope = context.Request.Path.StartsWithSegments(McpRuntimeDefaults.McpPath)
+                ? clientActivity.BeginRequest(context.Request.Headers[McpRuntimeDefaults.ClientNameHeader].ToString())
+                : null;
+            using var clientScope = app.Services.GetRequiredService<SessionContext>()
                 .BeginClientScope(HttpBearerAuthentication.DeriveClientId(httpToken));
             await next();
         }
@@ -139,14 +144,20 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
 
     var advertisedEndpoint = launch.ListenUrl.TrimEnd('/') + McpRuntimeDefaults.McpPath;
 
-    app.MapGet(McpRuntimeDefaults.HealthPath, () => Results.Json(new
+    app.MapGet(McpRuntimeDefaults.HealthPath, () =>
     {
-        status = "ok",
-        server = McpRuntimeDefaults.ServerName,
-        transport = "streamable-http",
-        endpoint = advertisedEndpoint,
-        processId = Environment.ProcessId
-    }));
+        var activity = clientActivity.Snapshot();
+        return Results.Json(new
+        {
+            status = "ok",
+            server = McpRuntimeDefaults.ServerName,
+            transport = "streamable-http",
+            endpoint = advertisedEndpoint,
+            processId = Environment.ProcessId,
+            vsCodeActive = activity.VsCodeActive,
+            lastVsCodeActivityUtc = activity.LastVsCodeActivityUtc
+        });
+    });
 
     app.MapMcp(McpRuntimeDefaults.McpPath);
 
@@ -162,17 +173,17 @@ static bool IsAllowedLoopbackHost(string host)
 
 static void RegisterEngineeringServices(IServiceCollection services)
 {
-    services.AddSingleton<IPolicyProvider, FilePolicyProvider>();
-    services.AddSingleton<IPolicyEngine, PolicyEngine>();
-    services.AddSingleton<IToolGate, ToolGate>();
-    services.AddSingleton<IProcessGuard, ProcessGuard>();
-    services.AddSingleton<IFileGuard, FileGuard>();
-    services.AddSingleton<IUiActionRiskClassifier, UiActionRiskClassifier>();
-    services.AddSingleton<IRedactionService, RedactionService>();
-    services.AddSingleton<ISessionContext, SessionContext>();
+    services.AddSingleton<FilePolicyProvider>();
+    services.AddSingleton<PolicyEngine>();
+    services.AddSingleton<ToolGate>();
+    services.AddSingleton<ProcessGuard>();
+    services.AddSingleton<FileGuard>();
+    services.AddSingleton<UiActionRiskClassifier>();
+    services.AddSingleton<RedactionService>();
+    services.AddSingleton<SessionContext>();
     services.AddSingleton<IAuditSink>(sp =>
     {
-        var policy = sp.GetRequiredService<IPolicyProvider>().Current;
+        var policy = sp.GetRequiredService<FilePolicyProvider>().Current;
         if (!policy.Audit.Enabled) return new NullAuditSink();
         var directory = string.IsNullOrWhiteSpace(policy.Audit.Directory)
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DotNetEngineeringMcp", "audit")
@@ -180,18 +191,19 @@ static void RegisterEngineeringServices(IServiceCollection services)
         return new JsonLinesAuditSink(directory, policy.Audit.RetentionDays);
     });
 
-    services.AddSingleton<ICapabilityRegistry, CapabilityRegistry>();
-    services.AddSingleton<IProcessOperationCoordinator, ProcessOperationCoordinator>();
-    services.AddSingleton<IToolAuthorization, ToolAuthorization>();
-    services.AddSingleton<IWpfAutomationService, WpfAutomationService>();
-    services.AddSingleton<IWpfProbeClient, WpfProbeClient>();
-    services.AddSingleton<IWpfUiInspectionService, WpfUiInspectionService>();
-    services.AddSingleton<IUiAuditService, UiAuditService>();
-    services.AddSingleton<IDotNetDiagnosticsService, DotNetDiagnosticsService>();
-    services.AddSingleton<IClrMdService, ClrMdService>();
-    services.AddSingleton<ISourceIntelligenceService, SourceIntelligenceService>();
-    services.AddSingleton<IBackendProbeClient, BackendProbeClient>();
-    services.AddSingleton<IDiagnosisService, DiagnosisService>();
+    services.AddSingleton<CapabilityRegistry>();
+    services.AddSingleton<McpClientActivityTracker>();
+    services.AddSingleton<ProcessOperationCoordinator>();
+    services.AddSingleton<ToolAuthorization>();
+    services.AddSingleton<WpfAutomationService>();
+    services.AddSingleton<WpfProbeClient>();
+    services.AddSingleton<WpfUiInspectionService>();
+    services.AddSingleton<UiAuditService>();
+    services.AddSingleton<DotNetDiagnosticsService>();
+    services.AddSingleton<ClrMdService>();
+    services.AddSingleton<SourceIntelligenceService>();
+    services.AddSingleton<BackendProbeClient>();
+    services.AddSingleton<DiagnosisService>();
 }
 
 internal enum McpHostTransport

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/EngineeringMcp.AspNetCore/EngineeringMcp.AspNetCore.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
   </ItemGroup>
 </Project>

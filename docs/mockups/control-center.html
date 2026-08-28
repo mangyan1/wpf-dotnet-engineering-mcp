@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Engineering MCP — Control Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Schibsted+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0f; --bg2:#0d1014; --panel:#10141a; --panel2:#151a21; --raise:#1a2029;
+    --stroke:#1f2630; --stroke2:#1a2029; --hair:#252d38;
+    --text:#e9e4d8; --text2:#a09a8c; --text3:#5f6470;
+    --amber:#ffb224; --amber-dim:#c98a1a; --amber-glow:rgba(255,178,36,.12);
+    --green:#4ade80; --red:#f87171; --cyan:#67e8f9;
+    --scanline:rgba(255,255,255,.016); --vignette:rgba(0,0,0,.42);
+    --serif:'Instrument Serif',Georgia,serif;
+    --sans:'Schibsted Grotesk','Segoe UI',sans-serif;
+    --mono:'Spline Sans Mono',Consolas,monospace;
+  }
+  [data-theme="light"]{
+    /* blueprint print — drafting paper washed in blue, navy ink, amber signal */
+    --bg:#dfe8f2; --bg2:#d3deec; --panel:#f2f7fc; --panel2:#e6edf6; --raise:#d5e0ee;
+    --stroke:#a5bad3; --stroke2:#b6c8dd; --hair:#8ca6c4;
+    --text:#0d2b4e; --text2:#2f5079; --text3:#6888ad;
+    --amber:#c25608; --amber-dim:#9c4a10; --amber-glow:rgba(194,86,8,.10);
+    --green:#0b7a43; --red:#c01d1d; --cyan:#0369a1;
+    --scanline:rgba(13,43,78,.025); --vignette:rgba(26,58,96,.17);
+  }
+  [data-theme="blueprint"]{
+    /* cyanotype print — true Prussian-blue blueprint, white/cyan linework */
+    --bg:#12283e; --bg2:#0e2134; --panel:#1a3552; --panel2:#153049; --raise:#22405f;
+    --stroke:#31537a; --stroke2:#2a4a6e; --hair:#3c6089;
+    --text:#eaf4ff; --text2:#b8d4ee; --text3:#6f93b8;
+    --amber:#ffb224; --amber-dim:#c98a1a; --amber-glow:rgba(255,178,36,.12);
+    --green:#7ee2a8; --red:#ff9d9d; --cyan:#9be1ff;
+    --scanline:rgba(255,255,255,.02); --vignette:rgba(4,12,22,.45);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans); background:var(--bg); color:var(--text); font-size:14px;
+    overflow:hidden; font-feature-settings:"ss01";
+  }
+  /* blueprint grid + atmosphere: amber bloom, cyan counter-bloom, faint scanlines */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(1200px 700px at 75% -10%, var(--amber-glow), transparent 60%),
+      radial-gradient(900px 520px at 4% 112%, rgba(103,232,249,.05), transparent 62%),
+      repeating-linear-gradient(0deg, transparent 0 2px, var(--scanline) 2px 3px),
+      repeating-linear-gradient(0deg, transparent 0 31px, var(--stroke2) 31px 32px),
+      repeating-linear-gradient(90deg, transparent 0 31px, var(--stroke2) 31px 32px);
+    opacity:.55;
+  }
+  /* HUD vignette — CRT screen edge falloff + corner brackets + slow scanbeam */
+  .vignette{position:fixed; inset:0; pointer-events:none; z-index:900;
+    background:radial-gradient(120% 90% at 50% 40%, transparent 58%, var(--vignette) 100%)}
+  .vignette::before,.vignette::after{content:"";position:absolute;width:26px;height:26px;border:1px solid var(--amber);opacity:.5}
+  .vignette::before{top:9px;left:9px;border-width:1px 0 0 1px}
+  .vignette::after{bottom:9px;right:9px;border-width:0 1px 1px 0}
+  .scanbeam{position:absolute;left:0;right:0;top:-2px;height:2px;mix-blend-mode:screen;
+    background:linear-gradient(90deg,transparent,rgba(255,178,36,.22) 45%,rgba(103,232,249,.10) 55%,transparent);
+    animation:beam 14s linear infinite}
+  @keyframes beam{to{transform:translateY(106vh)}}
+  body::after{ /* grain */
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:999; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .app{display:grid; grid-template-rows:44px 1fr; height:100vh; position:relative; z-index:1}
+
+  /* ---- engineering print sheet decoration (print theme only) ---- */
+  /* screen-blended overlay ABOVE the UI: the sheet reads as printed linework over everything */
+  .printdeco{display:none; position:fixed; inset:0; pointer-events:none; z-index:940;
+    opacity:.38; mix-blend-mode:screen}
+  [data-theme="blueprint"] .printdeco{display:block}
+  .printdeco .sheet{position:absolute; inset:10px; border:1px solid var(--text2)}
+  .printdeco .sheet::after{content:""; position:absolute; inset:3px; border:1px solid var(--text3)}
+  .printdeco .ruler-x{position:absolute; top:13px; left:22px; right:22px; height:16px; display:flex;
+    align-items:center; justify-content:space-around;
+    font-family:var(--mono); font-size:8px; color:var(--text2);
+    background:repeating-linear-gradient(90deg, var(--text3) 0 1px, transparent 1px calc(100%/8))}
+  .printdeco .ruler-x i{font-style:normal}
+  .printdeco .ruler-y{position:absolute; left:13px; top:22px; bottom:22px; width:16px; display:flex;
+    flex-direction:column; align-items:center; justify-content:space-around;
+    font-family:var(--mono); font-size:8px; color:var(--text2);
+    background:repeating-linear-gradient(0deg, var(--text3) 0 1px, transparent 1px calc(100%/6))}
+  .printdeco .ruler-y i{font-style:normal}
+  .printdeco .motif{position:absolute; stroke:#bfe6ff; fill:none; stroke-width:1}
+  .printdeco .dims{width:220px; height:110px; left:64px; bottom:56px}
+  .printdeco .dims text{fill:#bfe6ff; stroke:none; font-family:var(--mono); font-size:11px}
+  .printdeco .dims .arrow{fill:#bfe6ff; stroke:none}
+  .printdeco .bolts{width:150px; height:150px; right:320px; top:100px; opacity:.9}
+  .printdeco .cross{width:54px; height:54px; opacity:.9}
+  .printdeco .cross.c1{left:38%; top:84px}
+  .printdeco .cross.c2{left:120px; top:44%}
+
+  /* mechanical clock gear train — meshing, counter-rotating (built by JS) */
+  .printdeco .gear{position:absolute; transform-origin:center;
+    animation:spin var(--t,40s) linear infinite; opacity:.95}
+  .printdeco .gear.ccw{animation-direction:reverse}
+  .printdeco .gear .rim{stroke-width:1.2; fill:none}
+  .printdeco .gear .teeth{fill:rgba(191,230,255,.04); stroke:#bfe6ff; stroke-width:1.1}
+  .printdeco .gear .pitch{fill:none; stroke:#bfe6ff; stroke-width:.7; stroke-dasharray:7 3 2 3; opacity:.8}
+  .printdeco .gear .spoke{stroke:#bfe6ff; stroke-width:1}
+  .printdeco .gear .centerline{stroke:#bfe6ff; stroke-width:.7; stroke-dasharray:8 4 2 4; opacity:.75}
+  .printdeco .gear .hubdot{fill:#dff1ff; stroke:none}
+  .printdeco .gear .marker{stroke:#dff1ff; stroke-width:1.6}
+
+  /* ---- title bar: signal strip ---- */
+  .titlebar{display:flex;align-items:center;gap:16px;padding:0 20px;
+    border-bottom:1px solid;border-image:linear-gradient(90deg,var(--amber),var(--stroke) 34%,var(--stroke) 66%,rgba(103,232,249,.5)) 1;
+    background:var(--bg2);font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.04em;
+    position:relative;overflow:hidden}
+  /* periodic instrument sweep across the titlebar */
+  .titlebar::after{content:"";position:absolute;top:0;bottom:0;left:-140px;width:140px;
+    background:linear-gradient(90deg,transparent,rgba(255,178,36,.07),transparent);
+    animation:scan 7s linear infinite}
+  @keyframes scan{to{left:110%}}
+  .titlebar .lamp{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px 1px var(--amber-glow);animation:pulse 2.4s ease-in-out infinite}
+  .titlebar .liveclock{margin-left:auto;display:flex;gap:18px}
+  .titlebar .liveclock b{color:var(--cyan);font-weight:500}
+  .titlebar .winbtns{display:flex;gap:7px;margin-left:18px}
+  .titlebar .winbtns span{width:10px;height:10px;border-radius:50%;background:var(--raise);border:1px solid var(--stroke)}
+
+  .body{display:grid;grid-template-columns:244px 1fr;min-height:0}
+
+  /* ---- sidebar ---- */
+  .side{background:var(--bg2);border-right:1px solid var(--stroke);display:flex;flex-direction:column;padding:20px 14px 14px}
+  .brand{display:flex;align-items:baseline;gap:9px;padding:2px 10px 4px}
+  .brand .mark{font-family:var(--serif);font-size:34px;line-height:1;color:var(--amber);font-style:italic;
+    filter:drop-shadow(0 0 14px rgba(255,178,36,.4))}
+  .brand b{font-size:13px;font-weight:600;letter-spacing:.02em;display:block;line-height:1.25}
+  .brand small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--text3);letter-spacing:.14em;margin-top:3px}
+  nav{display:flex;flex-direction:column;gap:1px;margin-top:14px}
+  .navlabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;color:var(--text3);padding:16px 12px 7px;
+    display:flex;align-items:center;gap:8px}
+  .navlabel::after{content:"";flex:1;height:1px;background:var(--stroke2)}
+  .nav{display:flex;align-items:center;gap:11px;padding:8px 12px;color:var(--text2);cursor:pointer;position:relative;
+    font-size:13px;font-weight:500;border:1px solid transparent;transition:color .15s,background .15s}
+  .nav svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;flex:none;opacity:.75}
+  .nav:hover{color:var(--text)}
+  .nav.active{color:var(--text);border-color:var(--hair);
+    background:linear-gradient(90deg,color-mix(in srgb,var(--amber) 8%,var(--panel)),var(--panel) 65%)}
+  .nav.active::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:2px;background:var(--amber);
+    box-shadow:0 0 10px var(--amber)}
+  .nav.active svg{stroke:var(--amber);opacity:1}
+  .nav .count{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3)}
+  .nav.active .count{color:var(--amber)}
+  .side .spacer{flex:1}
+  .endpoint{margin:0 6px;padding:11px 13px;border:1px solid var(--stroke2);background:var(--panel);position:relative}
+  .endpoint::before,.endpoint::after{content:"";position:absolute;width:7px;height:7px;border:1px solid var(--amber-dim)}
+  .endpoint::before{top:-1px;left:-1px;border-width:1px 0 0 1px}
+  .endpoint::after{bottom:-1px;right:-1px;border-width:0 1px 1px 0}
+  .endpoint small{font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--text3)}
+  .endpoint code{font-family:var(--mono);font-size:11px;color:var(--text2);display:block;margin-top:5px}
+  .endpoint code::after{content:"▌";color:var(--amber);animation:blink 1.1s steps(1) infinite}
+  .theme{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin:14px 6px 0;font-family:var(--mono);font-size:10px;
+    color:var(--text3);letter-spacing:.1em}
+  .theme .seg{display:flex;border:1px solid var(--stroke2)}
+  .theme .seg span{padding:3px 8px;cursor:pointer;font-size:9.5px}
+  .theme .seg span.on{background:var(--raise);color:var(--text)}
+
+  /* ---- main ---- */
+  .main{overflow:auto;padding:30px 36px 24px;display:flex;flex-direction:column;gap:18px;min-width:0}
+  .main>*{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
+  .main>*:nth-child(2){animation-delay:.05s}
+  .main>*:nth-child(3){animation-delay:.1s}
+  .main>*:nth-child(4){animation-delay:.15s}
+  .main>*:nth-child(5){animation-delay:.2s}
+  @keyframes rise{from{opacity:0;transform:translateY(9px);filter:blur(5px)}to{opacity:1;transform:none;filter:blur(0)}}
+
+  .pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+    padding-bottom:16px;border-bottom:1px solid var(--stroke)}
+  /* energy line under the page head */
+  .pagehead::after{content:"";position:absolute;left:0;bottom:-1px;height:1px;width:130px;
+    background:linear-gradient(90deg,var(--amber),rgba(103,232,249,.6) 70%,transparent);
+    animation:headline 3.2s ease-in-out infinite}
+  @keyframes headline{0%,100%{width:130px;opacity:.9}50%{width:360px;opacity:.35}}
+  .pagehead h1{font-family:var(--serif);font-weight:400;font-size:31px;letter-spacing:.005em;line-height:1}
+  .pagehead h1 em{color:var(--amber)}
+  .pagehead .sub{color:var(--text2);font-size:12.5px;margin-top:7px;max-width:560px;line-height:1.5}
+  .live{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    color:var(--text2);border:1px solid var(--stroke2);padding:7px 13px;background:var(--panel);white-space:nowrap}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.12);
+    animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 5px rgba(74,222,128,.05)}}
+  .dot.red{background:var(--red);box-shadow:0 0 0 3px rgba(248,113,113,.12)}
+  .dot.amber{background:var(--amber);box-shadow:0 0 0 3px var(--amber-glow)}
+
+  /* ---- cards ---- */
+  .card,.server,.runbar{border:1px solid var(--stroke);background:var(--panel);position:relative;
+    background-image:linear-gradient(180deg,rgba(255,255,255,.016),rgba(255,255,255,0) 52px)}
+  /* four-corner HUD brackets drawn from two pseudos */
+  .card::before,.server::before,.runbar::before,
+  .card::after,.server::after,.runbar::after{content:"";position:absolute;inset:-1px;pointer-events:none;
+    background-repeat:no-repeat;opacity:.45}
+  .card::before,.server::before,.runbar::before{
+    background-image:
+      linear-gradient(var(--amber),var(--amber)),linear-gradient(var(--amber),var(--amber)),
+      linear-gradient(var(--amber),var(--amber)),linear-gradient(var(--amber),var(--amber));
+    background-position:top left,top left,top right,top right;
+    background-size:12px 1px,1px 12px,12px 1px,1px 12px}
+  .card::after,.server::after,.runbar::after{
+    background-image:
+      linear-gradient(var(--amber),var(--amber)),linear-gradient(var(--amber),var(--amber)),
+      linear-gradient(var(--amber),var(--amber)),linear-gradient(var(--amber),var(--amber));
+    background-position:bottom left,bottom left,bottom right,bottom right;
+    background-size:12px 1px,1px 12px,12px 1px,1px 12px}
+  .chead{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;
+    border-bottom:1px solid var(--stroke2)}
+  .chead b{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text2)}
+  .chead b .idx{font-family:var(--mono);color:var(--amber);margin-right:9px;letter-spacing:.05em}
+
+  /* ghost page numeral */
+  .pagehead{position:relative}
+  .pagehead .ghost{position:absolute;right:-8px;top:-34px;font-family:var(--serif);font-style:italic;
+    font-size:110px;line-height:1;color:transparent;
+    -webkit-text-stroke:1px color-mix(in srgb,var(--amber) 24%,var(--stroke));pointer-events:none;
+    user-select:none;z-index:0}
+  .pagehead>div{position:relative;z-index:1}
+  /* signal glitch on page change (class toggled by nav JS) */
+  .pagehead h1.glitch{animation:glitch .38s steps(2,end) 1}
+  @keyframes glitch{
+    0%{text-shadow:2px 0 var(--cyan),-2px 0 var(--red);transform:translateX(0)}
+    25%{text-shadow:-2px 0 var(--cyan),2px 0 var(--red);transform:translateX(1px) skewX(-2deg)}
+    50%{text-shadow:1px 0 var(--red),-1px 0 var(--cyan);transform:translateX(-1px)}
+    75%{text-shadow:2px 0 var(--cyan),-2px 0 var(--red);transform:skewX(1deg)}
+    100%{text-shadow:none;transform:none}}
+
+  /* sidebar engraving */
+  .side{position:relative}
+  .side .engrave{position:absolute;left:3px;bottom:120px;writing-mode:vertical-rl;rotate:180deg;
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.34em;color:var(--text3);opacity:.55;user-select:none}
+  .chead a{color:var(--amber);font-size:11.5px;cursor:pointer;text-decoration:none;font-family:var(--mono);
+    letter-spacing:.03em}
+  .chead a:hover{text-decoration:underline}
+
+  /* hero — asymmetric, editorial */
+  .hero{display:grid;grid-template-columns:1.45fr .9fr;gap:48px;align-items:center;
+    padding:10px 4px 30px;border-bottom:1px solid var(--stroke)}
+  .hero-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--text3)}
+  .hero-state{font-family:var(--serif);font-style:italic;font-size:64px;line-height:1;margin-top:14px;
+    display:flex;align-items:center;gap:18px}
+  .hero-state .lampbig{width:14px;height:14px;border-radius:50%;background:var(--green);flex:none;
+    box-shadow:0 0 0 4px rgba(74,222,128,.12),0 0 18px 2px rgba(74,222,128,.25);animation:pulse 2.4s ease-in-out infinite}
+  /* terminal cursor after the hero state */
+  .hero-state::after{content:"▌";color:var(--amber);font-style:normal;font-size:44px;line-height:1;
+    margin-left:2px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .hero-url{display:inline-flex;align-items:center;gap:9px;margin-top:18px;border:1px dashed var(--hair);
+    padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--text2);background:var(--bg2)}
+  .hero-desc{color:var(--text2);font-size:12.5px;margin-top:16px;max-width:440px;line-height:1.65}
+  .hero .actions{margin-top:20px}
+  .hero-meta{display:flex;gap:0;margin-top:22px;padding-top:14px;border-top:1px dotted var(--hair)}
+  .hero-meta div{padding:0 22px;border-left:1px dotted var(--hair)}
+  .hero-meta div:first-child{padding-left:0;border-left:none}
+  .hero-meta small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--text3);
+    text-transform:uppercase;margin-bottom:4px}
+  .hero-meta b{font-size:13px;font-weight:600}
+  .hero-meta b.mono{font-family:var(--mono);font-weight:500;font-size:12px}
+  .map{width:100%;max-width:330px;height:auto;justify-self:center;align-self:center}
+  .map text{font-family:var(--mono);font-size:8.5px;fill:var(--text3);letter-spacing:.08em}
+  .map .box{fill:var(--panel2);stroke:var(--hair)}
+  .map .box.hot{stroke:var(--amber);fill:color-mix(in srgb,var(--amber) 6%,var(--panel2))}
+  .map .flow{stroke:var(--text3);fill:none;stroke-dasharray:3 4;animation:dash 1.4s linear infinite}
+  .map .flow.hot{stroke:var(--amber)}
+  @keyframes dash{to{stroke-dasharray:3 4;stroke-dashoffset:-7}}
+  /* radar reticle around the hot node */
+  .map .radar{fill:none;stroke:var(--amber);opacity:.16;stroke-dasharray:2 7;
+    transform-origin:140px 144px;animation:spin 18s linear infinite}
+  .map .radar.r2{opacity:.1;animation-duration:30s}
+  .map .sweep{transform-origin:140px 144px;animation:spin 4.5s linear infinite}
+  .map .reticle{fill:none;stroke:var(--amber);opacity:.5}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* instrument strip — uneven cells, one body */
+  .strip{display:grid;grid-template-columns:1.3fr 1fr 1fr 1.15fr;border:1px solid var(--stroke);background:var(--panel)}
+  .cell{padding:17px 20px 15px;border-left:1px solid var(--stroke2);position:relative}
+  .cell:first-child{border-left:none}
+  .cell::before{content:"";position:absolute;top:0;left:20px;right:20px;height:2px;background:var(--raise)}
+  .cell.hot{background:linear-gradient(160deg,color-mix(in srgb,var(--amber) 5%,var(--panel)),var(--panel) 70%)}
+  .cell.hot::before{background:var(--amber);box-shadow:0 0 14px var(--amber-glow),0 0 4px rgba(255,178,36,.5)}
+  .cell small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--text3);
+    text-transform:uppercase}
+  .cell .big{display:flex;align-items:center;gap:10px;margin-top:11px;font-family:var(--serif);font-size:23px;
+    line-height:1;letter-spacing:.01em}
+  .cell i{display:block;font-style:normal;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:8px}
+
+  /* server control card (validation reuse) */
+  .server{padding:24px 26px 20px;background:linear-gradient(160deg,var(--panel2),var(--panel) 55%)}
+  .server .row{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+  .server h2{font-family:var(--serif);font-weight:400;font-size:24px;display:flex;align-items:baseline;gap:14px}
+  .server .desc{color:var(--text2);font-size:12.5px;margin-top:9px;max-width:520px;line-height:1.6}
+  .urlbox{display:flex;align-items:center;gap:9px;margin-top:16px;border:1px dashed var(--hair);padding:9px 14px;
+    font-family:var(--mono);font-size:12px;color:var(--text2);width:fit-content;background:var(--bg2)}
+  .urlbox .dot{flex:none}
+  .actions{display:flex;gap:10px;flex:none}
+  .btn{padding:10px 20px;font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.08em;
+    text-transform:uppercase;cursor:pointer;border:1px solid var(--stroke);background:transparent;color:var(--text2);
+    transition:all .15s}
+  .btn:hover{color:var(--text);border-color:var(--text3)}
+  .btn.primary{background:var(--amber);border-color:var(--amber);color:#141005;font-weight:600;
+    box-shadow:0 0 16px rgba(255,178,36,.16)}
+  .btn.primary:hover{filter:brightness(1.07);color:#141005;box-shadow:0 0 26px rgba(255,178,36,.34)}
+  .meta{display:flex;gap:0;margin-top:20px;padding-top:16px;border-top:1px solid var(--stroke2)}
+  .meta div{padding:0 26px;border-left:1px dotted var(--hair)}
+  .meta div:first-child{padding-left:0;border-left:none}
+  .meta small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--text3);
+    text-transform:uppercase;margin-bottom:5px}
+  .meta b{font-size:13.5px;font-weight:600}
+  .meta b.mono{font-family:var(--mono);font-weight:500;font-size:12.5px}
+
+  /* instrument tiles */
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .tile{border:1px solid var(--stroke);background:var(--panel);padding:16px 17px 14px;position:relative;overflow:hidden}
+  .tile::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--raise)}
+  .tile.hot::before{background:linear-gradient(90deg,var(--amber),transparent 70%)}
+  .tile .head{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+    color:var(--text3);text-transform:uppercase}
+  .tile .head svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:1.6}
+  .tile .val{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:14px;font-weight:600;letter-spacing:.01em}
+  .tile .foot{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:6px;letter-spacing:.03em}
+
+  /* status pills — instrument tags, outlined */
+  .pill{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.12em;padding:2px 8px 1px;
+    border:1px solid; text-transform:uppercase;white-space:nowrap}
+  .pill.ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+  .pill.bad{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
+  .pill.idle{color:var(--text2);border-color:var(--hair)}
+  .pill.warn{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 50%,transparent)}
+
+  /* two-col + tables */
+  .cols{display:grid;grid-template-columns:1.6fr 1fr;gap:12px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  td{padding:9px 16px;border-bottom:1px solid var(--stroke2)}
+  tr:last-child td{border-bottom:none}
+  td.area{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);
+    width:118px}
+  td.mono{font-family:var(--mono);color:var(--text2);font-size:11px}
+
+  .quick{padding:8px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .qbtn{border:1px solid var(--stroke2);background:var(--panel2);padding:11px 13px;font-size:12.5px;cursor:pointer;
+    color:var(--text2);display:flex;align-items:center;gap:9px;font-family:var(--sans);font-weight:500;transition:all .15s}
+  .qbtn svg{width:14px;height:14px;stroke:var(--text3);fill:none;stroke-width:1.6}
+  .qbtn:hover{border-color:var(--amber);color:var(--text)}
+  .qbtn:hover svg{stroke:var(--amber)}
+  .qbtn.danger{color:var(--red)} .qbtn.danger svg{stroke:var(--red)}
+  .qbtn.danger:hover{border-color:var(--red)}
+
+  /* log — terminal strip */
+  .log{background:var(--bg2);flex:1;min-height:120px;font-family:var(--mono);font-size:11.5px;line-height:1.85;
+    padding:13px 18px;overflow:hidden;color:var(--text2);border-top:1px solid transparent}
+  .log .t{color:var(--text3)}
+  .log .ok{color:var(--green)} .log .err{color:var(--red)} .log .hl{color:var(--amber)}
+
+  .foot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+    color:var(--text3);border-top:1px solid var(--stroke);padding:11px 36px;background:var(--bg2)}
+  /* live signal bars */
+  .sigbars{display:inline-flex;align-items:flex-end;gap:2px;height:10px}
+  .sigbars i{width:3px;background:var(--amber);opacity:.85;animation:sig 1.3s ease-in-out infinite}
+  .sigbars i:nth-child(1){height:3px;animation-delay:0s}
+  .sigbars i:nth-child(2){height:5px;animation-delay:.15s}
+  .sigbars i:nth-child(3){height:7px;animation-delay:.3s}
+  .sigbars i:nth-child(4){height:9px;animation-delay:.45s}
+  .sigbars i:nth-child(5){height:10px;animation-delay:.6s}
+  @keyframes sig{50%{opacity:.25}}
+
+  /* HUD chrome: instrument scrollbars + amber selection */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--raise);border:3px solid var(--bg);border-radius:1px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--amber-dim)}
+  ::-webkit-scrollbar-corner{background:transparent}
+  ::selection{background:var(--amber);color:#141005}
+
+  /* pages */
+  .page{display:none;flex-direction:column;gap:18px;min-height:0;flex:1}
+  .page.on{display:flex}
+
+  /* validation — gauge bar */
+  .runbar{display:flex;align-items:center;gap:22px;padding:20px 24px;background:linear-gradient(160deg,var(--panel2),var(--panel))}
+  .runbar .grow{flex:1}
+  .runbar h2{font-family:var(--serif);font-weight:400;font-size:21px;display:flex;align-items:baseline;gap:13px}
+  .runbar .sub{color:var(--text2);font-size:12px;margin-top:6px}
+  .bar{height:14px;margin-top:12px;position:relative;
+    background:repeating-linear-gradient(90deg,var(--raise) 0 2px,transparent 2px 10px) bottom/100% 7px no-repeat,
+               linear-gradient(var(--raise),var(--raise)) top/100% 1px no-repeat}
+  .bar i{display:block;height:7px;width:83%;background:var(--amber);margin-top:6px;position:relative;overflow:hidden;
+    box-shadow:0 0 12px 0 var(--amber-glow);animation:sweep 1.2s cubic-bezier(.3,.7,.3,1)}
+  /* data sheen riding the gauge */
+  .bar i::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+    animation:shine 2.6s linear infinite}
+  @keyframes shine{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+  @keyframes sweep{from{width:0}}
+  .check td:first-child{width:30px;padding-right:0;font-family:var(--mono);font-size:11px}
+  .check td:first-child .yes{color:var(--green)} .check td:first-child .no{color:var(--red)}
+  .spin{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--stroke);border-top-color:var(--amber);
+    display:inline-block;animation:sp .9s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .badge{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.05em}
+
+  /* integration */
+  .steps{counter-reset:st;padding:6px 0}
+  .step{display:flex;gap:14px;padding:11px 18px;align-items:flex-start;position:relative}
+  .step+.step::before{content:"";position:absolute;left:27px;top:-8px;bottom:auto;height:16px;width:1px;
+    background:var(--hair)}
+  .step::before{counter-increment:st;content:counter(st,decimal-leading-zero);font-family:var(--mono);font-size:10px;
+    color:var(--amber);flex:none;width:26px;padding-top:3px}
+  .step b{font-size:12.5px;display:block;font-weight:600}
+  .step p{color:var(--text2);font-size:12px;margin-top:3px;line-height:1.55}
+  pre{font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--text2);background:var(--bg2);
+    padding:16px 18px;overflow:auto;margin:0}
+  pre .k{color:var(--cyan)} pre .s{color:var(--amber)} pre .c{color:var(--text3)}
+  .scope{display:flex}
+  .scope .seg{display:flex;border:1px solid var(--stroke2)}
+  .scope .seg span{padding:5px 14px;font-size:11.5px;cursor:pointer;color:var(--text3)}
+  .scope .seg span.on{background:var(--raise);color:var(--text)}
+
+  /* logs page */
+  .filters{display:flex;gap:6px}
+  .fchip{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:4px 11px;border:1px solid var(--stroke2);
+    color:var(--text3);cursor:pointer;transition:all .15s}
+  .fchip:hover{color:var(--text)}
+  .fchip.on{color:var(--amber);border-color:var(--amber);box-shadow:0 0 12px rgba(255,178,36,.14),inset 0 0 8px rgba(255,178,36,.06)}
+  .logline{display:flex;gap:14px;padding:4px 18px;font-family:var(--mono);font-size:11.5px;align-items:baseline}
+  .logline:hover{background:var(--panel2);box-shadow:inset 2px 0 0 var(--amber)}
+  .logline .t{color:var(--text3);flex:none;width:58px}
+  .logline .src{flex:none;width:80px;color:var(--text2);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+  .logline .msg{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* security */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .guard{display:flex;gap:13px;padding:14px 18px;border-bottom:1px solid var(--stroke2);align-items:flex-start}
+  .guard:last-child{border-bottom:none}
+  .guard .ic{flex:none;width:30px;height:30px;border:1px solid var(--stroke2);background:var(--bg2);
+    display:flex;align-items:center;justify-content:center}
+  .guard .ic svg{width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:1.6}
+  .guard b{font-size:12.5px;display:block;font-weight:600}
+  .guard p{color:var(--text2);font-size:11.5px;margin-top:3px;line-height:1.5}
+  .guard .pill{margin-left:auto;flex:none}
+
+  /* tools page */
+  .toolsearch{display:flex;align-items:center;gap:8px;border:1px solid var(--stroke2);background:var(--bg2);
+    padding:6px 12px;width:260px}
+  .toolsearch input{background:none;border:none;outline:none;color:var(--text);font-size:12px;width:100%;
+    font-family:var(--mono)}
+  .toolsearch input::placeholder{color:var(--text3)}
+  .toolsearch svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:1.7;flex:none}
+  tr.tool{cursor:default}
+  tr.tool:hover td{background:var(--panel2);box-shadow:inset 2px 0 0 var(--amber)}
+  tr.tool:hover td.tname{text-shadow:0 0 9px rgba(255,178,36,.45)}
+  td.tdesc{color:var(--text2);font-size:12px}
+  td.tcat{color:var(--text3);font-size:10px;font-family:var(--mono);letter-spacing:.08em;width:120px;
+    text-transform:uppercase}
+  .empty{padding:26px 18px;color:var(--text3);font-size:12.5px;display:none;font-family:var(--mono)}
+  .plink{color:var(--amber);font-size:11px;cursor:pointer;font-family:var(--mono);letter-spacing:.03em}
+  .plink:hover{text-decoration:underline}
+
+  /* ---- build-notes annotation layer ---- */
+  .noteflag{position:absolute;top:-9px;right:-9px;z-index:60;font-family:var(--mono);font-size:8.5px;
+    box-shadow:0 0 0 2px var(--bg);
+    font-weight:600;letter-spacing:.06em;padding:2px 6px;cursor:help;display:none}
+  .noteflag.build{background:var(--red);color:#141005;border-radius:2px}
+  .noteflag.port{background:var(--green);color:#05230f;border-radius:2px}
+  .notehost[data-notes="on"] [data-note]{outline:1.5px dashed var(--amber);outline-offset:3px}
+  .notehost[data-notes="on"] .noteflag{display:inline-block}
+  #notecard{position:fixed;right:18px;bottom:52px;z-index:80;width:340px;border:1px solid var(--amber);
+    background:var(--panel);padding:0;display:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #notecard.on{display:block}
+  #notecard .nhead{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+    border-bottom:1px solid var(--stroke2);font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--amber)}
+  #notecard ul{list-style:none;padding:10px 14px 12px}
+  #notecard li{font-size:11.5px;color:var(--text2);line-height:1.5;padding:7px 0;border-bottom:1px dotted var(--hair)}
+  #notecard li:last-child{border-bottom:none}
+  #notecard li b{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;padding:1px 6px;margin-right:8px;
+    border-radius:2px;white-space:nowrap}
+  #notecard li.build b{background:var(--red);color:#141005}
+  #notecard li.port b{background:var(--green);color:#05230f}
+  #notecard li i{font-style:normal;color:var(--text3);display:block;margin-top:2px;font-family:var(--mono);
+    font-size:10px}
+  .nottoggle{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text3);cursor:pointer;
+    border:1px solid var(--stroke2);padding:4px 10px}
+  .nottoggle:hover{color:var(--text)}
+  .nottoggle.on{color:var(--amber);border-color:var(--amber)}
+</style>
+</head>
+<body data-theme="blueprint">
+  <div class="vignette"><div class="scanbeam"></div></div>
+  <!-- engineering print sheet decoration (print theme only) -->
+  <div class="printdeco" aria-hidden="true">
+    <div class="sheet"></div>
+    <div class="ruler-x"><i>A</i><i>B</i><i>C</i><i>D</i><i>E</i><i>F</i><i>G</i><i>H</i></div>
+    <div class="ruler-y"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i></div>
+    <svg class="motif dims" viewBox="0 0 240 120">
+      <line x1="10" y1="90" x2="210" y2="90"/>
+      <line x1="10" y1="80" x2="10" y2="100"/><line x1="210" y1="80" x2="210" y2="100"/>
+      <path d="M10 90 l12 -3 v6 z M210 90 l-12 -3 v6 z" class="arrow"/>
+      <text x="98" y="82">840.0</text>
+      <line x1="30" y1="40" x2="90" y2="40"/>
+      <path d="M30 40 a30 30 0 0 1 21 -9" />
+      <text x="44" y="30">45°</text>
+    </svg>
+    <svg class="motif bolts" viewBox="0 0 160 160">
+      <circle cx="80" cy="80" r="54" stroke-dasharray="4 4"/>
+      <circle cx="80" cy="80" r="10"/>
+      <circle cx="80" cy="26" r="7"/><circle cx="118" cy="42" r="7"/><circle cx="134" cy="80" r="7"/>
+      <circle cx="118" cy="118" r="7"/><circle cx="80" cy="134" r="7"/><circle cx="42" cy="118" r="7"/>
+      <circle cx="26" cy="80" r="7"/><circle cx="42" cy="42" r="7"/>
+      <line x1="80" y1="4" x2="80" y2="14"/><line x1="80" y1="146" x2="80" y2="156"/>
+      <line x1="4" y1="80" x2="14" y2="80"/><line x1="146" y1="80" x2="156" y2="80"/>
+    </svg>
+    <svg class="motif cross c1" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="18"/><circle cx="30" cy="30" r="2.5" fill="#bfe6ff" stroke="none"/>
+      <line x1="30" y1="2" x2="30" y2="58"/><line x1="2" y1="30" x2="58" y2="30"/>
+    </svg>
+    <svg class="motif cross c2" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="18"/><circle cx="30" cy="30" r="2.5" fill="#bfe6ff" stroke="none"/>
+      <line x1="30" y1="2" x2="30" y2="58"/><line x1="2" y1="30" x2="58" y2="30"/>
+    </svg>
+  </div>
+<div class="app" id="app">
+  <div class="titlebar">
+    <span class="lamp"></span>
+    <span>ENG-MCP CONTROL</span>
+    <span style="color:var(--text3)">· local session ·</span>
+    <div class="liveclock">
+      <span>TICK <b id="clock">--:--:--</b> UTC</span>
+      <span>SESSION <b id="sess">A7-042</b></span>
+    </div>
+    <div class="nottoggle" id="nottoggle">BUILD NOTES</div>
+    <div class="winbtns"><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="body">
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="side">
+      <div class="brand">
+        <div class="mark">E</div>
+        <div><b>Engineering MCP</b><small>DEVELOPER CONTROL CENTER</small></div>
+      </div>
+      <nav>
+        <div class="navlabel">SERVER</div>
+        <div class="nav active" data-page="home"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1"/><rect x="3" y="13" width="18" height="7" rx="1"/><circle cx="7" cy="7.5" r=".9" fill="currentColor"/><circle cx="7" cy="16.5" r=".9" fill="currentColor"/></svg>Home</div>
+        <div class="nav" data-page="validation"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-5"/><circle cx="12" cy="12" r="9"/></svg>Validation</div>
+        <div class="nav" data-page="integration"><svg viewBox="0 0 24 24"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5"/></svg>Integration</div>
+        <div class="navlabel">TOOLS</div>
+        <div class="nav" data-page="tools"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4.5 4.5 0 00-6 6L3 18v3h3l5.7-5.7a4.5 4.5 0 006-6L14 13l-3-3 3.7-3.7z"/></svg>Tools<span class="count">53</span></div>
+        <div class="nav" data-page="logs"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>Logs<span class="count">live</span></div>
+        <div class="nav" data-page="security"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>Security</div>
+      </nav>
+      <div class="spacer"></div>
+      <div class="engrave">ENGINEERING·MCP—DEVELOPER·CONTROL·CENTER—V0.3.0</div>
+      <div class="endpoint">
+        <small>ENDPOINT</small>
+        <code>http://127.0.0.1:8765/mcp</code>
+      </div>
+      <div class="theme">THEME
+        <div class="seg" id="themeseg"><span>Dark</span><span>Light</span><span class="on">Print</span><span>System</span></div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+      <div class="page on" id="page-home">
+
+      <!-- hero -->
+      <section class="hero">
+        <div>
+          <div class="hero-eyebrow">SHARED MCP SERVICE · STREAMABLE HTTP · LOCAL ONLY</div>
+          <div class="hero-state"><span class="lampbig"></span>Running</div>
+          <div class="hero-url">http://127.0.0.1:8765/mcp&nbsp;&nbsp;<span style="color:var(--text3)">⧉ copy</span></div>
+          <div class="hero-desc">Start, test and repair the shared local MCP service. Both the Control Center and every VS Code workspace talk to the same endpoint — start it once, use it everywhere.</div>
+          <div class="actions">
+            <div class="btn">Stop</div>
+            <div class="btn">Test MCP Server</div>
+            <div class="btn primary">Run MCP Server</div>
+          </div>
+          <div class="hero-meta">
+            <div><small>Tools exposed</small><b class="mono">53</b></div>
+            <div><small>Policy</small><b class="mono">policy.vscode-test.json</b></div>
+            <div><small>Last test</small><b>PASS · 2 min ago</b></div>
+          </div>
+        </div>
+        <svg class="map" viewBox="0 0 280 250" aria-label="architecture">
+          <defs>
+            <linearGradient id="sweepgrad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stop-color="var(--amber)" stop-opacity=".55"/>
+              <stop offset="1" stop-color="var(--amber)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <circle class="radar" cx="140" cy="144" r="66"/>
+          <circle class="radar r2" cx="140" cy="144" r="94"/>
+          <g class="sweep"><line x1="140" y1="144" x2="140" y2="66" stroke="url(#sweepgrad)" stroke-width="1.5"/></g>
+          <path class="reticle" d="M2 12 V2 H12 M268 2 H278 V12 M278 238 V248 H268 M12 248 H2 V238"/>
+          <path class="flow" d="M84 54 v34 M196 54 v34 M84 190 v-32 M196 190 v-32 M84 88 h112"/>
+          <path class="flow hot" d="M140 148 v-24"/>
+          <rect class="box" x="36" y="18" width="96" height="36"/>
+          <text x="52" y="40">CONTROL CENTER</text>
+          <rect class="box" x="148" y="18" width="96" height="36"/>
+          <text x="170" y="40">VS CODE · GLOBAL</text>
+          <rect class="box hot" x="86" y="124" width="108" height="40"/>
+          <text x="106" y="141" style="fill:var(--amber)">MCP SERVER</text>
+          <text x="112" y="155">:8765 · 53 TOOLS</text>
+          <rect class="box" x="36" y="190" width="96" height="36"/>
+          <text x="60" y="212">WPF FIXTURE</text>
+          <rect class="box" x="148" y="190" width="96" height="36"/>
+          <text x="160" y="212">POLICY · DOTNET</text>
+        </svg>
+      </section>
+
+      <!-- instrument strip -->
+      <div class="strip">
+        <div class="cell hot">
+          <small>MCP Server</small>
+          <div class="big">Running <span class="pill ok">HTTP OK</span></div>
+          <i>pid 78268 · :8765 · uptime 42 min</i>
+        </div>
+        <div class="cell">
+          <small>WPF Test App</small>
+          <div class="big">Live <span class="pill idle">PID 52728</span></div>
+          <i>UI Automation + probe</i>
+        </div>
+        <div class="cell">
+          <small>VS Code</small>
+          <div class="big">Linked <span class="pill ok">GLOBAL</span></div>
+          <i>user profile · mcp.json</i>
+        </div>
+        <div class="cell">
+          <small>Guardrails</small>
+          <div class="big">Armed <span class="pill ok">DENY-ALL</span></div>
+          <i>file · process · PII · probe</i>
+        </div>
+      </div>
+
+      <div class="cols">
+        <!-- results -->
+        <div class="card">
+          <div class="chead"><b><span class="idx">01</span>Latest validation</b><a>Run full self test →</a></div>
+          <table>
+            <tr><td class="area">Repository</td><td>Required files</td><td><span class="pill ok">PASS</span></td><td class="mono">solution · policy · host</td></tr>
+            <tr><td class="area">Build</td><td>isolated dotnet build</td><td><span class="pill ok">PASS</span></td><td class="mono">0 warnings · 0 errors · 2.2s</td></tr>
+            <tr><td class="area">Tests</td><td>unit + security + integration</td><td><span class="pill ok">PASS</span></td><td class="mono">18/18 passed · 6.0s</td></tr>
+            <tr><td class="area">Transport</td><td>HTTP + stdio smoke</td><td><span class="pill ok">PASS</span></td><td class="mono">bearer required · 401 anon</td></tr>
+            <tr><td class="area">WPF E2E</td><td>attach → list windows → click</td><td><span class="pill ok">PASS</span></td><td class="mono">probe token via env only</td></tr>
+            <tr><td class="area">Cleanup</td><td>isolated artifacts</td><td><span class="pill bad">FAIL</span></td><td class="mono">file locked by host process</td></tr>
+          </table>
+        </div>
+
+        <!-- quick actions -->
+        <div class="card">
+          <div class="chead"><b><span class="idx">02</span>Quick actions</b></div>
+          <div class="quick">
+            <div class="qbtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Launch WPF fixture</div>
+            <div class="qbtn"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>Build solution</div>
+            <div class="qbtn"><svg viewBox="0 0 24 24"><path d="M4 12h6M14 12h6M12 9v6"/></svg>Run code tests</div>
+            <div class="qbtn" data-goto="logs"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>MCP server logs</div>
+            <div class="qbtn"><svg viewBox="0 0 24 24"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5"/></svg>Connect VS Code</div>
+            <div class="qbtn"><svg viewBox="0 0 24 24"><path d="M6 4h9l4 4v12H6z"/><path d="M14 4v5h5"/></svg>Open policy</div>
+            <div class="qbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>Check readiness</div>
+            <div class="qbtn danger"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>Stop test apps</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- log -->
+      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:150px">
+        <div class="chead"><b>Activity</b><a>Copy · Clear · Open file</a></div>
+        <div class="log">
+<span class="t">19:18:31</span>  <span class="ok">MCP server healthy:</span> http://127.0.0.1:8765/mcp<br>
+<span class="t">19:18:31</span>  tools/list completed · 53 tools · 31 ms<br>
+<span class="t">19:18:37</span>  <span class="hl">wpf_attach</span> completed · pid 52728<br>
+<span class="t">19:18:38</span>  <span class="err">wpf_list_windows FAIL</span> — The node already has a parent. <span style="color:var(--text3)">(fixed in 0.3.0)</span><br>
+<span class="t">19:18:39</span>  <span class="ok">Full developer validation: PASS</span> — 6/6 checks · artifacts removed
+        </div>
+      </div>
+      </div><!-- /page-home -->
+
+      <!-- ============ VALIDATION ============ -->
+      <div class="page" id="page-validation">
+        <div class="pagehead">
+          <div>
+            <h1>Developer <em>validation</em></h1>
+            <div class="sub">Isolated build → tests → transport → WPF E2E → cleanup. Everything runs in temp artifacts; nothing touches your working tree.</div>
+          </div>
+          <div class="live"><span class="dot amber"></span> 1 CHECK FAILING</div>
+          <span class="ghost">02</span>
+        </div>
+
+        <div class="runbar">
+          <div class="grow">
+            <h2>Developer validation <span class="pill warn">1 FAILING</span></h2>
+            <div class="sub">Last run 19:18:39 · 14.2 s wall clock</div>
+            <div class="bar"><i></i></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;gap:10px">
+              <div class="btn primary">Run Full Self Test</div>
+              <div class="btn">Cancel Test</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <div class="btn">Test WPF End-to-End</div>
+              <div class="btn">Open artifacts</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="chead"><b><span class="idx">01</span>Server control</b></div>
+            <div class="quick" style="grid-template-columns:repeat(4,1fr)">
+              <div class="qbtn">Run MCP Server</div>
+              <div class="qbtn">Stop MCP Server</div>
+              <div class="qbtn">Test MCP Server</div>
+              <div class="qbtn" data-goto="logs">MCP Server Logs</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="chead"><b><span class="idx">02</span>Repair</b></div>
+            <div style="padding:14px 18px 16px">
+              <p style="color:var(--text2);font-size:12px;line-height:1.55">Only if Run or Test fails. Restores packages, rebuilds the host and refreshes the VS Code connection.</p>
+              <div class="btn" style="margin-top:12px">Repair MCP Server</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chead"><b><span class="idx">03</span>Check list</b><span class="badge">5 passed · 1 failed · 14.2s</span></div>
+          <table class="check">
+            <tr><td><span class="yes">✔</span></td><td class="area">Repository</td><td>Required files present</td><td><span class="pill ok">PASS</span></td><td class="mono">0.1s</td></tr>
+            <tr><td><span class="yes">✔</span></td><td class="area">Build</td><td>Isolated dotnet build</td><td><span class="pill ok">PASS</span></td><td class="mono">2.2s · 0 warn</td></tr>
+            <tr><td><span class="yes">✔</span></td><td class="area">Tests</td><td>Unit + security + integration</td><td><span class="pill ok">PASS</span></td><td class="mono">18/18 · 6.0s</td></tr>
+            <tr><td><span class="yes">✔</span></td><td class="area">Transport</td><td>HTTP + stdio smoke</td><td><span class="pill ok">PASS</span></td><td class="mono">401 anon ✓</td></tr>
+            <tr><td><span class="spin"></span></td><td class="area">WPF E2E</td><td>Attach → list windows → click</td><td><span class="pill idle">RUNNING</span></td><td class="mono">step 3/4</td></tr>
+            <tr><td><span class="no">✖</span></td><td class="area">Cleanup</td><td>Isolated artifacts removed</td><td><span class="pill bad">FAIL</span></td><td class="mono">file locked by host</td></tr>
+          </table>
+        </div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="chead"><b>Failure detail — Cleanup</b><a>Retry this check →</a></div>
+            <pre><span class="c">// artifacts/2026-08-26_19-18-39/cleanup.log</span>
+<span class="s">ERROR</span> Could not delete mcp-host-8765.log
+  → The process cannot access the file because it is
+    being used by another process. (pid 78268)
+<span class="c">hint: stop the MCP server before rerunning cleanup</span></pre>
+          </div>
+          <div class="card">
+            <div class="chead"><b>Summary</b></div>
+            <table>
+              <tr><td class="area">Checks</td><td class="mono">5 passed · 1 failed</td></tr>
+              <tr><td class="area">Duration</td><td class="mono">14.2s wall clock</td></tr>
+              <tr><td class="area">Artifacts</td><td class="mono">%TEMP%\mcp-selftest\…</td></tr>
+              <tr><td class="area">Working tree</td><td>untouched ✓</td></tr>
+            </table>
+          </div>
+        </div>
+      </div><!-- /page-validation -->
+
+      <!-- ============ TOOLS ============ -->
+      <div class="page" id="page-tools">
+        <div class="pagehead">
+          <div>
+            <h1>Tool <em>registry</em></h1>
+            <div class="sub">Every tool the shared MCP server exposes. Risk class decides whether VS Code can run it without asking.</div>
+          </div>
+          <div class="live"><span class="dot"></span> 53 EXPOSED · DEFAULT-DENY</div>
+          <span class="ghost">03</span>
+        </div>
+
+        <div class="card">
+          <div class="chead">
+            <b>Tool registry</b>
+            <div class="filters">
+              <span class="fchip on" data-cat="all">ALL</span>
+              <span class="fchip" data-cat="wpf">WPF UI</span>
+              <span class="fchip" data-cat="dotnet">DIAGNOSTICS</span>
+              <span class="fchip" data-cat="source">SOURCE</span>
+              <span class="fchip" data-cat="system">SYSTEM</span>
+            </div>
+            <div class="toolsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="toolq" placeholder="search_53_tools…"></div>
+          </div>
+          <table id="tooltable">
+            <tr><td class="area">Tool</td><td>What it does</td><td class="tcat">Category</td><td class="tcat">Permission</td><td class="tcat">Risk</td></tr>
+          </table>
+          <div class="empty" id="toolempty">// no tools match</div>
+        </div>
+      </div><!-- /page-tools -->
+
+      <!-- ============ INTEGRATION ============ -->
+      <div class="page" id="page-integration">
+        <div class="pagehead">
+          <div>
+            <h1>VS Code <em>Integration</em></h1>
+            <div class="sub">Connect VS Code to the MCP server you started on Home. Start it here once, use it everywhere.</div>
+          </div>
+          <div class="live"><span class="dot"></span> CONNECTED · GLOBAL</div>
+          <span class="ghost">04</span>
+        </div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="chead"><b>mcp.json</b>
+              <div class="scope"><div class="seg"><span class="on">Global</span><span>Workspace</span></div></div>
+            </div>
+            <pre><span class="c">// %APPDATA%\Code\User\mcp.json</span>
+{
+  <span class="k">"servers"</span>: {
+    <span class="k">"dotnet-engineering"</span>: {
+      <span class="k">"type"</span>: <span class="s">"http"</span>,
+      <span class="k">"url"</span>: <span class="s">"http://127.0.0.1:8765/mcp"</span>,
+      <span class="k">"headers"</span>: {
+        <span class="k">"Authorization"</span>: <span class="s">"Bearer ${input:mcp_token}"</span>
+      }
+    }
+  }
+}</pre>
+            <div style="padding:12px 16px;border-top:1px solid var(--stroke2);display:flex;gap:10px">
+              <div class="btn" style="padding:8px 14px">Copy config</div>
+              <div class="btn" style="padding:8px 14px">Open file</div>
+              <div class="btn primary" style="padding:8px 14px">Write automatically</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chead"><b>Setup steps</b></div>
+            <div class="steps">
+              <div class="step"><div><b>Start the MCP server</b><p>From the Home tab — keep it running while VS Code uses it.</p></div></div>
+              <div class="step"><div><b>Pick a scope</b><p>Global writes to your user profile mcp.json; workspace writes to .vscode/mcp.json.</p></div></div>
+              <div class="step"><div><b>Copy the bearer token</b><p>The token is generated per session and never written to logs.</p></div></div>
+              <div class="step"><div><b>Reload VS Code</b><p>The Tools panel lists all 53 tools once the connection is live.</p></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="chead"><b>Connection status</b></div>
+          <table>
+            <tr><td class="area">Endpoint</td><td class="mono">http://127.0.0.1:8765/mcp</td><td><span class="pill ok">REACHABLE</span></td><td class="mono">12 ms</td></tr>
+            <tr><td class="area">Auth</td><td>bearer token</td><td><span class="pill ok">VALID</span></td><td class="mono">expires in 6h 12m</td></tr>
+            <tr><td class="area">mcp.json</td><td>user profile (global)</td><td><span class="pill ok">WRITTEN</span></td><td class="mono">2 min ago</td></tr>
+            <tr><td class="area">Tools</td><td>tools/list handshake</td><td><span class="pill ok">53 EXPOSED</span></td><td class="mono">MCP 2025-06-18</td></tr>
+          </table>
+        </div>
+      </div><!-- /page-integration -->
+
+      <!-- ============ LOGS ============ -->
+      <div class="page" id="page-logs">
+        <div class="pagehead">
+          <div>
+            <h1>Activity <em>log</em></h1>
+            <div class="sub">Everything the shared server did, tagged by source. Filter chips follow the log sources.</div>
+          </div>
+          <div class="live"><span class="dot"></span> STREAMING</div>
+          <span class="ghost">05</span>
+        </div>
+        <div class="card" style="flex:1;display:flex;flex-direction:column">
+          <div class="chead">
+            <b>Stream</b>
+            <div class="filters">
+              <span class="fchip on">All</span><span class="fchip">mcp</span><span class="fchip">wpf</span>
+              <span class="fchip">security</span><span class="fchip">server</span>
+            </div>
+          </div>
+          <div class="log" style="flex:1;padding:8px 0;overflow:auto">
+            <div class="logline"><span class="t">19:18:31</span><span class="src">server</span><span class="msg ok">MCP server healthy — http://127.0.0.1:8765/mcp</span></div>
+            <div class="logline"><span class="t">19:18:31</span><span class="src">mcp</span><span class="msg">tools/list completed · 53 tools · 31 ms</span></div>
+            <div class="logline"><span class="t">19:18:33</span><span class="src">security</span><span class="msg">policy loaded: policy.vscode-test.json (default-deny)</span></div>
+            <div class="logline"><span class="t">19:18:35</span><span class="src">wpf</span><span class="msg">test fixture launched · pid 52728</span></div>
+            <div class="logline"><span class="t">19:18:37</span><span class="src">mcp</span><span class="msg hl">wpf_attach completed · pid 52728</span></div>
+            <div class="logline"><span class="t">19:18:38</span><span class="src">wpf</span><span class="msg err">wpf_list_windows FAIL — The node already has a parent. (fixed in 0.3.0)</span></div>
+            <div class="logline"><span class="t">19:18:39</span><span class="src">security</span><span class="msg">file_guard: write allowed → artifacts/self-test-report.json</span></div>
+            <div class="logline"><span class="t">19:18:39</span><span class="src">security</span><span class="msg">pii redaction: 2 tokens masked in tool output</span></div>
+            <div class="logline"><span class="t">19:18:39</span><span class="src">server</span><span class="msg ok">Full developer validation: PASS — 6/6 checks · artifacts removed</span></div>
+          </div>
+        </div>
+      </div><!-- /page-logs -->
+
+      <!-- ============ SECURITY ============ -->
+      <div class="page" id="page-security">
+        <div class="pagehead">
+          <div>
+            <h1><em>Security</em> &amp; policy</h1>
+            <div class="sub">Guardrails enforced by the shared MCP server before any tool reaches your machine.</div>
+          </div>
+          <div class="live"><span class="dot"></span> GUARDRAILS READY · DEFAULT-DENY</div>
+          <span class="ghost">06</span>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="chead"><b>Active guardrails</b><a>Open policy →</a></div>
+            <div class="guard"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/></svg></div>
+              <div><b>Default-deny tool policy</b><p>Every tool must be explicitly allow-listed in policy.json before it can execute.</p></div><span class="pill ok">ON</span></div>
+            <div class="guard"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/><rect x="15" y="15" width="6" height="6"/></svg></div>
+              <div><b>File guard</b><p>Writes restricted to the repo and temp artifacts; paths outside are rejected.</p></div><span class="pill ok">ON</span></div>
+            <div class="guard"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14"/><path d="M8 21h8M12 18v3"/></svg></div>
+              <div><b>Process guard</b><p>Spawned processes limited to dotnet/VS Code/test fixtures; kill on session end.</p></div><span class="pill ok">ON</span></div>
+            <div class="guard"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><path d="M4 4l16 16"/></svg></div>
+              <div><b>PII redaction</b><p>Tokens, paths with usernames and known secret patterns masked in all tool output.</p></div><span class="pill ok">ON</span></div>
+            <div class="guard"><div class="ic"><svg viewBox="0 0 24 24"><path d="M15 7a5 5 0 11-10 0 5 5 0 0110 0z"/><path d="M20 21a8 8 0 10-16 0"/></svg></div>
+              <div><b>Probe token</b><p>WPF probe accepts tokens via environment variable only — never command line.</p></div><span class="pill ok">ON</span></div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="card">
+              <div class="chead"><b>Risk classifier</b></div>
+              <table>
+                <tr><td class="area">Read-only</td><td>list windows · inspect tree</td><td><span class="pill ok">AUTO</span></td></tr>
+                <tr><td class="area">Low</td><td>click button · set text</td><td><span class="pill warn">CONFIRM</span></td></tr>
+                <tr><td class="area">High</td><td>kill process · delete files</td><td><span class="pill bad">BLOCKED</span></td></tr>
+              </table>
+            </div>
+            <div class="card">
+              <div class="chead"><b>Policy file</b><span class="badge">policy.vscode-test.json</span>
+                <span style="margin-left:auto;display:flex;gap:10px">
+                  <a class="plink">Select policy</a><a class="plink">Open policy</a><a class="plink">Security guide</a>
+                </span>
+              </div>
+              <pre>policy: <span class="k">default-deny</span>
+allow:
+  - dotnet.build          <span class="c"># isolated</span>
+  - test.run              <span class="c"># isolated</span>
+  - wpf.*                 <span class="c"># probe token</span>
+  - diagnostics.*
+deny:
+  - process.kill
+  - file.write_outside_repo</pre>
+            </div>
+          </div>
+        </div>
+      </div><!-- /page-security -->
+    </main>
+  </div>
+
+  <div class="foot">
+    <span style="display:flex;align-items:center;gap:12px">
+      <span class="sigbars"><i></i><i></i><i></i><i></i><i></i></span>
+      <span id="opstatus">READY · AWAITING INPUT</span>
+    </span>
+    <span>ENG-MCP v0.3.0 · POLICY DEFAULT-DENY · TOKENS NEVER LOGGED</span>
+  </div>
+</div>
+<script>
+  // nav
+  document.querySelectorAll('.nav[data-page]').forEach(n => n.addEventListener('click', () => {
+    document.querySelectorAll('.nav').forEach(x => x.classList.remove('active'));
+    n.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+    const page = document.getElementById('page-' + n.dataset.page);
+    page.classList.add('on');
+    // signal glitch on the page title
+    const h1 = page.querySelector('.pagehead h1');
+    if (h1){ h1.classList.remove('glitch'); void h1.offsetWidth; h1.classList.add('glitch'); }
+    // retrigger staggered reveal
+    page.querySelectorAll('.main > *, .page > *').forEach(el => {
+      el.style.animation = 'none'; el.offsetHeight; el.style.animation = '';
+    });
+    document.querySelector('.main').scrollTop = 0;
+  }));
+
+  // live UTC clock
+  const clock = document.getElementById('clock');
+  function tick(){ clock.textContent = new Date().toISOString().slice(11,19); }
+  tick(); setInterval(tick, 1000);
+
+  // theme
+  const seg = document.getElementById('themeseg');
+  seg.querySelectorAll('span').forEach(s => s.addEventListener('click', () => {
+    seg.querySelectorAll('span').forEach(x => x.classList.remove('on'));
+    s.classList.add('on');
+    const mode = s.textContent.toLowerCase();
+    if (mode === 'dark') document.body.dataset.theme = 'dark';
+    else if (mode === 'light') document.body.dataset.theme = 'light';
+    else if (mode === 'print') document.body.dataset.theme = 'blueprint';
+    else document.body.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }));
+
+  // tools registry
+  const CATS = { wpf:'WPF UI', dotnet:'Diagnostics', source:'Source', system:'System' };
+  const PERMS = { read:'ui.read', mutate:'ui.interact', priv:'sensitive.diag' };
+  const RISKCLASS = { read:'ok', mutate:'warn', priv:'bad' };
+  const RISKTEXT = { read:'AUTO', mutate:'CONFIRM', priv:'RESTRICTED' };
+  const TOOLS = [
+    ['wpf_list_processes','List running WPF/WinUI processes','wpf','read'],
+    ['wpf_attach','Attach UI Automation session to a process','wpf','read'],
+    ['wpf_list_windows','List top-level windows of the attached process','wpf','read'],
+    ['wpf_snapshot','Dump the UI tree as an accessibility snapshot','wpf','read'],
+    ['wpf_find','Find nodes in the UI tree by selector','wpf','read'],
+    ['wpf_query','Read properties of a UI node','wpf','read'],
+    ['wpf_wait','Wait until a UI condition is met','wpf','read'],
+    ['wpf_assert','Assert on UI state (text, enabled, visibility)','wpf','read'],
+    ['wpf_click','Invoke or click a UI element','wpf','mutate'],
+    ['wpf_type','Type text into a control','wpf','mutate'],
+    ['wpf_select','Select an item in a combo/list','wpf','mutate'],
+    ['wpf_toggle','Toggle a checkbox or switch','wpf','mutate'],
+    ['wpf_expand','Expand an expander or tree node','wpf','mutate'],
+    ['wpf_collapse','Collapse an expander or tree node','wpf','mutate'],
+    ['wpf_scroll','Scroll a container into view','wpf','mutate'],
+    ['wpf_focus','Set keyboard focus to a control','wpf','mutate'],
+    ['wpf_screenshot','Capture the window as an image','wpf','read'],
+    ['wpf_detach','Detach the UI Automation session','wpf','read'],
+    ['wpf_probe','Handshake with the in-app probe endpoint','wpf','read'],
+    ['wpfui_inspect','Inspect WPF-UI themed control metadata','wpf','read'],
+    ['dotnet_runtime_info','Runtime version, GC mode, RID of a process','dotnet','read'],
+    ['dotnet_counters','Read EventCounters from a live process','dotnet','read'],
+    ['dotnet_gc_summary','GC heap summary and generations','dotnet','read'],
+    ['dotnet_threads','List managed threads and their stacks','dotnet','read'],
+    ['dotnet_modules','List loaded modules and versions','dotnet','read'],
+    ['dotnet_exceptions','List recent exceptions','dotnet','read'],
+    ['dotnet_trace_start','Start an EventPipe trace','dotnet','mutate'],
+    ['dotnet_trace_stop','Stop a trace and return the capture','dotnet','mutate'],
+    ['dotnet_capture_dump','Capture a crash/hang dump','dotnet','priv'],
+    ['dotnet_analyze_dump','Analyze a dump with clrmd','dotnet','priv'],
+    ['diagnose','Correlate recent app failures into a diagnosis','dotnet','read'],
+    ['diagnose_click','Reproduce a UI failure by clicking the blamed element','dotnet','mutate'],
+    ['aspnet_health','Probe a backend ASP.NET health endpoint','system','read'],
+    ['aspnet_requests','List recent backend requests','system','read'],
+    ['aspnet_exceptions','List recent backend exceptions','system','read'],
+    ['source_inventory','Inventory the solution: projects, files, LOC','source','read'],
+    ['source_read','Read a source file (policy-guarded)','source','read'],
+    ['source_find_symbol','Find symbol definitions via Roslyn','source','read'],
+    ['source_find_references','Find symbol references (exact)','source','read'],
+    ['source_find_references_page','Find symbol references (paged)','source','read'],
+    ['source_find_references_semantic','Find references via semantic model','source','read'],
+    ['source_find_automation_id','Find the AutomationId for a XAML element','source','read'],
+    ['source_find_binding','Locate XAML bindings for a property','source','read'],
+    ['source_analyze_xaml','Analyze a XAML file for issues','source','read'],
+    ['source_map_stacktrace','Map a runtime stack trace to source lines','source','read'],
+    ['wpfui_audit_resources','Audit WPF-UI resource usage (themes, keys)','source','read'],
+    ['a11y_audit','Audit accessibility tree (names, roles, contrast)','source','read'],
+    ['gui_audit','Audit visual layout (clipping, overlap, spacing)','source','read'],
+    ['ux_review','Heuristic UX review of a screen flow','source','read'],
+    ['system_version','Server version and transport info','system','read'],
+    ['system_health','Server self-health check','system','read'],
+    ['system_capabilities','List capabilities and permissions','system','read'],
+    ['system_permissions','Show effective policy for the caller','system','read']
+  ];
+  const tbody = document.getElementById('tooltable');
+  const td = (cls, text) => { const c = document.createElement('td'); c.className = cls; c.textContent = text; return c; };
+  TOOLS.forEach(([name, desc, cat, risk]) => {
+    const tr = document.createElement('tr');
+    tr.className = 'tool';
+    tr.dataset.cat = cat;
+    tr.dataset.name = name + ' ' + desc;
+    const pill = document.createElement('span');
+    pill.className = 'pill ' + RISKCLASS[risk];
+    pill.textContent = RISKTEXT[risk];
+    const riskTd = document.createElement('td');
+    riskTd.appendChild(pill);
+    tr.append(td('tname', name), td('tdesc', desc), td('tcat', CATS[cat]), td('tcat', PERMS[risk]), riskTd);
+    tbody.appendChild(tr);
+  });
+
+  function filterTools() {
+    const q = document.getElementById('toolq').value.toLowerCase();
+    const cat = document.querySelector('.fchip[data-cat].on').dataset.cat;
+    let shown = 0;
+    document.querySelectorAll('tr.tool').forEach(t => {
+      const ok = (cat === 'all' || t.dataset.cat === cat) && t.dataset.name.includes(q);
+      t.style.display = ok ? '' : 'none';
+      if (ok) shown++;
+    });
+    document.getElementById('toolempty').style.display = shown ? 'none' : 'block';
+  }
+  document.getElementById('toolq').addEventListener('input', filterTools);
+  document.querySelectorAll('.fchip[data-cat]').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('.fchip[data-cat]').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+    filterTools();
+  }));
+
+  // buttons that jump to a page (mirrors ShowMcpLogs_Click)
+  document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => {
+    document.querySelector(`.nav[data-page="${b.dataset.goto}"]`).click();
+  }));
+
+  // footer operation status (mirrors OperationStatusText)
+  const op = document.getElementById('opstatus');
+  let opTimer;
+  document.querySelectorAll('.btn,.qbtn,.plink').forEach(b => b.addEventListener('click', () => {
+    const label = (b.querySelector('svg') ? b.textContent.trim() : b.textContent.trim()) || 'operation';
+    op.textContent = 'RUNNING · ' + label.toUpperCase() + '…';
+    clearTimeout(opTimer);
+    opTimer = setTimeout(() => op.textContent = 'READY · LAST OP: ' + label.toUpperCase(), 1600);
+  }));
+
+  // ---- mechanical clock gear train (print theme): meshing, counter-rotating wheels ----
+  (function buildGearTrain(){
+    const deco = document.querySelector('.printdeco');
+    if (!deco) return;
+    const NS = 'http://www.w3.org/2000/svg';
+    const mk = (tag, attrs) => {
+      const el = document.createElementNS(NS, tag);
+      for (const k in attrs) el.setAttribute(k, attrs[k]);
+      return el;
+    };
+    // one wheel, technical-drawing style: outlined teeth (valley arcs + flanks + tips),
+    // dash-dot pitch circle, double rim, bolt holes, radial spokes, marker spoke
+    function gearSVG(r, teeth, withCenterlines){
+      const tooth = Math.max(6, r * 0.13), rt = r + tooth;
+      const C = rt + 10, size = C * 2;
+      const svg = mk('svg', { viewBox: (-C) + ' ' + (-C) + ' ' + size + ' ' + size });
+      const pt = (rad, ang) => (rad * Math.cos(ang)).toFixed(2) + ' ' + (rad * Math.sin(ang)).toFixed(2);
+      const step = (Math.PI * 2) / teeth;
+      // teeth path: valley arc -> flank up -> tip -> flank down, tooth centered on each step angle
+      let d = '';
+      for (let i = 0; i < teeth; i++) {
+        const a = i * step;
+        const v1 = pt(r, a - 0.30 * step), t1 = pt(rt, a - 0.16 * step),
+              t2 = pt(rt, a + 0.16 * step), v2 = pt(r, a + 0.30 * step);
+        d += (i === 0 ? 'M' + v1 : 'L' + v1);
+        d += ' L' + t1 + ' L' + t2 + ' L' + v2;
+        const nv = pt(r, (i + 1) * step - 0.30 * step);
+        d += ' A' + r + ' ' + r + ' 0 0 1 ' + nv;
+      }
+      svg.appendChild(mk('path', { class: 'teeth', d: d + ' Z' }));
+      svg.appendChild(mk('circle', { class: 'pitch', r: (r + tooth * 0.45).toFixed(1) }));
+      svg.appendChild(mk('circle', { class: 'rim', r: (r - 3).toFixed(1) }));
+      svg.appendChild(mk('circle', { class: 'rim', r: (r * 0.55).toFixed(1) }));
+      if (r >= 40) { // bolt-hole circle on larger wheels
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+          svg.appendChild(mk('circle', { class: 'rim', r: (r * 0.05).toFixed(1),
+            cx: (0.62 * r * Math.cos(a)).toFixed(1), cy: (0.62 * r * Math.sin(a)).toFixed(1) }));
+        }
+      }
+      const spokes = Math.max(4, Math.round(r / 20));
+      for (let i = 0; i < spokes; i++) {
+        const a = (i / spokes) * Math.PI * 2;
+        svg.appendChild(mk('line', { class: 'spoke',
+          x1: (0.18 * r * Math.cos(a)).toFixed(1), y1: (0.18 * r * Math.sin(a)).toFixed(1),
+          x2: (0.60 * r * Math.cos(a)).toFixed(1), y2: (0.60 * r * Math.sin(a)).toFixed(1) }));
+      }
+      if (withCenterlines) {
+        svg.appendChild(mk('line', { class: 'centerline', x1: -C, y1: 0, x2: C, y2: 0 }));
+        svg.appendChild(mk('line', { class: 'centerline', x1: 0, y1: -C, x2: 0, y2: C }));
+      }
+      svg.appendChild(mk('circle', { class: 'rim', r: (r * 0.14).toFixed(1) }));
+      svg.appendChild(mk('circle', { class: 'hubdot', r: 2.2 }));
+      svg.appendChild(mk('line', { class: 'marker', x1: 0, y1: 0, x2: (0.55 * r).toFixed(1), y2: 0 }));
+      return { svg, C };
+    }
+    // x = center offset from viewport center (top-center cluster), y from top edge; durations geared to teeth count
+    const SPECS = [
+      { r: 86, teeth: 16, x: -97, y: 215, t: 54,   ccw: false, cl: true  },
+      { r: 56, teeth: 11, x: 54,  y: 215, t: 37,   ccw: true,  cl: false },
+      { r: 35, teeth: 7,  x: 154, y: 215, t: 24,   ccw: false, cl: true  },
+      { r: 20, teeth: 4,  x: 154, y: 152, t: 13.5, ccw: true,  cl: false },
+      { r: 26, teeth: 6,  x: 118, y: 280, t: 20,   ccw: false, cl: false }
+    ];
+    SPECS.forEach(s => {
+      const { svg, C } = gearSVG(s.r, s.teeth, s.cl);
+      svg.setAttribute('class', 'gear' + (s.ccw ? ' ccw' : ''));
+      svg.style.width = svg.style.height = (C * 2) + 'px';
+      svg.style.left = 'calc(50% + ' + (s.x - C) + 'px)';
+      svg.style.top = (s.y - C) + 'px';
+      svg.style.setProperty('--t', s.t + 's');
+      deco.appendChild(svg);
+    });
+  })();
+
+  // ---- build-notes annotation layer (pre-conversion review) ----
+  const NOTES = [
+    { sel: '#page-tools .card', type: 'BUILD',
+      text: 'Entire Tools page is new. Needs: tools/list exposed to the UI + ToolPolicies risk/permission per tool. No WPF counterpart exists yet.',
+      w: 'BUILD: tools registry API for UI' },
+    { sel: '#page-security .grid2', type: 'BUILD',
+      text: 'Entire Security page is new. Needs: guardrail status feed + policy file reader/renderer. Real app only has Select/Open/Security-guide buttons.',
+      w: 'BUILD: guardrail status + policy viewer' },
+    { sel: '.hero .map', type: 'BUILD',
+      text: 'Architecture schematic is new, decorative. Wire to live process/endpoint state if cheap; otherwise static.',
+      w: 'BUILD: optional live topology' },
+    { sel: '#page-logs .filters', type: 'BUILD',
+      text: 'Log filter chips are new — the real Logs tab is a plain read-only TextBox with no filtering.',
+      w: 'BUILD: log source tagging + filter' },
+    { sel: '#page-home .strip', type: 'PORT',
+      text: 'Instrument strip = existing status tiles (McpStatusText, FixtureStatusText, VsCodeStatusText, SecurityStatusText). Restyle only.',
+      w: 'PORT: 4 status tiles exist' },
+    { sel: '.runbar', type: 'PORT',
+      text: 'Maps to Validation tab buttons (Run Full Self Test, Test WPF End-to-End, Cancel). Restyle only.',
+      w: 'PORT: DevTest buttons exist' },
+    { sel: '.scope', type: 'BUILD',
+      text: 'Global/Workspace scope toggle for mcp.json is new — real Connect always writes user profile.',
+      w: 'BUILD: workspace-scope write' }
+  ];
+  const host = document.getElementById('app');
+  host.classList.add('notehost');
+  const card = document.createElement('div');
+  card.id = 'notecard';
+  card.innerHTML = '<div class="nhead"><span>CONVERSION NOTES — ' + NOTES.length + ' ITEMS</span><span style="cursor:pointer" id="noteclose">✕</span></div><ul></ul>';
+  document.body.appendChild(card);
+  const ul = card.querySelector('ul');
+  NOTES.forEach((n, i) => {
+    const el = document.querySelector(n.sel);
+    if (!el) return;
+    // SVG targets can't host HTML flags — anchor to their parent wrapper instead
+    const flagHost = el instanceof SVGElement ? el.parentElement : el;
+    if (getComputedStyle(flagHost).position === 'static') flagHost.style.position = 'relative';
+    const flag = document.createElement('span');
+    flag.className = 'noteflag ' + n.type.toLowerCase();
+    flag.textContent = n.type + ' ' + String(i + 1).padStart(2, '0');
+    flagHost.appendChild(flag);
+    flag.addEventListener('click', e => { e.stopPropagation(); card.classList.add('on'); });
+    const li = document.createElement('li');
+    li.className = n.type.toLowerCase();
+    const b = document.createElement('b');
+    b.textContent = n.type + ' ' + String(i + 1).padStart(2, '0');
+    li.appendChild(b);
+    li.appendChild(document.createTextNode(n.w));
+    const det = document.createElement('i');
+    det.textContent = n.text;
+    li.appendChild(det);
+    li.addEventListener('mouseenter', () => { el.style.outlineColor = 'var(--red)'; });
+    li.addEventListener('mouseleave', () => { el.style.outlineColor = ''; });
+    ul.appendChild(li);
+  });
+  const toggle = document.getElementById('nottoggle');
+  toggle.addEventListener('click', () => {
+    const on = host.dataset.notes !== 'on';
+    host.dataset.notes = on ? 'on' : 'off';
+    toggle.classList.toggle('on', on);
+    card.classList.toggle('on', on);
+  });
+  document.getElementById('noteclose').addEventListener('click', () => {
+    host.dataset.notes = 'off';
+    toggle.classList.remove('on');
+    card.classList.remove('on');
+  });
+
+  // log filter chips
+  document.querySelectorAll('#page-logs .fchip').forEach(c => c.addEventListener('click', () => {
+    document.querySelectorAll('#page-logs .fchip').forEach(x => x.classList.remove('on'));
+    c.classList.add('on');
+    const f = c.textContent;
+    document.querySelectorAll('#page-logs .logline').forEach(l => {
+      const src = l.querySelector('.src').textContent;
+      const isErr = l.querySelector('.err') !== null;
+      l.style.display =
+        f === 'All' ? '' :
+        f === 'Errors' ? (isErr ? '' : 'none') :
+        src.toLowerCase() === f.toLowerCase() ? '' : 'none';
+    });
+  }));
+</script>
+</body>
+</html>

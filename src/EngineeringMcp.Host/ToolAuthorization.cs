@@ -1,26 +1,18 @@
-using EngineeringMcp.Audit;
-using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
+using EngineeringMcp.Contracts;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
 namespace EngineeringMcp.Host;
 
-public interface IToolAuthorization
-{
-    ToolResult<string> Authorize(ToolPolicy policy, string? target = null);
-    void Complete(string correlationId, ToolPolicy policy, string? target, bool success, string resultCode, long durationMs = 0);
-}
-
 public sealed class ToolAuthorization(
-    IToolGate gate,
-    ICapabilityRegistry capabilities,
+    ToolGate gate,
+    CapabilityRegistry capabilities,
     IAuditSink audit,
-    ISessionContext session,
-    IPolicyProvider policyProvider,
-    IRedactionService redaction) : IToolAuthorization
+    SessionContext session,
+    FilePolicyProvider policyProvider,
+    RedactionService redaction)
 {
     private int _auditHealthy = 1;
     private long _auditSequence;

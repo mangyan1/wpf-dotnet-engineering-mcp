@@ -5,10 +5,10 @@
       "engineeringmcp.contracts": {
         "type": "Project"
       },
-      "engineeringmcp.redaction": {
+      "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[1.0.0, )"
+          "EngineeringMcp.Contracts": "[0.3.0, )"
         }
       }
     }

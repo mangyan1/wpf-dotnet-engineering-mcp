@@ -2,12 +2,7 @@ using EngineeringMcp.Contracts;
 
 namespace EngineeringMcp.Security;
 
-public interface IUiActionRiskClassifier
-{
-    ToolResult<RiskClass> Classify(UiElementSnapshot element);
-}
-
-public sealed class UiActionRiskClassifier(IPolicyProvider policyProvider) : IUiActionRiskClassifier
+public sealed class UiActionRiskClassifier(FilePolicyProvider policyProvider)
 {
     private static readonly string[] BuiltInDestructiveTerms =
         ["delete", "remove", "erase", "wipe", "format", "purge", "revoke", "factory reset", "uninstall"];

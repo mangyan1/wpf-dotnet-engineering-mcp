@@ -1,5 +1,5 @@
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
+using EngineeringMcp.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EngineeringMcp.AdversarialTests;

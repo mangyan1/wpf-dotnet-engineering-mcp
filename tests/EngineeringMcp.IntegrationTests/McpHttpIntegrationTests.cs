@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using EngineeringMcp.Contracts;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EngineeringMcp.IntegrationTests;
@@ -22,15 +23,17 @@ public sealed partial class McpHttpIntegrationTests
             return;
         }
 
-        var root = FindRepositoryRoot();
+        var root = TestRepositoryLocator.FindRoot();
         var configuration =
 #if DEBUG
             "Debug";
 #else
             "Release";
 #endif
-        var executable = Path.Combine(root, "src", "EngineeringMcp.Host", "bin", configuration,
-            "net10.0-windows10.0.19041.0", "EngineeringMcp.Host.exe");
+        var executable = TestArtifactLocator.FindHostExecutable(
+            root,
+            configuration,
+            "net10.0-windows10.0.19041.0");
         Assert.IsTrue(File.Exists(executable), "Build the solution before running the live host integration test.");
 
         var port = ReserveLoopbackPort();
@@ -60,9 +63,20 @@ public sealed partial class McpHttpIntegrationTests
         try
         {
             using var healthClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            healthClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             await WaitForHealthAsync(healthClient, baseUrl + "/healthz", process);
+            using (var initialHealth = await healthClient.GetAsync(baseUrl + "/healthz"))
+            {
+                initialHealth.EnsureSuccessStatusCode();
+                using var initialHealthPayload = JsonDocument.Parse(await initialHealth.Content.ReadAsStringAsync());
+                Assert.IsFalse(initialHealthPayload.RootElement.GetProperty("vsCodeActive").GetBoolean());
+            }
 
-            using var unauthenticated = await healthClient.PostAsync(endpoint, JsonContent(ToolsListRequest()));
+            using var anonymousHealthClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            using var unauthenticatedHealth = await anonymousHealthClient.GetAsync(baseUrl + "/healthz");
+            Assert.AreEqual(HttpStatusCode.Unauthorized, unauthenticatedHealth.StatusCode);
+
+            using var unauthenticated = await anonymousHealthClient.PostAsync(endpoint, JsonContent(ToolsListRequest()));
             Assert.AreEqual(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
 
             using var badTokenClient = CreateMcpClient("definitely-invalid-token-value-0000");
@@ -75,6 +89,7 @@ public sealed partial class McpHttpIntegrationTests
             Assert.AreEqual(HttpStatusCode.Forbidden, crossOrigin.StatusCode);
 
             using var client = CreateMcpClient(token);
+            client.DefaultRequestHeaders.Add(McpRuntimeDefaults.ClientNameHeader, McpRuntimeDefaults.VsCodeClientName);
             using var initialized = await client.PostAsync(endpoint, JsonContent(new
             {
                 jsonrpc = "2.0",
@@ -88,6 +103,15 @@ public sealed partial class McpHttpIntegrationTests
                 }
             }));
             initialized.EnsureSuccessStatusCode();
+
+            using (var activeHealth = await healthClient.GetAsync(baseUrl + "/healthz"))
+            {
+                activeHealth.EnsureSuccessStatusCode();
+                using var activeHealthPayload = JsonDocument.Parse(await activeHealth.Content.ReadAsStringAsync());
+                Assert.IsTrue(activeHealthPayload.RootElement.GetProperty("vsCodeActive").GetBoolean());
+                Assert.AreEqual(JsonValueKind.String,
+                    activeHealthPayload.RootElement.GetProperty("lastVsCodeActivityUtc").ValueKind);
+            }
 
             using var listed = await client.PostAsync(endpoint, JsonContent(ToolsListRequest()));
             listed.EnsureSuccessStatusCode();
@@ -103,7 +127,7 @@ public sealed partial class McpHttpIntegrationTests
                 string.Join(", ", names.Where(name => !PortableToolName().IsMatch(name))));
             Assert.AreEqual(1, names.Count(name => name == "wpf_attach"));
             Assert.IsFalse(names.Contains("wpf.attach", StringComparer.Ordinal));
-            Assert.IsTrue(names.Contains("diagnose_observe", StringComparer.Ordinal));
+            Assert.IsTrue(names.Contains("diagnose", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("source_find_references_semantic", StringComparer.Ordinal));
 
             foreach (var tool in tools)
@@ -209,17 +233,6 @@ public sealed partial class McpHttpIntegrationTests
         listener.Start();
         try { return ((IPEndPoint)listener.LocalEndpoint).Port; }
         finally { listener.Stop(); }
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (var current = new DirectoryInfo(AppContext.BaseDirectory); current is not null; current = current.Parent)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "DotNetEngineeringMcp.sln")))
-                return current.FullName;
-        }
-
-        throw new DirectoryNotFoundException("Could not locate DotNetEngineeringMcp.sln from the test output directory.");
     }
 
     [GeneratedRegex("^[a-z0-9_-]+$", RegexOptions.CultureInvariant)]

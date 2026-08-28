@@ -2,12 +2,7 @@ using System.Collections.Concurrent;
 
 namespace EngineeringMcp.Host;
 
-public interface IProcessOperationCoordinator
-{
-    ValueTask<IAsyncDisposable> EnterAsync(int processId, CancellationToken cancellationToken);
-}
-
-public sealed class ProcessOperationCoordinator : IProcessOperationCoordinator, IDisposable
+public sealed class ProcessOperationCoordinator : IDisposable
 {
     private readonly ConcurrentDictionary<int, SemaphoreSlim> _gates = new();
 

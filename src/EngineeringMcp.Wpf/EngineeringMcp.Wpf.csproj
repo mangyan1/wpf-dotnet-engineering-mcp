@@ -4,11 +4,10 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA3" />
     <PackageReference Include="System.Drawing.Common" />
     <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
-    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
-    <ProjectReference Include="../EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj" />
   </ItemGroup>
 </Project>

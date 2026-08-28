@@ -66,7 +66,7 @@ Roslyn/MSBuild/XAML/symbol mapping for definitions, references, bindings, comman
 
 ## Phase 10 — Failure Correlation
 
-Orchestrators `diagnose_click`, `diagnose_observe`, `diagnose_failure`, and `diagnose_workflow` produce an evidence graph across UI → command → runtime → network/backend → source. Only `diagnose_click` performs an action.
+Orchestrators `diagnose_click` and `diagnose` produce an evidence graph across UI → command → runtime → network/backend → source. Only `diagnose_click` performs an action.
 
 **Gate:** seeded failures produce OBSERVED/CORRELATED/INFERRED/UNKNOWN output with no unsupported root-cause claims.
 

@@ -3,13 +3,7 @@ using EngineeringMcp.Security;
 
 namespace EngineeringMcp.Host;
 
-public interface ICapabilityRegistry
-{
-    CapabilityManifest GetManifest();
-    bool IsAvailable(string capabilityId);
-}
-
-public sealed class CapabilityRegistry(IPolicyProvider policyProvider) : ICapabilityRegistry
+public sealed class CapabilityRegistry(FilePolicyProvider policyProvider)
 {
     private IReadOnlyDictionary<string, bool> Current
     {

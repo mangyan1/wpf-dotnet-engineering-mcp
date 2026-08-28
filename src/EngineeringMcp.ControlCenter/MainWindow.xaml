@@ -2,338 +2,1811 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        Title=".NET/WPF Engineering MCP"
-        Width="1180"
-        Height="780"
-        MinWidth="960"
-        MinHeight="650"
+        xmlns:self="clr-namespace:EngineeringMcp.ControlCenter"
+
+        Title="Engineering MCP — Control Center"
+        Width="1240"
+        Height="820"
+        MinWidth="1000"
+        MinHeight="680"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica"
-        Background="{DynamicResource ApplicationBackgroundBrush}">
+        WindowBackdropType="None"
+        Background="{DynamicResource BgBrush}"
+        FontFamily="{DynamicResource FontSans}"
+        FontSize="13"
+        Foreground="{DynamicResource TextBrush}">
 
     <ui:FluentWindow.Resources>
-        <Style x:Key="CardStyle" TargetType="Border">
-            <Setter Property="Padding" Value="20" />
-            <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+        <self:TrimDotConverter x:Key="TrimDot" />
+        <self:UpperConverter x:Key="Upper" />
+        <self:StatusBrushConverter x:Key="StatusBrush" />
+
+        <!-- content-only tab host: navigation is driven by the sidebar radio buttons -->
+        <Style x:Key="ContentOnlyTabs" TargetType="TabControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <ContentPresenter ContentSource="SelectedContent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style x:Key="SmallCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
-            <Setter Property="Padding" Value="16" />
+
+        <!-- ==== atoms ==== -->
+        <Style x:Key="MonoDim" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{DynamicResource Text3Brush}" />
         </Style>
-        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-        </Style>
-        <Style x:Key="MutedTextStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-            <Setter Property="TextWrapping" Value="Wrap" />
-        </Style>
-        <Style x:Key="StatusLabelStyle" TargetType="TextBlock">
+        <Style x:Key="CardTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
         </Style>
-        <Style x:Key="StatusValueStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16" />
+        <Style x:Key="Link" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AmberBrush}" />
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="TextDecorations" Value="Underline" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Ghost" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource FontSerif}" />
+            <Setter Property="FontStyle" Value="Italic" />
+            <Setter Property="FontSize" Value="104" />
+            <Setter Property="Foreground" Value="{DynamicResource StrokeBrush}" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,-30,-4,0" />
+        </Style>
+
+        <!-- card: panel body + four amber corner brackets (mockup .card::before/::after) -->
+        <Style x:Key="Card" TargetType="ContentControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContentControl">
+                        <Grid>
+                            <Border Background="{DynamicResource PanelBrush}"
+                                    BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1">
+                                <ContentPresenter />
+                            </Border>
+                            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.2" Opacity="0.45"
+                                  HorizontalAlignment="Left" VerticalAlignment="Top"
+                                  Data="M0,12 L0,0 L12,0" />
+                            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.2" Opacity="0.45"
+                                  HorizontalAlignment="Right" VerticalAlignment="Top"
+                                  Data="M12,12 L12,0 L0,0" />
+                            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.2" Opacity="0.45"
+                                  HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                  Data="M0,0 L0,12 L12,12" />
+                            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.2" Opacity="0.45"
+                                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                  Data="M12,0 L12,12 L0,12" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- dashed outline box (URLs, code containers) -->
+        <Style x:Key="DashedBox" TargetType="ContentControl">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContentControl">
+                        <Grid>
+                            <Rectangle Fill="{DynamicResource Bg2Brush}"
+                                       Stroke="{DynamicResource HairBrush}" StrokeThickness="1"
+                                       StrokeDashArray="2 2" StrokeDashCap="Flat" />
+                            <ContentPresenter Margin="14,9" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- mono uppercase action button -->
+        <Style x:Key="Btn" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="Transparent"
+                                BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource TextBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Text3Brush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource Btn}">
+            <Setter Property="Foreground" Value="{DynamicResource AmberTextBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,7,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{DynamicResource AmberBrush}"
+                                BorderBrush="{DynamicResource AmberBrush}" BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- quick-action tile -->
+        <Style x:Key="QBtn" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="13,11" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{DynamicResource Panel2Brush}"
+                                BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AmberBrush}" />
+                                <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- filter chip -->
+        <Style x:Key="Chip" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource Text3Brush}" />
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Root" Background="Transparent"
+                                BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                Padding="11,4">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource AmberBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AmberBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- status pills -->
+        <Style x:Key="PillText" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style x:Key="PillOk" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource PillOkBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="Child">
+                <Setter.Value>
+                    <TextBlock Style="{StaticResource PillText}" Text="PASS" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- sidebar nav radio -->
+        <Style x:Key="NavRadio" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Border x:Name="Root" Background="Transparent" BorderThickness="1"
+                                    BorderBrush="Transparent" Padding="12,8">
+                                <ContentPresenter />
+                            </Border>
+                            <Rectangle x:Name="Bar" Width="2" Fill="{DynamicResource AmberBrush}"
+                                       HorizontalAlignment="Left" Margin="0,8" Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource PanelBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource Stroke2Brush}" />
+                                <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource TextBrush}" />
+                                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- segmented control (theme, scope) -->
+        <Style x:Key="Seg" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource Text3Brush}" />
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Root" Background="Transparent" Padding="8,3">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource RaiseBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="TextElement.Foreground" Value="{DynamicResource TextBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- activity log textbox -->
+        <Style x:Key="LogBox" TargetType="TextBox">
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
+            <Setter Property="Background" Value="{DynamicResource Bg2Brush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="18,13" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+        </Style>
+
+        <!-- DevTestGrid chrome -->
+        <Style x:Key="DevGrid" TargetType="DataGrid">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource StrokeBrush}" />
+            <Setter Property="BorderThickness" Value="0,1,0,0" />
+            <Setter Property="RowBackground" Value="Transparent" />
+            <Setter Property="AlternatingRowBackground" Value="Transparent" />
+            <Setter Property="HeadersVisibility" Value="Column" />
+            <Setter Property="GridLinesVisibility" Value="Horizontal" />
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource Stroke2Brush}" />
+            <Setter Property="RowHeight" Value="34" />
+            <Setter Property="AutoGenerateColumns" Value="False" />
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="CanUserAddRows" Value="False" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        </Style>
+        <Style BasedOn="{StaticResource {x:Type DataGridColumnHeader}}" TargetType="DataGridColumnHeader">
+            <Setter Property="FontFamily" Value="{DynamicResource FontMono}" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{DynamicResource Text3Brush}" />
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Stroke2Brush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Padding="{TemplateBinding Padding}" Background="Transparent">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+                    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- page scaffold -->
+        <Style x:Key="PageRoot" TargetType="StackPanel">
+            <Setter Property="Margin" Value="36,26,36,22" />
+        </Style>
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{DynamicResource FontSerif}" />
+            <Setter Property="FontSize" Value="31" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        </Style>
+        <Style x:Key="PageSub" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="MaxWidth" Value="560" />
             <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,7,0,0" />
+        </Style>
+        <Style x:Key="LiveBox" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource Stroke2Brush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+            <Setter Property="Padding" Value="13,7" />
+        </Style>
+
+        <!-- card header row -->
+        <Style x:Key="CardHead" TargetType="Border">
+            <Setter Property="Padding" Value="18,12" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Stroke2Brush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
         </Style>
     </ui:FluentWindow.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="44" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title=".NET/WPF Engineering MCP" />
+        <!-- ============ TITLE BAR: signal strip ============ -->
+        <Grid Grid.Row="0" Background="{DynamicResource Bg2Brush}" ClipToBounds="True">
+            <ui:TitleBar Title="" Padding="0" Background="Transparent" />
+            <!-- gradient signal border + sweep (mockup titlebar border-image + ::after sweep) -->
+            <Rectangle Height="1" VerticalAlignment="Bottom">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="{DynamicResource AmberHex}" Offset="0" />
+                        <GradientStop Color="{DynamicResource StrokeHex}" Offset="0.34" />
+                        <GradientStop Color="{DynamicResource StrokeHex}" Offset="0.66" />
+                        <GradientStop Color="{DynamicResource CyanDimHex}" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Rectangle Width="180" Height="1" VerticalAlignment="Bottom" Opacity="0.7">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#00ffb224" Offset="0" />
+                        <GradientStop Color="#a0ffb224" Offset="0.5" />
+                        <GradientStop Color="#00ffb224" Offset="1" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+                <Rectangle.RenderTransform>
+                    <TranslateTransform x:Name="TitlebarSweep" X="-200" />
+                </Rectangle.RenderTransform>
+                <Rectangle.Triggers>
+                    <EventTrigger RoutedEvent="Rectangle.Loaded">
+                        <BeginStoryboard>
+                            <Storyboard RepeatBehavior="Forever">
+                                <DoubleAnimation Storyboard.TargetName="TitlebarSweep"
+                                                 Storyboard.TargetProperty="X"
+                                                 From="-200" To="1500" Duration="0:0:7" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Rectangle.Triggers>
+            </Rectangle>
+            <StackPanel Orientation="Horizontal" IsHitTestVisible="False"
+                        VerticalAlignment="Center" Margin="20,0,150,0">
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource AmberBrush}" />
+                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11"
+                           Foreground="{DynamicResource Text3Brush}" Margin="16,0,0,0"
+                           Text="ENG-MCP CONTROL · local session ·" />
+                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11"
+                           Foreground="{DynamicResource Text3Brush}" Margin="18,0,0,0">
+                    <Run Text="TICK " Foreground="{DynamicResource Text3Brush}" /><Run x:Name="TitleClock" Text="--:--:--" Foreground="{DynamicResource Text2Brush}" /><Run Text=" UTC" Foreground="{DynamicResource Text3Brush}" />
+                </TextBlock>
+                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11"
+                           Foreground="{DynamicResource Text3Brush}" Margin="18,0,0,0">
+                    <Run Text="SESSION " /><Run x:Name="SessionCode" Text="A7-042" Foreground="{DynamicResource Text2Brush}" />
+                </TextBlock>
+            </StackPanel>
+        </Grid>
 
-        <Grid Grid.Row="1" Margin="24,12,24,14">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="12" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+        <!-- ============ BODY ============ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="244" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="Developer Control Center" FontSize="15" FontWeight="SemiBold" />
-                    <TextBlock Text="Run and test the MCP server without typing commands."
-                               FontSize="11" Style="{StaticResource MutedTextStyle}" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Theme" Margin="0,0,8,0" VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                    <ComboBox x:Name="ThemeSelector" Width="105" SelectedIndex="0"
-                              SelectionChanged="ThemeSelector_SelectionChanged">
-                        <ComboBoxItem Content="System" Tag="System" />
-                        <ComboBoxItem Content="Light" Tag="Light" />
-                        <ComboBoxItem Content="Dark" Tag="Dark" />
-                    </ComboBox>
-                </StackPanel>
-            </Grid>
+            <!-- ============ SIDEBAR ============ -->
+            <Border Grid.Column="0" Background="{DynamicResource Bg2Brush}"
+                    BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,0,1,0">
+                <Grid Margin="14,20,14,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-            <TabControl x:Name="MainTabs" Grid.Row="2" Background="Transparent" BorderThickness="0">
-                <!-- HOME -->
-                <TabItem Header="Home">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,16,0,8">
-                            <Border Style="{StaticResource CardStyle}" Padding="24">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,28,0">
-                                        <TextBlock Text="MCP Server" FontSize="28" FontWeight="SemiBold" />
-                                        <TextBlock Margin="0,7,0,0" Style="{StaticResource MutedTextStyle}"
-                                                   Text="Run one shared local MCP server. Control Center and VS Code connect to the same server." />
-                                        <TextBlock x:Name="DevTestSummaryText" Text="Ready" Margin="0,16,0,0"
-                                                   FontSize="14" FontWeight="SemiBold" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <ui:Button Content="Run MCP Server" Appearance="Primary" MinWidth="165" Height="42"
-                                                   Click="RunMcpServer_Click" />
-                                        <ui:Button Content="Test MCP Server" MinWidth="165" Height="38" Margin="0,8,0,0"
-                                                   Click="RunMcpSelfTest_Click" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-
-                            <TextBlock Text="Status" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Style="{StaticResource SmallCardStyle}">
-                                    <StackPanel>
-                                        <TextBlock Text="MCP SERVER" Style="{StaticResource StatusLabelStyle}" />
-                                        <TextBlock x:Name="McpStatusText" Text="● Stopped" Style="{StaticResource StatusValueStyle}" />
-                                        <TextBlock Text="Shared localhost service" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="2" Style="{StaticResource SmallCardStyle}">
-                                    <StackPanel>
-                                        <TextBlock Text="WPF TEST APP" Style="{StaticResource StatusLabelStyle}" />
-                                        <TextBlock x:Name="FixtureStatusText" Text="● Stopped" Style="{StaticResource StatusValueStyle}" />
-                                        <TextBlock Text="UI Automation + probe" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="4" Style="{StaticResource SmallCardStyle}">
-                                    <StackPanel>
-                                        <TextBlock Text="VS CODE" Style="{StaticResource StatusLabelStyle}" />
-                                        <TextBlock x:Name="VsCodeStatusText" Text="● Not connected" Style="{StaticResource StatusValueStyle}" />
-                                        <TextBlock Text="Optional editor integration" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="6" Style="{StaticResource SmallCardStyle}">
-                                    <StackPanel>
-                                        <TextBlock Text="SECURITY" Style="{StaticResource StatusLabelStyle}" />
-                                        <TextBlock x:Name="SecurityStatusText" Text="● Checking" Style="{StaticResource StatusValueStyle}" />
-                                        <TextBlock Text="Policy + guardrails" Margin="0,7,0,0" FontSize="10" Style="{StaticResource MutedTextStyle}" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <Border Style="{StaticResource CardStyle}" Margin="0,20,0,0">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="Full Self Test" Style="{StaticResource SectionTitleStyle}" />
-                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource MutedTextStyle}"
-                                                   Text="Builds the solution, runs automated tests, tests MCP, launches the WPF test app and verifies UI Automation and the probe." />
-                                    </StackPanel>
-                                    <ui:Button Grid.Column="1" x:Name="RunAllDevTestsButton" Content="Run Full Self Test"
-                                               Appearance="Primary" MinWidth="160" Height="40" Margin="20,0,0,0"
-                                               Click="RunAllDevTests_Click" />
-                                </Grid>
-                            </Border>
-
-                            <!-- Kept for repository diagnostics, intentionally low emphasis. -->
-                            <TextBlock x:Name="RepositoryStatusText" Visibility="Collapsed" />
-                            <TextBlock x:Name="RootPathText" Visibility="Collapsed" />
+                    <!-- brand -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,2,10,4">
+                        <TextBlock Text="E" FontFamily="{DynamicResource FontSerif}" FontStyle="Italic"
+                                   FontSize="34" Foreground="{DynamicResource AmberBrush}"
+                                   VerticalAlignment="Top" />
+                        <StackPanel Margin="9,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Engineering MCP" FontSize="13" FontWeight="SemiBold" />
+                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="9.5"
+                                       Foreground="{DynamicResource Text3Brush}" Margin="0,3,0,0"
+                                       Text="DEVELOPER CONTROL CENTER" />
                         </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
+                    </StackPanel>
 
-                <!-- SELF TEST -->
-                <TabItem Header="Self Test">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,16,0,8">
-                            <TextBlock Text="MCP Server" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Margin="0,5,0,12" Style="{StaticResource MutedTextStyle}"
-                                       Text="Run the shared server, test it, view its logs, or repair it only when needed." />
+                    <!-- nav -->
+                    <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                        <TextBlock Style="{StaticResource MonoDim}" FontSize="9.5" Margin="12,16,12,7"
+                                   Text="SERVER" />
+                        <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="0" IsChecked="True"
+                                     Checked="Nav_Checked">
+                            <DockPanel LastChildFill="False">
+                                <ui:SymbolIcon Symbol="Server20" FontSize="15" />
+                                <TextBlock Text="Home" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="1"
+                                     Checked="Nav_Checked">
+                            <DockPanel LastChildFill="False">
+                                <ui:SymbolIcon Symbol="CheckmarkCircle20" FontSize="15" />
+                                <TextBlock Text="Validation" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="2"
+                                     Checked="Nav_Checked">
+                            <DockPanel LastChildFill="False">
+                                <ui:SymbolIcon Symbol="Code20" FontSize="15" />
+                                <TextBlock Text="Integration" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </RadioButton>
+                        <TextBlock Style="{StaticResource MonoDim}" FontSize="9.5" Margin="12,16,12,7"
+                                   Text="TOOLS" />
+                        <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="3"
+                                     Checked="Nav_Checked">
+                            <DockPanel LastChildFill="False">
+                                <ui:SymbolIcon Symbol="Wrench20" FontSize="15" />
+                                <TextBlock Text="Tools" Margin="11,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock DockPanel.Dock="Right" FontFamily="{DynamicResource FontMono}"
+                                           FontSize="10" Foreground="{DynamicResource Text3Brush}"
+                                           VerticalAlignment="Center" Text="53" />
+                            </DockPanel>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="4"
+                                     Checked="Nav_Checked">
+                            <DockPanel LastChildFill="False">
+                                <ui:SymbolIcon Symbol="TextBulletListLtr20" FontSize="15" />
+                                <TextBlock Text="Logs" Margin="11,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock DockPanel.Dock="Right" FontFamily="{DynamicResource FontMono}"
+                                           FontSize="10" Foreground="{DynamicResource Text3Brush}"
+                                           VerticalAlignment="Center" Text="live" />
+                            </DockPanel>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="5"
+                                     Checked="Nav_Checked">
+                            <DockPanel LastChildFill="False">
+                                <ui:SymbolIcon Symbol="Shield20" FontSize="15" />
+                                <TextBlock Text="Security" Margin="11,0,0,0" VerticalAlignment="Center" />
+                            </DockPanel>
+                        </RadioButton>
+                    </StackPanel>
 
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel>
-                                    <WrapPanel>
-                                        <ui:Button Content="Run MCP Server" Appearance="Primary" MinWidth="150" Height="40" Click="RunMcpServer_Click" />
-                                        <ui:Button Content="Stop MCP Server" MinWidth="145" Height="40" Margin="8,0,0,0" Click="StopMcpServer_Click" />
-                                        <ui:Button Content="Test MCP Server" MinWidth="150" Height="40" Margin="8,0,0,0" Click="RunMcpSelfTest_Click" />
-                                        <ui:Button Content="MCP Server Logs" MinWidth="145" Height="40" Margin="8,0,0,0" Click="ShowMcpLogs_Click" />
-                                    </WrapPanel>
-                                    <Separator Margin="0,16,0,14" />
-                                    <Grid>
+                    <!-- engraving -->
+                    <TextBlock Grid.Row="1" Text="ENGINEERING·MCP—DEVELOPER·CONTROL·CENTER—V0.3.0"
+                               FontFamily="{DynamicResource FontMono}" FontSize="8.5"
+                               Foreground="{DynamicResource Text3Brush}" Opacity="0.55"
+                               HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-6,0,0,8"
+                               IsHitTestVisible="False">
+                        <TextBlock.LayoutTransform>
+                            <RotateTransform Angle="-90" />
+                        </TextBlock.LayoutTransform>
+                    </TextBlock>
+
+                    <!-- endpoint -->
+                    <Grid Grid.Row="2" Margin="6,0,6,0">
+                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                Background="{DynamicResource PanelBrush}" Padding="13,11">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="ENDPOINT" />
+                                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                           Foreground="{DynamicResource Text2Brush}" Margin="0,5,0,0"
+                                           Text="{x:Static self:MainWindow.McpEndpoint}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Border>
+                        <Path Stroke="{DynamicResource AmberDimBrush}" StrokeThickness="1"
+                              HorizontalAlignment="Left" VerticalAlignment="Top"
+                              Data="M0,7 L0,0 L7,0" />
+                        <Path Stroke="{DynamicResource AmberDimBrush}" StrokeThickness="1"
+                              HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                              Data="M7,7 L7,0 L0,0" />
+                    </Grid>
+
+                    <!-- theme (stacked like the mockup so all four segments fit) -->
+                    <StackPanel Grid.Row="3" Margin="6,14,6,0">
+                        <TextBlock Style="{StaticResource MonoDim}" FontSize="10" Text="THEME" />
+                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                Margin="0,7,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource Seg}" GroupName="ThemeSeg" Tag="Dark"
+                                             Click="ThemeMode_Click" Content="Dark" />
+                                <RadioButton Style="{StaticResource Seg}" GroupName="ThemeSeg" Tag="Light"
+                                             Click="ThemeMode_Click" Content="Light" />
+                                <RadioButton Style="{StaticResource Seg}" GroupName="ThemeSeg" Tag="Print"
+                                             IsChecked="True" Click="ThemeMode_Click" Content="Print" />
+                                <RadioButton Style="{StaticResource Seg}" GroupName="ThemeSeg" Tag="System"
+                                             Click="ThemeMode_Click" Content="System" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============ MAIN ============ -->
+            <Grid Grid.Column="1">
+                <!-- blueprint grid + amber glow atmosphere -->
+                <Grid.Background>
+                    <DrawingBrush TileMode="Tile" Viewport="0,0,32,32" ViewportUnits="Absolute">
+                        <DrawingBrush.Drawing>
+                            <GeometryDrawing Geometry="M0,0.5 L32,0.5 M0.5,0 L0.5,32">
+                                <GeometryDrawing.Pen>
+                                    <Pen Brush="{DynamicResource GridLineBrush}" Thickness="1" />
+                                </GeometryDrawing.Pen>
+                            </GeometryDrawing>
+                        </DrawingBrush.Drawing>
+                    </DrawingBrush>
+                </Grid.Background>
+                <Rectangle Height="340" VerticalAlignment="Top" IsHitTestVisible="False" Opacity="0.6">
+                    <Rectangle.Fill>
+                        <RadialGradientBrush Center="0.72,0.05" RadiusX="0.9" RadiusY="0.6">
+                            <GradientStop Color="#20ffb224" Offset="0" />
+                            <GradientStop Color="#00ffb224" Offset="1" />
+                        </RadialGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <!-- cyan counter-bloom (mockup body::before second radial) -->
+                <Rectangle Height="480" VerticalAlignment="Bottom" IsHitTestVisible="False">
+                    <Rectangle.Fill>
+                        <RadialGradientBrush Center="0.04,1.0" RadiusX="0.9" RadiusY="0.7">
+                            <GradientStop Color="#0D67E8F9" Offset="0" />
+                            <GradientStop Color="#0067E8F9" Offset="1" />
+                        </RadialGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+
+                <TabControl x:Name="MainTabs" Style="{StaticResource ContentOnlyTabs}"
+                            SelectedIndex="0" Background="Transparent" BorderThickness="0"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+
+                    <!-- ==================== HOME ==================== -->
+                    <TabItem Header="Home">
+                        <ScrollViewer x:Name="HomeScroll" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      HorizontalContentAlignment="Stretch">
+                            <Border Width="{Binding ActualWidth, ElementName=MainTabs}"
+                                    Padding="36,26,36,22" HorizontalAlignment="Stretch">
+                            <StackPanel>
+
+                                <!-- hero -->
+                                <Grid Margin="4,10,4,18">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="145*" />
+                                        <ColumnDefinition Width="90*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource MonoDim}" FontSize="10"
+                                                   Text="SHARED MCP SERVICE · STREAMABLE HTTP · LOCAL ONLY" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                            <Grid VerticalAlignment="Center">
+                                                <Ellipse Width="22" Height="22" Fill="{DynamicResource GreenBrush}" Opacity="0.12" />
+                                                <Ellipse Width="14" Height="14" Fill="{DynamicResource GreenBrush}">
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect BlurRadius="18" ShadowDepth="0" Color="#4ade80" Opacity="0.6" />
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                            </Grid>
+                                            <TextBlock FontFamily="{DynamicResource FontSerif}" FontSize="60"
+                                                       Foreground="{DynamicResource TextBrush}" Margin="18,0,0,0"
+                                                       Text="{Binding Text, ElementName=McpStatusText, Converter={StaticResource TrimDot}}" />
+                                            <!-- blinking terminal cursor (mockup .hero-state::after) -->
+                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="44"
+                                                       Foreground="{DynamicResource AmberBrush}" Margin="8,0,0,0"
+                                                       VerticalAlignment="Bottom" Text="▌">
+                                                <TextBlock.Triggers>
+                                                    <EventTrigger RoutedEvent="TextBlock.Loaded">
+                                                        <BeginStoryboard>
+                                                            <Storyboard RepeatBehavior="Forever">
+                                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                 From="1" To="0" AutoReverse="True" Duration="0:0:0.7" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </EventTrigger>
+                                                </TextBlock.Triggers>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <ContentControl Style="{StaticResource DashedBox}" HorizontalAlignment="Left"
+                                                        Margin="0,18,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="12"
+                                                           Foreground="{DynamicResource Text2Brush}"
+                                                           Text="{x:Static self:MainWindow.McpEndpoint}" />
+                                                <!-- blinking cursor (mockup .endpoint code::after) -->
+                                                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="12"
+                                                           Foreground="{DynamicResource AmberBrush}" Margin="6,0,0,0" Text="▌">
+                                                    <TextBlock.Triggers>
+                                                        <EventTrigger RoutedEvent="TextBlock.Loaded">
+                                                            <BeginStoryboard>
+                                                                <Storyboard RepeatBehavior="Forever" BeginTime="0:0:0.35">
+                                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                                     From="1" To="0" AutoReverse="True" Duration="0:0:0.7" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </EventTrigger>
+                                                    </TextBlock.Triggers>
+                                                </TextBlock>
+                                                <TextBlock x:Name="CopyEndpointLink" Style="{StaticResource Link}"
+                                                           Margin="12,0,0,0" MouseLeftButtonUp="CopyEndpoint_Click"
+                                                           Text="⧉ copy" />
+                                            </StackPanel>
+                                        </ContentControl>
+                                        <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12.5"
+                                                   MaxWidth="400" HorizontalAlignment="Left"
+                                                   TextWrapping="Wrap" Margin="0,16,0,0"
+                                                   Text="Start, test and repair the shared local MCP service. Both the Control Center and every VS Code workspace talk to the same endpoint — start it once, use it everywhere." />
+                                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                            <Button Style="{StaticResource Btn}" Content="Stop" Click="StopMcpServer_Click" />
+                                            <Button Style="{StaticResource Btn}" Content="Test MCP Server" Margin="10,0,0,0"
+                                                    Click="RunMcpSelfTest_Click" />
+                                            <Button Style="{StaticResource BtnPrimary}" Content="Run MCP Server" Margin="10,0,0,0"
+                                                    Click="RunMcpServer_Click" />
+                                        </StackPanel>
+                                        <Border BorderBrush="{DynamicResource HairBrush}" BorderThickness="0,1,0,0"
+                                                Margin="0,22,0,0" Padding="0,14,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <StackPanel Margin="0,0,22,0">
+                                                    <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="TOOLS EXPOSED" />
+                                                    <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="12"
+                                                               Foreground="{DynamicResource Text2Brush}" Margin="0,4,0,0" Text="53" />
+                                                </StackPanel>
+                                                <Border Margin="0,0,22,0" BorderBrush="{DynamicResource HairBrush}"
+                                                        BorderThickness="1,0,0,0" Padding="22,0">
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="POLICY" />
+                                                        <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="12"
+                                                                   Foreground="{DynamicResource Text2Brush}" Margin="0,4,0,0"
+                                                                   Text="{Binding Text, ElementName=PolicyFileNameText}" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border BorderBrush="{DynamicResource HairBrush}"
+                                                        BorderThickness="1,0,0,0" Padding="22,0">
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="LAST TEST" />
+                                                        <TextBlock FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextBrush}" Margin="0,4,0,0"
+                                                                   Text="{Binding Text, ElementName=DevTestSummaryText, Converter={StaticResource Upper}}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+
+                                    <!-- architecture schematic -->
+                                    <Viewbox Grid.Column="1" MaxWidth="300" MaxHeight="250"
+                                             Stretch="Uniform" StretchDirection="DownOnly"
+                                             HorizontalAlignment="Right" Margin="20,0,0,0">
+                                        <Canvas Width="280" Height="250">
+                                            <Path x:Name="ControlCenterConnection" Stroke="{DynamicResource HairBrush}"
+                                                  StrokeThickness="1.2" StrokeDashArray="3 4" Opacity="0.25"
+                                                  Data="M84 54 V88 H128 V124" />
+                                            <Path x:Name="VsCodeConnection" Stroke="{DynamicResource HairBrush}"
+                                                  StrokeThickness="1.2" StrokeDashArray="3 4" Opacity="0.25"
+                                                  Data="M196 54 V88 H152 V124" />
+                                            <Path x:Name="FixtureConnection" Stroke="{DynamicResource HairBrush}"
+                                                  StrokeThickness="1.2" StrokeDashArray="3 4" Opacity="0.25"
+                                                  Data="M84 190 V172 H128 V164" />
+                                            <Path x:Name="PolicyConnection" Stroke="{DynamicResource HairBrush}"
+                                                  StrokeThickness="1.2" StrokeDashArray="3 4" Opacity="0.25"
+                                                  Data="M196 190 V172 H152 V164" />
+                                            <Rectangle x:Name="TopologyControlNode" Canvas.Left="36" Canvas.Top="18" Width="96" Height="36"
+                                                       Fill="{DynamicResource Panel2Brush}" Stroke="{DynamicResource HairBrush}" />
+                                            <Rectangle x:Name="TopologyVsCodeNode" Canvas.Left="148" Canvas.Top="18" Width="96" Height="36"
+                                                       Fill="{DynamicResource Panel2Brush}" Stroke="{DynamicResource HairBrush}" />
+                                            <Rectangle x:Name="TopologyServerNode" Canvas.Left="86" Canvas.Top="124" Width="108" Height="40"
+                                                       Fill="{DynamicResource Panel2Brush}" Stroke="{DynamicResource HairBrush}" />
+                                            <Rectangle x:Name="TopologyFixtureNode" Canvas.Left="36" Canvas.Top="190" Width="96" Height="36"
+                                                       Fill="{DynamicResource Panel2Brush}" Stroke="{DynamicResource HairBrush}" />
+                                            <Rectangle x:Name="TopologyPolicyNode" Canvas.Left="148" Canvas.Top="190" Width="96" Height="36"
+                                                       Fill="{DynamicResource Panel2Brush}" Stroke="{DynamicResource HairBrush}" />
+                                            <TextBlock Canvas.Left="52" Canvas.Top="30" Style="{StaticResource MonoDim}" FontSize="8.5" Text="CONTROL CENTER" />
+                                            <TextBlock x:Name="TopologyVsCodeLabel" Canvas.Left="162" Canvas.Top="30"
+                                                       Style="{StaticResource MonoDim}" FontSize="8.5" Text="VS CODE · READY" />
+                                            <TextBlock Canvas.Left="106" Canvas.Top="132" Style="{StaticResource MonoDim}" FontSize="8.5"
+                                                       Foreground="{DynamicResource AmberBrush}" Text="MCP SERVER" />
+                                            <TextBlock x:Name="TopologyServerDetail" Canvas.Left="108" Canvas.Top="146"
+                                                       Style="{StaticResource MonoDim}" FontSize="8.5" Text=":8765 · OFF" />
+                                            <TextBlock x:Name="TopologyFixtureLabel" Canvas.Left="59" Canvas.Top="202"
+                                                       Style="{StaticResource MonoDim}" FontSize="8.5" Text="WPF · IDLE" />
+                                            <TextBlock x:Name="TopologyPolicyLabel" Canvas.Left="158" Canvas.Top="202"
+                                                       Style="{StaticResource MonoDim}" FontSize="8.5" Text="POLICY · ARMED" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Grid>
+
+                                <!-- instrument strip -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="13*" />
+                                        <ColumnDefinition Width="10*" />
+                                        <ColumnDefinition Width="10*" />
+                                        <ColumnDefinition Width="11.5*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Background="{DynamicResource PanelBrush}"
+                                            BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1">
+                                        <StackPanel Margin="20,17,20,15">
+                                            <Rectangle Height="2" Fill="{DynamicResource AmberBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,12" />
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="MCP SERVER" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
+                                                <self:StatusTextBlock x:Name="McpStatusText" Text="● Stopped"
+                                                                      FontFamily="{DynamicResource FontSerif}" FontSize="22"
+                                                                      MaxWidth="145" TextTrimming="CharacterEllipsis"
+                                                                      Foreground="{DynamicResource TextBrush}" />
+                                                <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                        Padding="8,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                    <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="HTTP" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="10" Margin="0,8,0,0" Text="shared localhost · :8765" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="1" Background="{DynamicResource PanelBrush}"
+                                            BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1,1,1,1">
+                                        <StackPanel Margin="20,17,20,15">
+                                            <Rectangle Height="2" Fill="{DynamicResource RaiseBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,12" />
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="WPF TEST APP" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
+                                                <self:StatusTextBlock x:Name="FixtureStatusText" Text="● Stopped"
+                                                                      FontFamily="{DynamicResource FontSerif}" FontSize="22"
+                                                                      MaxWidth="145" TextTrimming="CharacterEllipsis"
+                                                                      Foreground="{DynamicResource TextBrush}" />
+                                                <Border BorderBrush="{DynamicResource HairBrush}" BorderThickness="1"
+                                                        Padding="8,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                    <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource Text2Brush}" Text="UIA" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="10" Margin="0,8,0,0" Text="UI Automation + probe" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="2" Background="{DynamicResource PanelBrush}"
+                                            BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1">
+                                        <StackPanel Margin="20,17,20,15">
+                                            <Rectangle Height="2" Fill="{DynamicResource RaiseBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,12" />
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="VS CODE" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
+                                                <self:StatusTextBlock x:Name="VsCodeStatusText" Text="● Offline"
+                                                                      FontFamily="{DynamicResource FontSerif}" FontSize="22"
+                                                                      MaxWidth="145" TextTrimming="CharacterEllipsis"
+                                                                      Foreground="{DynamicResource TextBrush}" />
+                                                <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                        Padding="8,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                    <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="GLOBAL" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="10" Margin="0,8,0,0" Text="user profile · mcp.json" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="3" Background="{DynamicResource PanelBrush}"
+                                            BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1">
+                                        <StackPanel Margin="20,17,20,15">
+                                            <Rectangle Height="2" Fill="{DynamicResource RaiseBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,12" />
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="GUARDRAILS" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,11,0,0">
+                                                <self:StatusTextBlock x:Name="SecurityStatusText" Text="● Checking"
+                                                                      FontFamily="{DynamicResource FontSerif}" FontSize="22"
+                                                                      MaxWidth="145" TextTrimming="CharacterEllipsis"
+                                                                      Foreground="{DynamicResource TextBrush}" />
+                                                <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                        Padding="8,2" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                    <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="DENY-ALL" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="10" Margin="0,8,0,0" Text="file · process · PII · probe" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- latest validation + quick actions -->
+                                <Grid Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="16*" />
+                                        <ColumnDefinition Width="10*" />
+                                    </Grid.ColumnDefinitions>
+                                    <ContentControl Grid.Column="0" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <Grid>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Style="{StaticResource CardTitle}">
+                                                            <Run FontFamily="{DynamicResource FontMono}" Foreground="{DynamicResource AmberBrush}" Text="01" /><Run Text="  LATEST VALIDATION" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <TextBlock Style="{StaticResource Link}" HorizontalAlignment="Right"
+                                                               MouseLeftButtonUp="RunAllDevTestsLink_Click" Text="Run full self test →" />
+                                                </Grid>
+                                            </Border>
+                                            <ItemsControl x:Name="LatestList" Margin="0,4,0,4">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="16,9">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="118" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="80" />
+                                                                <ColumnDefinition Width="200" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                                       Foreground="{DynamicResource Text3Brush}" Text="{Binding Area}" />
+                                                            <TextBlock Grid.Column="1" FontSize="12.5"
+                                                                       Foreground="{DynamicResource TextBrush}" Text="{Binding Test}" />
+                                                            <TextBlock Grid.Column="2" FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                                       Foreground="{Binding Status, Converter={StaticResource StatusBrush}}"
+                                                                       Text="{Binding Status}" />
+                                                            <TextBlock Grid.Column="3" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                                       Foreground="{DynamicResource Text2Brush}" TextTrimming="CharacterEllipsis"
+                                                                       Text="{Binding Detail}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock x:Name="LatestEmpty" Margin="16,12" Style="{StaticResource MonoDim}"
+                                                       FontSize="11" Text="// no validation run yet — run the full self test" />
+                                        </StackPanel>
+                                    </ContentControl>
+                                    <ContentControl Grid.Column="1" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <TextBlock Style="{StaticResource CardTitle}">
+                                                    <Run FontFamily="{DynamicResource FontMono}" Foreground="{DynamicResource AmberBrush}" Text="02" /><Run Text="  QUICK ACTIONS" />
+                                                </TextBlock>
+                                            </Border>
+                                            <UniformGrid Columns="2" Margin="16,8,16,16">
+                                                <Button Style="{StaticResource QBtn}" Content="Launch WPF fixture" Margin="0,4,4,4" Click="LaunchFixture_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Build solution" Margin="4,4,0,4" Click="Build_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Run code tests" Margin="0,4,4,4" Click="Test_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="MCP server logs" Margin="4,4,0,4" Click="ShowMcpLogs_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Connect VS Code" Margin="0,4,4,4" Click="ConnectVsCode_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Open policy" Margin="4,4,0,4" Click="OpenPolicy_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Check readiness" Margin="0,4,4,4" Click="RunReadiness_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Stop test apps" Margin="4,4,0,4" Click="StopFixtures_Click" />
+                                            </UniformGrid>
+                                        </StackPanel>
+                                    </ContentControl>
+                                </Grid>
+
+                                <!-- activity -->
+                                <ContentControl Style="{StaticResource Card}" MinHeight="180" Margin="0,18,0,0">
+                                    <StackPanel>
+                                        <Border Style="{StaticResource CardHead}">
+                                            <Grid>
+                                                <TextBlock Style="{StaticResource CardTitle}" Text="ACTIVITY" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                    <TextBlock Style="{StaticResource Link}" MouseLeftButtonUp="CopyLog_Click" Text="Copy" />
+                                                    <TextBlock Style="{StaticResource Link}" Margin="6,0" MouseLeftButtonUp="ClearLog_Click" Text="·" Foreground="{DynamicResource Text3Brush}" />
+                                                    <TextBlock Style="{StaticResource Link}" Margin="6,0,0,0" MouseLeftButtonUp="ClearLog_Click" Text="Clear" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                        <TextBox x:Name="ActivityLog" Style="{StaticResource LogBox}" MaxHeight="220"
+                                                 Text="› control center ready" />
+                                    </StackPanel>
+                                </ContentControl>
+
+                                <!-- kept for repository diagnostics, intentionally low emphasis -->
+                                <TextBlock x:Name="RepositoryStatusText" Visibility="Collapsed" />
+                                <TextBlock x:Name="RootPathText" Visibility="Collapsed" />
+                            </StackPanel>
+                            </Border>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ==================== VALIDATION ==================== -->
+                    <TabItem Header="Validation">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Style="{StaticResource PageRoot}">
+
+                                <!-- page head -->
+                                <Grid Margin="0,0,0,18">
+                                    <TextBlock Style="{StaticResource Ghost}" Text="02" />
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource PageTitle}">
+                                            <Run Text="Developer " /><Run Text="validation" Foreground="{DynamicResource AmberBrush}" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource PageSub}"
+                                                   Text="Isolated build → tests → transport → WPF E2E → cleanup. Everything runs in temp artifacts; nothing touches your working tree." />
+                                    </StackPanel>
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
+                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="6" Height="6" Fill="{DynamicResource AmberBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Text2Brush}"
+                                                       Text="{Binding Text, ElementName=DevTestSummaryText, Converter={StaticResource Upper}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- runbar -->
+                                <Border BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
+                                        Background="{DynamicResource PanelBrush}" Margin="0,18,0,0">
+                                    <Grid Margin="24,20">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel>
-                                            <TextBlock Text="Repair MCP Server" FontWeight="SemiBold" />
-                                            <TextBlock Margin="0,4,16,0" Style="{StaticResource MutedTextStyle}"
-                                                       Text="Use this only if Run MCP Server or Test MCP Server fails. It restores packages, rebuilds the host and refreshes the VS Code connection." />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock FontFamily="{DynamicResource FontSerif}" FontSize="21"
+                                                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"
+                                                           Text="Developer validation" />
+                                                <Border BorderBrush="{DynamicResource PillWarnBorderBrush}" BorderThickness="1"
+                                                        Padding="8,2" Margin="13,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="DevTestSummaryText" Style="{StaticResource PillText}"
+                                                               Foreground="{DynamicResource AmberBrush}" Text="READY" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource MonoDim}" FontSize="12" Margin="0,6,0,0"
+                                                       Text="Builds, tests, transport smoke and WPF end-to-end run in isolated temp artifacts." />
+                                            <Border Height="14" Margin="0,12,0,0" VerticalAlignment="Top">
+                                                <Rectangle Height="7" VerticalAlignment="Bottom" Width="83"
+                                                           HorizontalAlignment="Left" Fill="{DynamicResource AmberBrush}">
+                                                    <Rectangle.Effect>
+                                                        <DropShadowEffect BlurRadius="12" ShadowDepth="0" Color="#ffb224" Opacity="0.35" />
+                                                    </Rectangle.Effect>
+                                                </Rectangle>
+                                            </Border>
                                         </StackPanel>
-                                        <ui:Button Grid.Column="1" Content="Repair MCP Server" MinWidth="155" Height="38" Click="RepairMcpServer_Click" />
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="22,0,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button x:Name="RunAllDevTestsButton" Style="{StaticResource BtnPrimary}"
+                                                        Content="Run Full Self Test" Click="RunAllDevTests_Click" />
+                                                <Button x:Name="CancelDevTestButton" Style="{StaticResource Btn}" Margin="10,0,0,0"
+                                                        Content="Cancel Test" IsEnabled="False" Click="CancelDevTest_Click" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                                <Button Style="{StaticResource Btn}" Content="Test WPF End-to-End" Click="RunWpfEndToEnd_Click" />
+                                                <Button Style="{StaticResource Btn}" Margin="10,0,0,0" Content="Open artifacts" Click="OpenArtifacts_Click" />
+                                            </StackPanel>
+                                        </StackPanel>
                                     </Grid>
-                                </StackPanel>
-                            </Border>
+                                </Border>
 
-                            <TextBlock Text="Complete Validation" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
-                            <Border Style="{StaticResource CardStyle}">
-                                <StackPanel>
-                                    <WrapPanel>
-                                        <ui:Button Content="Run Full Self Test" Appearance="Primary" MinWidth="155" Click="RunAllDevTests_Click" />
-                                        <ui:Button Content="Test WPF End-to-End" MinWidth="155" Margin="8,0,0,0" Click="RunWpfEndToEnd_Click" />
-                                        <ui:Button Content="Launch WPF Test App" MinWidth="150" Margin="8,0,0,0" Click="LaunchFixture_Click" />
-                                        <ui:Button Content="Stop Test Apps" MinWidth="125" Margin="8,0,0,0" Click="StopFixtures_Click" />
-                                        <ui:Button x:Name="CancelDevTestButton" Content="Cancel Test" MinWidth="100" Margin="8,0,0,0"
-                                                   IsEnabled="False" Click="CancelDevTest_Click" />
-                                    </WrapPanel>
-                                    <WrapPanel Margin="0,10,0,0">
-                                        <ui:Button Content="Build Solution" MinWidth="120" Click="Build_Click" />
-                                        <ui:Button Content="Run Code Tests" MinWidth="120" Margin="8,0,0,0" Click="Test_Click" />
-                                        <ui:Button Content="Check Readiness" MinWidth="120" Margin="8,0,0,0" Click="RunReadiness_Click" />
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="Latest Results" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
-                            <DataGrid x:Name="DevTestGrid" AutoGenerateColumns="False" IsReadOnly="True"
-                                      CanUserAddRows="False" HeadersVisibility="Column" MinHeight="230"
-                                      Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                      BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Area" Binding="{Binding Area}" Width="150" />
-                                    <DataGridTextColumn Header="Check" Binding="{Binding Test}" Width="220" />
-                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" />
-                                    <DataGridTextColumn Header="Details" Binding="{Binding Detail}" Width="*" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-
-                <!-- INTEGRATION -->
-                <TabItem Header="Integration">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,16,0,8">
-                            <TextBlock Text="VS Code Integration" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Margin="0,5,0,12" Style="{StaticResource MutedTextStyle}"
-                                       Text="Connect once. VS Code will use the same MCP Server that you start from the Home tab, from ApexDrive or any other workspace." />
-
-                            <Border Style="{StaticResource CardStyle}">
-                                <Grid>
+                                <!-- server control + repair -->
+                                <Grid Margin="0,18,0,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="16*" />
+                                        <ColumnDefinition Width="10*" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Margin="0,0,20,0">
-                                        <TextBlock Text="Use MCP in VS Code" FontSize="20" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="VsCodeDetailText" Margin="0,7,0,0" Style="{StaticResource MutedTextStyle}" />
-                                        <TextBlock Margin="0,8,0,0" FontSize="11" Style="{StaticResource MutedTextStyle}"
-                                                   Text="Connect adds the local HTTP endpoint to your VS Code user profile. Keep MCP Server running while VS Code uses its tools." />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <ui:Button Content="Connect to VS Code" Appearance="Primary" MinWidth="165" Height="40" Click="ConnectVsCode_Click" />
-                                        <ui:Button Content="Open User MCP Config" MinWidth="165" Height="36" Margin="0,8,0,0" Click="OpenMcpConfig_Click" />
-                                    </StackPanel>
+                                    <ContentControl Grid.Column="0" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <TextBlock Style="{StaticResource CardTitle}">
+                                                    <Run FontFamily="{DynamicResource FontMono}" Foreground="{DynamicResource AmberBrush}" Text="01" /><Run Text="  SERVER CONTROL" />
+                                                </TextBlock>
+                                            </Border>
+                                            <UniformGrid Columns="4" Margin="16,8,16,16">
+                                                <Button Style="{StaticResource QBtn}" Content="Run MCP Server" Margin="0,4,4,4" Click="RunMcpServer_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Stop MCP Server" Margin="4,4,4,4" Click="StopMcpServer_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="Test MCP Server" Margin="4,4,4,4" Click="RunMcpSelfTest_Click" />
+                                                <Button Style="{StaticResource QBtn}" Content="MCP Server Logs" Margin="4,4,0,4" Click="ShowMcpLogs_Click" />
+                                            </UniformGrid>
+                                        </StackPanel>
+                                    </ContentControl>
+                                    <ContentControl Grid.Column="1" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <TextBlock Style="{StaticResource CardTitle}">
+                                                    <Run FontFamily="{DynamicResource FontMono}" Foreground="{DynamicResource AmberBrush}" Text="02" /><Run Text="  REPAIR" />
+                                                </TextBlock>
+                                            </Border>
+                                            <StackPanel Margin="18,12,18,16">
+                                                <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12"
+                                                           TextWrapping="Wrap" LineHeight="19"
+                                                           Text="Only if Run or Test fails. Restores packages, rebuilds the host and refreshes the VS Code connection." />
+                                                <Button Style="{StaticResource Btn}" Content="Repair MCP Server" HorizontalAlignment="Left"
+                                                        Margin="0,12,0,0" Padding="14,8" Click="RepairMcpServer_Click" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </ContentControl>
                                 </Grid>
-                            </Border>
 
-                            <TextBlock Text="Security" Style="{StaticResource SectionTitleStyle}" Margin="2,22,0,10" />
-                            <Border Style="{StaticResource CardStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <!-- check list -->
+                                <ContentControl Style="{StaticResource Card}" Margin="0,18,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="MCP Security Policy" FontWeight="SemiBold" FontSize="16" />
-                                        <TextBlock x:Name="PolicyPathText" Margin="0,7,16,0" FontSize="11" TextWrapping="Wrap"
-                                                   Style="{StaticResource MutedTextStyle}" />
+                                        <Border Style="{StaticResource CardHead}">
+                                            <Grid>
+                                                <TextBlock Style="{StaticResource CardTitle}">
+                                                    <Run FontFamily="{DynamicResource FontMono}" Foreground="{DynamicResource AmberBrush}" Text="03" /><Run Text="  CHECK LIST" />
+                                                </TextBlock>
+                                                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                           Foreground="{DynamicResource Text3Brush}" HorizontalAlignment="Right"
+                                                           Text="{Binding Text, ElementName=DevTestSummaryText, Converter={StaticResource Upper}}" />
+                                            </Grid>
+                                        </Border>
+                                        <DataGrid x:Name="DevTestGrid" Style="{StaticResource DevGrid}" MinHeight="160">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="AREA" Binding="{Binding Area}" Width="150" />
+                                                <DataGridTextColumn Header="CHECK" Binding="{Binding Test}" Width="220" />
+                                                <DataGridTextColumn Header="STATUS" Binding="{Binding Status}" Width="90" />
+                                                <DataGridTextColumn Header="DETAILS" Binding="{Binding Detail}" Width="*" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <ui:Button Content="Select Policy" MinWidth="105" Click="SelectPolicy_Click" />
-                                        <ui:Button Content="Open Policy" MinWidth="105" Margin="8,0,0,0" Click="OpenPolicy_Click" />
-                                        <ui:Button Content="Security Guide" MinWidth="110" Margin="8,0,0,0" Click="OpenSecurity_Click" />
+                                </ContentControl>
+
+                                <!-- failure detail + summary -->
+                                <Grid Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="16*" />
+                                        <ColumnDefinition Width="10*" />
+                                    </Grid.ColumnDefinitions>
+                                    <ContentControl Grid.Column="0" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <Grid>
+                                                    <TextBlock Style="{StaticResource CardTitle}">
+                                                        <Run Text="FAILURE DETAIL" /><Run x:Name="FailureAreaText" Text="" Foreground="{DynamicResource AmberBrush}" />
+                                                    </TextBlock>
+                                                    <TextBlock Style="{StaticResource Link}" HorizontalAlignment="Right"
+                                                               MouseLeftButtonUp="ShowMcpLogs_Click" Text="See logs →" />
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock x:Name="FailureDetailText" Margin="18,12,18,16" FontSize="12"
+                                                       Foreground="{DynamicResource Text2Brush}" TextWrapping="Wrap" LineHeight="19"
+                                                       Text="// failures land here with the failing step and its reason. See the Logs tab for full output." />
+                                        </StackPanel>
+                                    </ContentControl>
+                                    <ContentControl Grid.Column="1" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <TextBlock Style="{StaticResource CardTitle}" Text="SUMMARY" />
+                                            </Border>
+                                            <Grid Margin="18,8,18,12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="118" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Style="{StaticResource MonoDim}" Text="CHECKS" Margin="0,8,0,8" />
+                                                <TextBlock Grid.Column="1" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                           Foreground="{DynamicResource Text2Brush}" Margin="0,8"
+                                                           Text="{Binding Text, ElementName=DevTestSummaryText, Converter={StaticResource Upper}}" />
+                                                <TextBlock Grid.Row="1" Style="{StaticResource MonoDim}" Text="ARTIFACTS" Margin="0,8" />
+                                                <TextBlock Grid.Row="1" Grid.Column="1" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                           Foreground="{DynamicResource Text2Brush}" Margin="0,8"
+                                                           Text="%TEMP%\DotNetEngineeringMcp\selftest" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Row="2" Style="{StaticResource MonoDim}" Text="WORKING TREE" Margin="0,8" />
+                                                <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12"
+                                                           Foreground="{DynamicResource Text2Brush}" Margin="0,8" Text="untouched ✓" />
+                                                <TextBlock Grid.Row="3" Style="{StaticResource MonoDim}" Text="POLICY" Margin="0,8,0,0" />
+                                                <TextBlock Grid.Row="3" Grid.Column="1" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                           Foreground="{DynamicResource Text2Brush}" Margin="0,8,0,0"
+                                                           Text="{Binding Text, ElementName=PolicyFileNameText}" TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </ContentControl>
+                                </Grid>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ==================== INTEGRATION ==================== -->
+                    <TabItem Header="Integration">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Style="{StaticResource PageRoot}">
+
+                                <Grid Margin="0,0,0,18">
+                                    <TextBlock Style="{StaticResource Ghost}" Text="04" />
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource PageTitle}">
+                                            <Run Text="VS Code " /><Run Text="Integration" Foreground="{DynamicResource AmberBrush}" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource PageSub}"
+                                                   Text="Connect VS Code to the MCP server you started on Home. Start it here once, use it everywhere." />
+                                    </StackPanel>
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
+                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Text2Brush}"
+                                                       Text="{Binding Text, ElementName=VsCodeStatusText, Converter={StaticResource Upper}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Grid Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="16*" />
+                                        <ColumnDefinition Width="10*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- mcp.json -->
+                                    <ContentControl Grid.Column="0" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <Grid>
+                                                    <TextBlock Style="{StaticResource CardTitle}" Text="MCP.JSON" />
+                                                    <Border HorizontalAlignment="Right" BorderBrush="{DynamicResource Stroke2Brush}"
+                                                            BorderThickness="1">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <RadioButton Style="{StaticResource Seg}" GroupName="McpScope" Tag="global"
+                                                                         IsChecked="True" Checked="Scope_Checked" Content="Global" FontSize="11.5"
+                                                                         Padding="14,5" />
+                                                            <RadioButton Style="{StaticResource Seg}" GroupName="McpScope" Tag="workspace"
+                                                                         Checked="Scope_Checked" Content="Workspace" FontSize="11.5"
+                                                                         Padding="14,5" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                            <Border Background="{DynamicResource Bg2Brush}" Padding="18,16">
+                                                <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11.5"
+                                                           Foreground="{DynamicResource Text2Brush}" LineHeight="20">
+                                                    <Run Foreground="{DynamicResource Text3Brush}" x:Name="McpJsonPathText" Text="// %APPDATA%\Code\User\mcp.json" /><LineBreak />
+                                                    <Run Text="{}{" /><LineBreak />
+                                                    <Run Text="  " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;servers&quot;" /><Run Text=": {" /><LineBreak />
+                                                    <Run Text="    " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;dotnetWpfEngineering&quot;" /><Run Text=": {" /><LineBreak />
+                                                    <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;type&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;http&quot;" /><Run Text="," /><LineBreak />
+                                                    <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;url&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;http://127.0.0.1:8765/mcp&quot;" /><Run Text="," /><LineBreak />
+                                                    <Run Text="      " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;headers&quot;" /><Run Text=": {" /><LineBreak />
+                                                    <Run Text="        " /><Run Foreground="{DynamicResource CyanBrush}" Text="&quot;Authorization&quot;" /><Run Text=": " /><Run Foreground="{DynamicResource AmberBrush}" Text="&quot;Bearer ${env:MCP_HTTP_TOKEN}&quot;" /><LineBreak />
+                                                    <Run Text="    }" /><LineBreak />
+                                                    <Run Text="  }" /><LineBreak />
+                                                    <Run Text="}" />
+                                                </TextBlock>
+                                            </Border>
+                                            <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="0,1,0,0" Padding="16,12">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Style="{StaticResource Btn}" Padding="14,8" Content="Copy config" Click="CopyMcpConfig_Click" />
+                                                    <Button Style="{StaticResource Btn}" Padding="14,8" Margin="10,0,0,0" Content="Open file" Click="OpenMcpConfig_Click" />
+                                                    <Button Style="{StaticResource BtnPrimary}" Padding="14,8" Margin="10,0,0,0" Content="Write automatically" Click="ConnectVsCode_Click" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </ContentControl>
+
+                                    <!-- setup steps -->
+                                    <ContentControl Grid.Column="1" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <TextBlock Style="{StaticResource CardTitle}" Text="SETUP STEPS" />
+                                            </Border>
+                                            <StackPanel Margin="18,10,18,14">
+                                                <StackPanel Orientation="Horizontal" Margin="0,5">
+                                                    <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                               Foreground="{DynamicResource AmberBrush}" Width="26" Text="01" />
+                                                    <StackPanel Margin="0,0,0,0">
+                                                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Start the MCP server" />
+                                                        <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12" TextWrapping="Wrap"
+                                                                   Margin="0,3,0,0" Text="From the Home tab — keep it running while VS Code uses it." />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <Rectangle Height="1" Width="1" Fill="{DynamicResource HairBrush}" HorizontalAlignment="Left" Margin="12,2" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,5">
+                                                    <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                               Foreground="{DynamicResource AmberBrush}" Width="26" Text="02" />
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Pick a scope" />
+                                                        <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12" TextWrapping="Wrap"
+                                                                   Margin="0,3,0,0" Text="Global writes to your user profile mcp.json; workspace writes to .vscode/mcp.json." />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,5">
+                                                    <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                               Foreground="{DynamicResource AmberBrush}" Width="26" Text="03" />
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Copy the bearer token" />
+                                                        <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12" TextWrapping="Wrap"
+                                                                   Margin="0,3,0,0" Text="The token is generated per session and never written to logs." />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,5">
+                                                    <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                               Foreground="{DynamicResource AmberBrush}" Width="26" Text="04" />
+                                                    <StackPanel>
+                                                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Reload VS Code" />
+                                                        <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12" TextWrapping="Wrap"
+                                                                   Margin="0,3,0,0" Text="The Tools panel lists all 53 tools once the connection is live." />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </ContentControl>
+                                </Grid>
+
+                                <!-- connection status -->
+                                <ContentControl Style="{StaticResource Card}" Margin="0,18,0,0">
+                                    <StackPanel>
+                                        <Border Style="{StaticResource CardHead}">
+                                            <TextBlock Style="{StaticResource CardTitle}" Text="CONNECTION STATUS" />
+                                        </Border>
+                                        <Grid Margin="16,4,16,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="118" /><ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="130" /><ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Style="{StaticResource MonoDim}" Text="ENDPOINT" Margin="0,9" />
+                                            <TextBlock Grid.Column="1" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                       Foreground="{DynamicResource Text2Brush}" Margin="0,9" Text="{x:Static self:MainWindow.McpEndpoint}" />
+                                            <Border Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                    Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="LOCAL" />
+                                            </Border>
+                                            <TextBlock Grid.Column="3" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                       Foreground="{DynamicResource Text2Brush}" Margin="16,9,0,9" Text="streamable http · bearer" />
+                                            <TextBlock Grid.Row="1" Style="{StaticResource MonoDim}" Text="AUTH" Margin="0,9" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12.5"
+                                                       Foreground="{DynamicResource TextBrush}" Margin="0,9" Text="bearer token via environment variable" />
+                                            <Border Grid.Row="1" Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                    Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="ENV ONLY" />
+                                            </Border>
+                                            <TextBlock Grid.Row="1" Grid.Column="3" FontSize="12.5"
+                                                       Foreground="{DynamicResource Text2Brush}" Margin="16,9,0,9" Text="tokens never logged ✓" />
+                                            <TextBlock Grid.Row="2" Style="{StaticResource MonoDim}" Text="MCP.JSON" Margin="0,9" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12.5"
+                                                       Foreground="{DynamicResource TextBrush}" Margin="0,9" Text="user profile (global) or .vscode/mcp.json" />
+                                            <Border Grid.Row="2" Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                    Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="WRITE" />
+                                            </Border>
+                                            <TextBlock Grid.Row="2" Grid.Column="3" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                       Foreground="{DynamicResource Text2Brush}" Margin="16,9,0,9" Text="backup kept as .bak" />
+                                            <TextBlock Grid.Row="3" Style="{StaticResource MonoDim}" Text="TOOLS" Margin="0,9,0,12" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" FontSize="12.5"
+                                                       Foreground="{DynamicResource TextBrush}" Margin="0,9,0,12" Text="tools/list handshake" />
+                                            <Border Grid.Row="3" Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                    Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="53 EXPOSED" />
+                                            </Border>
+                                            <TextBlock Grid.Row="3" Grid.Column="3" FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                       Foreground="{DynamicResource Text2Brush}" Margin="16,9,0,12" Text="default-deny policy" />
+                                        </Grid>
+                                    </StackPanel>
+                                </ContentControl>
+
+                                <TextBlock x:Name="VsCodeDetailText" Visibility="Collapsed" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ==================== TOOLS ==================== -->
+                    <TabItem Header="Tools">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Style="{StaticResource PageRoot}">
+
+                                <Grid Margin="0,0,0,18">
+                                    <TextBlock Style="{StaticResource Ghost}" Text="03" />
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource PageTitle}">
+                                            <Run Text="Tool " /><Run Text="registry" Foreground="{DynamicResource AmberBrush}" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource PageSub}"
+                                                   Text="Every tool the shared MCP server exposes. Risk class decides whether VS Code can run it without asking." />
+                                    </StackPanel>
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
+                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Text2Brush}" Text="53 EXPOSED · DEFAULT-DENY" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <ContentControl Style="{StaticResource Card}" Margin="0,18,0,0">
+                                    <StackPanel>
+                                        <Border Style="{StaticResource CardHead}">
+                                            <Grid>
+                                                <TextBlock Style="{StaticResource CardTitle}" Text="TOOL REGISTRY" VerticalAlignment="Center" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                    <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                                            Background="{DynamicResource Bg2Brush}" Margin="0,0,12,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11"
+                                                                       Foreground="{DynamicResource Text3Brush}" VerticalAlignment="Center"
+                                                                       Margin="12,0,0,0" Text="⌕" />
+                                                            <TextBox x:Name="ToolSearch" Width="200" TextChanged="ToolSearch_Changed"
+                                                                     Background="Transparent" BorderThickness="0"
+                                                                     FontFamily="{DynamicResource FontMono}" FontSize="12"
+                                                                     Foreground="{DynamicResource TextBrush}" Padding="6,4"
+                                                                     VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <RadioButton Style="{StaticResource Chip}" GroupName="ToolCat" Tag="all" IsChecked="True" Checked="ToolFilter_Click" Content="ALL" />
+                                                        <RadioButton Style="{StaticResource Chip}" GroupName="ToolCat" Tag="wpf" Checked="ToolFilter_Click" Content="WPF UI" Margin="6,0,0,0" />
+                                                        <RadioButton Style="{StaticResource Chip}" GroupName="ToolCat" Tag="dotnet" Checked="ToolFilter_Click" Content="DIAGNOSTICS" Margin="6,0,0,0" />
+                                                        <RadioButton Style="{StaticResource Chip}" GroupName="ToolCat" Tag="source" Checked="ToolFilter_Click" Content="SOURCE" Margin="6,0,0,0" />
+                                                        <RadioButton Style="{StaticResource Chip}" GroupName="ToolCat" Tag="system" Checked="ToolFilter_Click" Content="SYSTEM" Margin="6,0,0,0" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- header row -->
+                                        <Grid Margin="16,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="240" /><ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="120" /><ColumnDefinition Width="120" />
+                                                <ColumnDefinition Width="100" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource MonoDim}" Text="TOOL" />
+                                            <TextBlock Grid.Column="1" Style="{StaticResource MonoDim}" Text="WHAT IT DOES" />
+                                            <TextBlock Grid.Column="2" Style="{StaticResource MonoDim}" Text="CATEGORY" />
+                                            <TextBlock Grid.Column="3" Style="{StaticResource MonoDim}" Text="PERMISSION" />
+                                            <TextBlock Grid.Column="4" Style="{StaticResource MonoDim}" Text="RISK" />
+                                        </Grid>
+
+                                        <ItemsControl x:Name="ToolList" Margin="0,0,0,6" />
+                                        <TextBlock x:Name="ToolEmpty" Margin="18,26" Style="{StaticResource MonoDim}" FontSize="12.5"
+                                                   Text="// no tools match" Visibility="Collapsed" />
+                                    </StackPanel>
+                                </ContentControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ==================== LOGS ==================== -->
+                    <TabItem x:Name="LogsTab" Header="Logs">
+                        <Grid Margin="36,26,36,22">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Margin="0,0,0,4">
+                                <TextBlock Style="{StaticResource Ghost}" Text="05" />
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource PageTitle}">
+                                        <Run Text="Activity " /><Run Text="log" Foreground="{DynamicResource AmberBrush}" />
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource PageSub}"
+                                               Text="Everything the shared server did, tagged by source. Filter chips follow the log sources." />
+                                </StackPanel>
+                                <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
+                                        HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
+                                                 VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
+                                                   Foreground="{DynamicResource Text2Brush}" Text="STREAMING" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <ContentControl Grid.Row="1" Style="{StaticResource Card}" Margin="0,18,0,0">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <Border Style="{StaticResource CardHead}">
+                                        <Grid>
+                                            <TextBlock Style="{StaticResource CardTitle}" Text="STREAM" VerticalAlignment="Center" />
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <RadioButton Style="{StaticResource Chip}" GroupName="LogFilter" Tag="" IsChecked="True" Checked="LogFilter_Click" Content="All" />
+                                                    <RadioButton Style="{StaticResource Chip}" GroupName="LogFilter" Tag="mcp" Checked="LogFilter_Click" Content="mcp" Margin="6,0,0,0" />
+                                                    <RadioButton Style="{StaticResource Chip}" GroupName="LogFilter" Tag="wpf" Checked="LogFilter_Click" Content="wpf" Margin="6,0,0,0" />
+                                                    <RadioButton Style="{StaticResource Chip}" GroupName="LogFilter" Tag="security" Checked="LogFilter_Click" Content="security" Margin="6,0,0,0" />
+                                                    <RadioButton Style="{StaticResource Chip}" GroupName="LogFilter" Tag="server" Checked="LogFilter_Click" Content="server" Margin="6,0,0,0" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
+                                                    <Button Style="{StaticResource Btn}" Padding="12,5" Content="Copy" Click="CopyLog_Click" />
+                                                    <Button Style="{StaticResource Btn}" Padding="12,5" Margin="6,0,0,0" Content="Clear" Click="ClearLog_Click" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl x:Name="LogStream" Padding="0,6,0,6">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="18,4" Background="Transparent">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="58" />
+                                                            <ColumnDefinition Width="80" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="11.5"
+                                                                   Foreground="{DynamicResource Text3Brush}" Text="{Binding Time}" />
+                                                        <TextBlock Grid.Column="1" FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                                   Foreground="{DynamicResource Text2Brush}" Text="{Binding Source}" />
+                                                        <TextBlock Grid.Column="2" FontFamily="{DynamicResource FontMono}" FontSize="11.5"
+                                                                   Foreground="{Binding Brush}" Text="{Binding Message}"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Grid>
+                            </ContentControl>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- ==================== SECURITY ==================== -->
+                    <TabItem Header="Security">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Style="{StaticResource PageRoot}">
+
+                                <Grid Margin="0,0,0,18">
+                                    <TextBlock Style="{StaticResource Ghost}" Text="06" />
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource PageTitle}">
+                                            <Run Text="Security" Foreground="{DynamicResource AmberBrush}" /><Run Text=" &amp; policy" />
+                                        </TextBlock>
+                                        <TextBlock Style="{StaticResource PageSub}"
+                                                   Text="Guardrails enforced by the shared MCP server before any tool reaches your machine." />
+                                    </StackPanel>
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
+                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
+                                                     VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
+                                                       Foreground="{DynamicResource Text2Brush}"
+                                                       Text="{Binding Text, ElementName=SecurityStatusText, Converter={StaticResource Upper}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Grid Margin="0,18,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- guardrails -->
+                                    <ContentControl Grid.Column="0" Style="{StaticResource Card}">
+                                        <StackPanel>
+                                            <Border Style="{StaticResource CardHead}">
+                                                <Grid>
+                                                    <TextBlock Style="{StaticResource CardTitle}" Text="ACTIVE GUARDRAILS" />
+                                                    <TextBlock Style="{StaticResource Link}" HorizontalAlignment="Right"
+                                                               MouseLeftButtonUp="OpenPolicy_Click" Text="Open policy →" />
+                                                </Grid>
+                                            </Border>
+                                            <StackPanel>
+                                                <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="0,0,0,1" Padding="18,14">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="30" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                                                Background="{DynamicResource Bg2Brush}" Width="30" Height="30">
+                                                            <TextBlock Text="🛡" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource AmberBrush}" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="13,0,10,0">
+                                                            <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Default-deny tool policy" />
+                                                            <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="11.5" TextWrapping="Wrap"
+                                                                       Margin="0,3,0,0" Text="Every tool must be explicitly allow-listed in policy.json before it can execute." />
+                                                        </StackPanel>
+                                                        <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1" Padding="8,2"
+                                                                VerticalAlignment="Top">
+                                                            <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="ON" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                                <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="0,0,0,1" Padding="18,14">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="30" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                                                Background="{DynamicResource Bg2Brush}" Width="30" Height="30">
+                                                            <TextBlock Text="▤" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource AmberBrush}" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="13,0,10,0">
+                                                            <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="File guard" />
+                                                            <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="11.5" TextWrapping="Wrap"
+                                                                       Margin="0,3,0,0" Text="Writes restricted to the repo and temp artifacts; paths outside are rejected." />
+                                                        </StackPanel>
+                                                        <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1" Padding="8,2"
+                                                                VerticalAlignment="Top">
+                                                            <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="ON" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                                <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="0,0,0,1" Padding="18,14">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="30" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                                                Background="{DynamicResource Bg2Brush}" Width="30" Height="30">
+                                                            <TextBlock Text="▭" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource AmberBrush}" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="13,0,10,0">
+                                                            <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Process guard" />
+                                                            <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="11.5" TextWrapping="Wrap"
+                                                                       Margin="0,3,0,0" Text="Spawned processes limited to dotnet/VS Code/test fixtures; killed on session end." />
+                                                        </StackPanel>
+                                                        <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1" Padding="8,2"
+                                                                VerticalAlignment="Top">
+                                                            <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="ON" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                                <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="0,0,0,1" Padding="18,14">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="30" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                                                Background="{DynamicResource Bg2Brush}" Width="30" Height="30">
+                                                            <TextBlock Text="◉" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource AmberBrush}" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="13,0,10,0">
+                                                            <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="PII redaction" />
+                                                            <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="11.5" TextWrapping="Wrap"
+                                                                       Margin="0,3,0,0" Text="Tokens, paths with usernames and known secret patterns masked in all tool output." />
+                                                        </StackPanel>
+                                                        <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1" Padding="8,2"
+                                                                VerticalAlignment="Top">
+                                                            <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="ON" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                                <Border Padding="18,14">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="30" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border BorderBrush="{DynamicResource Stroke2Brush}" BorderThickness="1"
+                                                                Background="{DynamicResource Bg2Brush}" Width="30" Height="30">
+                                                            <TextBlock Text="⚿" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Foreground="{DynamicResource AmberBrush}" />
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="13,0,10,0">
+                                                            <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Probe token" />
+                                                            <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="11.5" TextWrapping="Wrap"
+                                                                       Margin="0,3,0,0" Text="WPF probe accepts tokens via environment variable only — never command line." />
+                                                        </StackPanel>
+                                                        <Border BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1" Padding="8,2"
+                                                                VerticalAlignment="Top">
+                                                            <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="ON" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </ContentControl>
+
+                                    <StackPanel Grid.Column="2">
+                                        <!-- risk classifier -->
+                                        <ContentControl Style="{StaticResource Card}" Margin="0,18,0,0">
+                                            <StackPanel>
+                                                <Border Style="{StaticResource CardHead}">
+                                                    <TextBlock Style="{StaticResource CardTitle}" Text="RISK CLASSIFIER" />
+                                                </Border>
+                                                <Grid Margin="16,4,16,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="120" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <TextBlock Style="{StaticResource MonoDim}" Text="READ-ONLY" Margin="0,9" />
+                                                    <TextBlock Grid.Column="1" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                                               Margin="0,9" Text="list windows · inspect tree" />
+                                                    <Border Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
+                                                            Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                        <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="AUTO" />
+                                                    </Border>
+                                                    <TextBlock Grid.Row="1" Style="{StaticResource MonoDim}" Text="LOW" Margin="0,9" />
+                                                    <TextBlock Grid.Row="1" Grid.Column="1" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                                               Margin="0,9" Text="click button · set text" />
+                                                    <Border Grid.Row="1" Grid.Column="2" BorderBrush="{DynamicResource PillWarnBorderBrush}" BorderThickness="1"
+                                                            Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                        <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource AmberBrush}" Text="CONFIRM" />
+                                                    </Border>
+                                                    <TextBlock Grid.Row="2" Style="{StaticResource MonoDim}" Text="HIGH" Margin="0,9,0,12" />
+                                                    <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                                               Margin="0,9,0,12" Text="kill process · delete files" />
+                                                    <Border Grid.Row="2" Grid.Column="2" BorderBrush="{DynamicResource PillBadBorderBrush}" BorderThickness="1"
+                                                            Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
+                                                        <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource RedBrush}" Text="BLOCKED" />
+                                                    </Border>
+                                                </Grid>
+                                            </StackPanel>
+                                        </ContentControl>
+
+                                        <!-- policy file -->
+                                        <ContentControl Style="{StaticResource Card}" Margin="0,12,0,0">
+                                            <StackPanel>
+                                                <Border Style="{StaticResource CardHead}">
+                                                    <Grid>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource CardTitle}" Text="POLICY FILE" VerticalAlignment="Center" />
+                                                            <TextBlock x:Name="PolicyFileNameText" FontFamily="{DynamicResource FontMono}" FontSize="10"
+                                                                       Foreground="{DynamicResource Text3Brush}" Margin="12,0,0,0"
+                                                                       VerticalAlignment="Center" Text="policy.json" />
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <TextBlock Style="{StaticResource Link}" MouseLeftButtonUp="SelectPolicy_Click" Text="Select policy" />
+                                                            <TextBlock Style="{StaticResource Link}" Margin="10,0,0,0" MouseLeftButtonUp="OpenPolicy_Click" Text="Open policy" />
+                                                            <TextBlock Style="{StaticResource Link}" Margin="10,0,0,0" MouseLeftButtonUp="OpenSecurity_Click" Text="Security guide" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                                <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                                                    <TextBlock x:Name="PolicyPreview" Margin="18,14" FontFamily="{DynamicResource FontMono}"
+                                                               FontSize="11" Foreground="{DynamicResource Text2Brush}"
+                                                               Text="// loading policy…" TextWrapping="NoWrap" />
+                                                </ScrollViewer>
+                                                <TextBlock x:Name="PolicyPathText" Visibility="Collapsed" />
+                                            </StackPanel>
+                                        </ContentControl>
                                     </StackPanel>
                                 </Grid>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-
-                <!-- LOGS -->
-                <TabItem x:Name="LogsTab" Header="Logs">
-                    <Grid Margin="0,16,0,8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="10" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <TextBlock Text="MCP Server Logs" Style="{StaticResource SectionTitleStyle}" />
-                                <TextBlock Text="Build output, MCP server messages and test evidence." Margin="0,4,0,0"
-                                           Style="{StaticResource MutedTextStyle}" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <ui:Button Content="Copy Logs" MinWidth="90" Click="CopyLog_Click" />
-                                <ui:Button Content="Clear Logs" MinWidth="90" Margin="8,0,0,0" Click="ClearLog_Click" />
-                            </StackPanel>
-                        </Grid>
-                        <TextBox Grid.Row="2" x:Name="ActivityLog" IsReadOnly="True" AcceptsReturn="True"
-                                 TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas" FontSize="12" Padding="12"
-                                 Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
-                                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" />
-                    </Grid>
-                </TabItem>
-            </TabControl>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Grid>
         </Grid>
 
-        <Border Grid.Row="2" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0"
-                Padding="24,9">
+        <!-- ============ FOOTER ============ -->
+        <Border Grid.Row="2" Background="{DynamicResource Bg2Brush}"
+                BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="0,1,0,0" Padding="36,11">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="OperationStatusText" Text="Ready." Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                <TextBlock x:Name="FooterStatusText" Grid.Column="1" Text="Local dev mode" FontWeight="SemiBold" />
+                <TextBlock x:Name="OperationStatusText" FontFamily="{DynamicResource FontMono}" FontSize="10"
+                           Foreground="{DynamicResource Text3Brush}" Text="READY · AWAITING INPUT" />
+                <TextBlock x:Name="FooterStatusText" Grid.Column="2" FontFamily="{DynamicResource FontMono}" FontSize="10"
+                           Foreground="{DynamicResource Text3Brush}" Text="Local dev mode" />
+                <!-- signal bars (mockup .sigbars) -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                            Margin="0,0,14,0" IsHitTestVisible="False">
+                    <Rectangle Width="2" Height="6" Fill="{DynamicResource AmberBrush}" VerticalAlignment="Bottom" />
+                    <Rectangle Width="2" Height="9" Fill="{DynamicResource AmberBrush}" VerticalAlignment="Bottom" Margin="2,0,0,0" Opacity="0.55">
+                        <Rectangle.Triggers>
+                            <EventTrigger RoutedEvent="Rectangle.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" BeginTime="0:0:0.2">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.25" To="1" AutoReverse="True" Duration="0:0:0.9" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Rectangle.Triggers>
+                    </Rectangle>
+                    <Rectangle Width="2" Height="12" Fill="{DynamicResource AmberBrush}" VerticalAlignment="Bottom" Margin="2,0,0,0" Opacity="0.55">
+                        <Rectangle.Triggers>
+                            <EventTrigger RoutedEvent="Rectangle.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" BeginTime="0:0:0.4">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.25" To="1" AutoReverse="True" Duration="0:0:0.9" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Rectangle.Triggers>
+                    </Rectangle>
+                    <Rectangle Width="2" Height="9" Fill="{DynamicResource AmberBrush}" VerticalAlignment="Bottom" Margin="2,0,0,0" Opacity="0.55">
+                        <Rectangle.Triggers>
+                            <EventTrigger RoutedEvent="Rectangle.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" BeginTime="0:0:0.6">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.25" To="1" AutoReverse="True" Duration="0:0:0.9" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Rectangle.Triggers>
+                    </Rectangle>
+                    <Rectangle Width="2" Height="6" Fill="{DynamicResource CyanBrush}" VerticalAlignment="Bottom" Margin="2,0,0,0" Opacity="0.55">
+                        <Rectangle.Triggers>
+                            <EventTrigger RoutedEvent="Rectangle.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever" BeginTime="0:0:0.8">
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.25" To="1" AutoReverse="True" Duration="0:0:0.9" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Rectangle.Triggers>
+                    </Rectangle>
+                </StackPanel>
             </Grid>
         </Border>
+
+        <!-- ============ HUD OVERLAY: vignette + corner brackets + print sheet decoration ============ -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" IsHitTestVisible="False">
+            <Rectangle x:Name="VignetteLayer" Opacity="0.35">
+                <Rectangle.Fill>
+                    <RadialGradientBrush GradientOrigin="0.5,0.5" Center="0.5,0.5">
+                        <GradientStop Color="#00000000" Offset="0.55" />
+                        <GradientStop Color="#99000000" Offset="1" />
+                    </RadialGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+            <!-- four amber corner brackets -->
+            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.6" Opacity="0.55"
+                  Data="M0,0 H14 M0,0 V14" Stretch="None"
+                  HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0" />
+            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.6" Opacity="0.55"
+                  Data="M14,0 H0 M14,0 V14" Stretch="None"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0" />
+            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.6" Opacity="0.55"
+                  Data="M0,14 H14 M0,14 V0" Stretch="None"
+                  HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,10" />
+            <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.6" Opacity="0.55"
+                  Data="M14,14 H0 M14,14 V0" Stretch="None"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" />
+            <!-- engineering print sheet decoration (Print theme only, built in code) -->
+            <Grid x:Name="PrintDecoHost" Visibility="Collapsed" />
+        </Grid>
     </Grid>
 </ui:FluentWindow>

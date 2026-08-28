@@ -30,7 +30,7 @@ internal sealed class McpSelfTestService
         "wpf_type",
         "wpf_assert",
         "wpf_screenshot",
-        "wpf_probe_status"
+        "wpf_probe"
     ];
 
     public Task<McpClient> OpenHttpSessionAsync(string httpToken, CancellationToken cancellationToken = default)
@@ -180,10 +180,11 @@ internal sealed class McpSelfTestService
                 ["keyboardFocusable"] = null,
                 ["expectedName"] = null
             }),
-            ("WPF probe", "wpf_probe_status", new() { ["processId"] = fixtureProcessId }),
-            ("WPF probe", "wpf_probe_binding_errors", new()
+            ("WPF probe", "wpf_probe", new() { ["processId"] = fixtureProcessId, ["operation"] = "status" }),
+            ("WPF probe", "wpf_probe", new()
             {
                 ["processId"] = fixtureProcessId,
+                ["operation"] = "binding_errors",
                 ["automationId"] = null,
                 ["name"] = null
             }),
@@ -235,8 +236,8 @@ internal sealed class McpSelfTestService
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
             Name = ".NET/WPF Engineering MCP stdio Compatibility Test",
-            Command = "dotnet",
-            Arguments = ["run", "--no-build", "--project", layout.HostProject, "--", "--transport", "stdio"],
+            Command = layout.HostExecutable,
+            Arguments = ["--transport", "stdio"],
             WorkingDirectory = layout.Root,
             InheritEnvironmentVariables = false,
             EnvironmentVariables = CreateMinimalEnvironment(layout, probeToken),

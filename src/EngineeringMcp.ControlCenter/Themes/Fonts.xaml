@@ -1,0 +1,6 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <FontFamily x:Key="FontSerif">pack://application:,,,/Assets/Fonts/#Instrument Serif</FontFamily>
+    <FontFamily x:Key="FontSans">pack://application:,,,/Assets/Fonts/#Schibsted Grotesk</FontFamily>
+    <FontFamily x:Key="FontMono">pack://application:,,,/Assets/Fonts/#Spline Sans Mono</FontFamily>
+</ResourceDictionary>

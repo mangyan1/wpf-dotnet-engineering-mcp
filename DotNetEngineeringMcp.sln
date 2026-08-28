@@ -2,13 +2,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.AspNetCore", "src/EngineeringMcp.AspNetCore/EngineeringMcp.AspNetCore.csproj", "{3CBF6C52-4EA1-503C-9B99-CFE25E1B5536}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Audit", "src/EngineeringMcp.Audit/EngineeringMcp.Audit.csproj", "{E47D1063-B4C5-52F3-9B5E-5EE8970647D4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Contracts", "src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj", "{E384A2D7-7A0E-5215-A25D-E0E6DF8AC4A1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Diagnosis", "src/EngineeringMcp.Diagnosis/EngineeringMcp.Diagnosis.csproj", "{428A8378-90F6-5D22-A921-500E2CC1CBA3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.FailureCorrelation", "src/EngineeringMcp.FailureCorrelation/EngineeringMcp.FailureCorrelation.csproj", "{D4A9A5C9-2B7F-4E1B-9C6D-8F3A21B5E7F0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Diagnostics", "src/EngineeringMcp.Diagnostics/EngineeringMcp.Diagnostics.csproj", "{B088D744-0997-5C39-A0FC-3F660355DD64}"
 EndProject
@@ -16,7 +14,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Host", "src/
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Probe.Wpf", "src/EngineeringMcp.Probe.Wpf/EngineeringMcp.Probe.Wpf.csproj", "{37E0AD25-62DA-5FC1-BB87-2FA5435BE39D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Redaction", "src/EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj", "{091AE2DE-9028-55DA-9961-93C148D8719E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Security", "src/EngineeringMcp.Security/EngineeringMcp.Security.csproj", "{1FCBFD4A-CDEC-5557-B265-2337C5865635}"
 EndProject
@@ -24,7 +21,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Source", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Wpf", "src/EngineeringMcp.Wpf/EngineeringMcp.Wpf.csproj", "{1DE755D8-0BCD-535F-A6C7-539184E14F83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.Wpf.WpfUi", "src/EngineeringMcp.Wpf.WpfUi/EngineeringMcp.Wpf.WpfUi.csproj", "{537EE258-EDAC-5DE4-9E13-11CDE7BF1F30}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EngineeringMcp.AdversarialTests", "tests/EngineeringMcp.AdversarialTests/EngineeringMcp.AdversarialTests.csproj", "{2DED205B-7730-55BA-AD1E-ECED9962CFAB}"
 EndProject
@@ -48,14 +44,6 @@ Global
 		{37939458-4DEF-4181-8AB5-C7CC4D647AFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37939458-4DEF-4181-8AB5-C7CC4D647AFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37939458-4DEF-4181-8AB5-C7CC4D647AFF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3CBF6C52-4EA1-503C-9B99-CFE25E1B5536}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3CBF6C52-4EA1-503C-9B99-CFE25E1B5536}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3CBF6C52-4EA1-503C-9B99-CFE25E1B5536}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3CBF6C52-4EA1-503C-9B99-CFE25E1B5536}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E47D1063-B4C5-52F3-9B5E-5EE8970647D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E47D1063-B4C5-52F3-9B5E-5EE8970647D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E47D1063-B4C5-52F3-9B5E-5EE8970647D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E47D1063-B4C5-52F3-9B5E-5EE8970647D4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E384A2D7-7A0E-5215-A25D-E0E6DF8AC4A1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E384A2D7-7A0E-5215-A25D-E0E6DF8AC4A1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E384A2D7-7A0E-5215-A25D-E0E6DF8AC4A1}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -76,10 +64,6 @@ Global
 		{37E0AD25-62DA-5FC1-BB87-2FA5435BE39D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37E0AD25-62DA-5FC1-BB87-2FA5435BE39D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37E0AD25-62DA-5FC1-BB87-2FA5435BE39D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{091AE2DE-9028-55DA-9961-93C148D8719E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{091AE2DE-9028-55DA-9961-93C148D8719E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{091AE2DE-9028-55DA-9961-93C148D8719E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{091AE2DE-9028-55DA-9961-93C148D8719E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1FCBFD4A-CDEC-5557-B265-2337C5865635}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1FCBFD4A-CDEC-5557-B265-2337C5865635}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1FCBFD4A-CDEC-5557-B265-2337C5865635}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -92,10 +76,6 @@ Global
 		{1DE755D8-0BCD-535F-A6C7-539184E14F83}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1DE755D8-0BCD-535F-A6C7-539184E14F83}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1DE755D8-0BCD-535F-A6C7-539184E14F83}.Release|Any CPU.Build.0 = Release|Any CPU
-		{537EE258-EDAC-5DE4-9E13-11CDE7BF1F30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{537EE258-EDAC-5DE4-9E13-11CDE7BF1F30}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{537EE258-EDAC-5DE4-9E13-11CDE7BF1F30}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{537EE258-EDAC-5DE4-9E13-11CDE7BF1F30}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2DED205B-7730-55BA-AD1E-ECED9962CFAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2DED205B-7730-55BA-AD1E-ECED9962CFAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2DED205B-7730-55BA-AD1E-ECED9962CFAB}.Release|Any CPU.ActiveCfg = Release|Any CPU

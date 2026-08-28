@@ -1,3 +1,3 @@
 # WPF Probe
 
-Reserved by the architecture. **Not implemented yet.** Follow `docs/ROADMAP.md` and do not advertise this capability until its phase gate passes.
+The in-process WPF probe server that is explicitly installed into the target fixture. It answers bounded, allowlisted probe requests; this MCP server never injects it.

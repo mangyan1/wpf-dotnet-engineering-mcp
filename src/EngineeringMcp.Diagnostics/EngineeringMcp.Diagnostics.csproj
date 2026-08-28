@@ -1,10 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
     <PackageReference Include="Microsoft.Diagnostics.NETCore.Client" />
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" />
     <PackageReference Include="Microsoft.Diagnostics.Runtime" />
     <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
-    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
-    <ProjectReference Include="../EngineeringMcp.Redaction/EngineeringMcp.Redaction.csproj" />
   </ItemGroup>
 </Project>

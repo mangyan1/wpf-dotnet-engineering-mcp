@@ -14,12 +14,7 @@ public sealed record PolicyDecision(bool Allowed, string Code, string Reason)
     public static PolicyDecision Deny(string code, string reason) => new(false, code, reason);
 }
 
-public interface IPolicyEngine
-{
-    PolicyDecision Authorize(ToolPolicy policy, McpPolicy configuredPolicy, bool capabilityAvailable);
-}
-
-public sealed class PolicyEngine : IPolicyEngine
+public sealed class PolicyEngine
 {
     public PolicyDecision Authorize(ToolPolicy policy, McpPolicy configuredPolicy, bool capabilityAvailable)
     {

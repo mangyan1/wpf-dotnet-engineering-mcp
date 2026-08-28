@@ -4,16 +4,10 @@ using EngineeringMcp.Contracts;
 
 namespace EngineeringMcp.Security;
 
-public interface IPolicyProvider
+public class FilePolicyProvider
 {
-    McpPolicy Current { get; }
-    string Source { get; }
-}
-
-public sealed class FilePolicyProvider : IPolicyProvider
-{
-    public McpPolicy Current { get; }
-    public string Source { get; }
+    public virtual McpPolicy Current { get; }
+    public virtual string Source { get; }
 
     public FilePolicyProvider()
     {

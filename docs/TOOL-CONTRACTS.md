@@ -18,6 +18,8 @@ Before a tool can be marked implemented, it must define:
 
 Tools must never replace an error with a guessed result.
 
+Every non-UNKNOWN application claim must state its provenance: `OBSERVED` (direct evidence), `CORRELATED` (timing co-occurrence, never causal fact), `INFERRED` (heuristic, explicitly labeled), or `UNKNOWN` (no evidence).
+
 ## MCP wire contract
 
 - All tools use structured content and advertise an output schema.
@@ -48,7 +50,7 @@ Returns active permission ceiling and policy mode without revealing secrets. Per
 
 ## Public tool prefixes
 
-Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use underscore prefixes: `wpf_`, `wpf_probe_`, `wpfui_`, `a11y_`, `gui_`, `ux_`, `dotnet_`, `source_`, `aspnet_`, `diagnose_`, and `system_`.
+Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use underscore prefixes: `wpf_`, `wpfui_`, `a11y_`, `gui_`, `ux_`, `dotnet_`, `source_`, `aspnet_`, `diagnose_`, and `system_`. Family tools take an explicit `operation` discriminator (`wpf_probe`, `wpfui_inspect`) instead of one tool per operation, so the model-facing tool list stays small.
 
 Capability IDs are internal manifest identifiers and retain dotted names such as `wpf.uia.read` and `dotnet.eventpipe`.
 
@@ -65,4 +67,4 @@ Capability IDs are internal manifest identifiers and retain dotted names such as
 
 Every diagnosis uses `OBSERVED`, `CORRELATED`, `INFERRED`, `UNKNOWN`. Each non-UNKNOWN application claim should carry an evidence reference/correlation ID when the underlying adapter supports it.
 
-`diagnose_observe`, `diagnose_failure`, and `diagnose_workflow` are read-only current-state collectors. `diagnose_click` is the explicit action-replay path and remains risk/policy gated.
+`diagnose` is the read-only current-state collector across UI, probe, backend, and approved source. `diagnose_click` is the explicit action-replay path and remains risk/policy gated.

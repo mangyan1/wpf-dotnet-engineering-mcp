@@ -1,5 +1,4 @@
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -103,9 +102,9 @@ public sealed class SecurityTests
             await BoundedJsonPipeProtocol.ReadAsync<ToolFailure>(oversized, 1024));
     }
 
-    private sealed class FixedPolicyProvider(McpPolicy policy) : IPolicyProvider
+    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
     {
-        public McpPolicy Current { get; } = policy;
-        public string Source => "test";
+        public override McpPolicy Current { get; } = policy;
+        public override string Source => "test";
     }
 }

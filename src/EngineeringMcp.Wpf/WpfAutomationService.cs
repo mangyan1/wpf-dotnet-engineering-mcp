@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
@@ -13,9 +12,9 @@ using FlaUI.UIA3;
 namespace EngineeringMcp.Wpf;
 
 public sealed class WpfAutomationService(
-    IProcessGuard processGuard,
-    IPolicyProvider policyProvider,
-    IRedactionService redactionService) : IWpfAutomationService
+    ProcessGuard processGuard,
+    FilePolicyProvider policyProvider,
+    RedactionService redactionService)
 {
     private sealed class AttachedSession : IDisposable
     {

@@ -1,7 +1,6 @@
 using System.ComponentModel;
-using EngineeringMcp.Audit;
-using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
+using EngineeringMcp.Contracts;
 using ModelContextProtocol.Server;
 
 namespace EngineeringMcp.Host;
@@ -22,17 +21,16 @@ public static class SystemTools
     public static object Health() => new { status = "ready", scope = "mcp-host-only" };
 
     [McpServerTool(Name = "system_capabilities", UseStructuredContent = true), Description("Returns the authoritative capability manifest. Capabilities marked false must be treated as unavailable.")]
-    public static CapabilityManifest Capabilities(ICapabilityRegistry registry) => registry.GetManifest();
+    public static CapabilityManifest Capabilities(CapabilityRegistry registry) => registry.GetManifest();
 
-    [McpServerTool(Name = "system_permissions", UseStructuredContent = true), Description("Returns configured permission ceiling and policy source. It never returns policy secrets or tokens.")]
-    public static object Permissions(IPolicyProvider policy, ISessionContext session) => new
+    [McpServerTool(Name = "system_permissions", UseStructuredContent = true), Description("Returns configured permission ceiling and policy source. It never returns policy secrets or tokens. The server is stateless: audit identifiers are per server process, not per MCP session.")]
+    public static object Permissions(FilePolicyProvider policy) => new
     {
         permissionCeiling = policy.Current.PermissionCeiling.ToString(),
         policySource = policy.Source == "locked-down-default" ? policy.Source : "configured-file",
         allowDestructiveActions = policy.Current.AllowDestructiveActions,
         allowPrivilegedDiagnostics = policy.Current.AllowPrivilegedDiagnostics,
         piiMode = policy.Current.Pii.ToString(),
-        sessionId = session.SessionId,
         mode = "default-deny"
     };
 }

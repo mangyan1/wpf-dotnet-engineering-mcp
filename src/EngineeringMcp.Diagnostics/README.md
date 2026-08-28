@@ -1,3 +1,3 @@
 # .NET Diagnostics
 
-Reserved by the architecture. **Not implemented yet.** Follow `docs/ROADMAP.md` and do not advertise this capability until its phase gate passes.
+EventPipe and ClrMD diagnostics for allowlisted .NET processes: bounded counters, threads, modules, exception events, traces, and protected heap-dump capture/analysis. Only opaque handles leave the diagnostic boundary.

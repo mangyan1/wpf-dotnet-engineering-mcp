@@ -4,13 +4,7 @@ using EngineeringMcp.Contracts;
 
 namespace EngineeringMcp.Security;
 
-public interface IProcessGuard
-{
-    ProcessDescriptor Describe(Process process);
-    ToolResult<Process> RequireAllowed(int processId);
-}
-
-public sealed class ProcessGuard(IPolicyProvider policyProvider) : IProcessGuard
+public sealed class ProcessGuard(FilePolicyProvider policyProvider)
 {
     public ProcessDescriptor Describe(Process process)
     {

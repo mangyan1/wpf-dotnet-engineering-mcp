@@ -8,9 +8,13 @@ public static class McpRuntimeDefaults
 {
     public const string ServerName = "dotnetWpfEngineering";
     public const string HttpTokenEnvironmentVariable = "ENGINEERING_MCP_HTTP_TOKEN";
+    public const string RepositoryRootEnvironmentVariable = "ENGINEERING_MCP_REPOSITORY_ROOT";
+    public const string ArtifactsPathEnvironmentVariable = "ENGINEERING_MCP_ARTIFACTS_PATH";
     public const string ListenUrl = "http://127.0.0.1:8765";
     public const string McpPath = "/mcp";
     public const string HealthPath = "/healthz";
+    public const string ClientNameHeader = "X-Engineering-Mcp-Client";
+    public const string VsCodeClientName = "vscode";
     public const string McpEndpoint = ListenUrl + McpPath;
     public const string HealthEndpoint = ListenUrl + HealthPath;
 }

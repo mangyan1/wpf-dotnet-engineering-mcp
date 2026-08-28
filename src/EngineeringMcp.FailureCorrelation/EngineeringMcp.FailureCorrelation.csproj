@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../EngineeringMcp.Source/EngineeringMcp.Source.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Diagnostics/EngineeringMcp.Diagnostics.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Wpf/EngineeringMcp.Wpf.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+  </ItemGroup>
+</Project>

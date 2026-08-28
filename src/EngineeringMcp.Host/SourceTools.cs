@@ -11,24 +11,48 @@ namespace EngineeringMcp.Host;
 public static class SourceTools
 {
     [McpServerTool(Name = "source_inventory", UseStructuredContent = true), Description("Inventories only files beneath an approved source root and obeys deny globs.")]
-    public static ToolResult<SourceProjectInventory> Inventory(string root, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_inventory", "source.roslyn", root, () => source.Inventory(root), auth);
+    public static ToolResult<SourceProjectInventory> Inventory(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        SourceIntelligenceService source,
+        ToolAuthorization auth)
+        => ToolRun.Sync(auth, new ToolPolicy("source_inventory", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), root, () => source.Inventory(root));
 
     [McpServerTool(Name = "source_read", UseStructuredContent = true), Description("Reads a bounded line range from an approved source file. Content is redacted before MCP output.")]
-    public static ToolResult<SourceReadResult> Read(string path, int startLine, int maxLines, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_read", "source.roslyn", path, () => source.Read(path, startLine, maxLines), auth);
+    public static ToolResult<SourceReadResult> Read(
+        [Description("File path beneath a source root explicitly allowed by policy.")] string path,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("One-based first source line to return.")] int startLine = 1,
+        [Description("Maximum number of source lines to return; the server applies a hard upper bound.")] int maxLines = 400)
+        => ToolRun.Sync(auth, new ToolPolicy("source_read", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), path, () => source.Read(path, startLine, maxLines));
 
     [McpServerTool(Name = "source_find_symbol", UseStructuredContent = true), Description("Finds C# declarations syntactically under an approved source root; results include file/line evidence.")]
-    public static ToolResult<IReadOnlyList<SourceLocation>> FindSymbol(string root, string symbolName, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_find_symbol", "source.roslyn", root, () => source.FindSymbol(root, symbolName, maxResults), auth);
+    public static ToolResult<IReadOnlyList<SourceLocation>> FindSymbol(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Exact C# identifier to locate in approved source.")] string symbolName,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of results to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("source_find_symbol", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), root, () => source.FindSymbol(root, symbolName, maxResults));
 
     [McpServerTool(Name = "source_find_references", UseStructuredContent = true), Description("Finds bounded syntactic identifier references under an approved source root. It does not claim full semantic-reference resolution.")]
-    public static ToolResult<IReadOnlyList<SourceLocation>> FindReferences(string root, string identifier, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_find_references", "source.roslyn", root, () => source.FindReferences(root, identifier, maxResults), auth);
+    public static ToolResult<IReadOnlyList<SourceLocation>> FindReferences(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Exact C# identifier to locate in approved source.")] string identifier,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of results to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("source_find_references", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), root, () => source.FindReferences(root, identifier, maxResults));
 
     [McpServerTool(Name = "source_find_references_page", UseStructuredContent = true), Description("Returns one deterministic bounded page of syntactic C# identifier references beneath an approved source root, with an explicit next offset when more results exist.")]
-    public static ToolResult<PagedResult<SourceLocation>> FindReferencesPage(string root, string identifier, int offset, int pageSize, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_find_references_page", "source.roslyn", root, () =>
+    public static ToolResult<PagedResult<SourceLocation>> FindReferencesPage(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Exact C# identifier to locate in approved source.")] string identifier,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Zero-based result offset for deterministic bounded pagination.")] int offset = 0,
+        [Description("Number of results requested for one page; the server applies a hard upper bound.")] int pageSize = 100)
+        => ToolRun.Sync(auth, new ToolPolicy("source_find_references_page", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), root, () =>
         {
             offset = Math.Clamp(offset, 0, 1_999);
             pageSize = Math.Clamp(pageSize, 1, 200);
@@ -40,28 +64,40 @@ public static class SourceTools
             var hasMore = found.Value.Count > offset + items.Length;
             return ToolResult<PagedResult<SourceLocation>>.Ok(new PagedResult<SourceLocation>(
                 items, offset, pageSize, hasMore ? offset + items.Length : null, hasMore));
-        }, auth);
+        });
 
     [McpServerTool(Name = "source_find_references_semantic", UseStructuredContent = true), Description("Uses an approved MSBuild solution/project and Roslyn semantic symbols to find bounded C# references. Fails explicitly when a compilable project model cannot be loaded.")]
-    public static async Task<ToolResult<IReadOnlyList<SourceLocation>>> FindSemanticReferences(string root, string symbolName, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth, CancellationToken cancellationToken, IProgress<ProgressNotificationValue> progress)
-    {
-        progress.Report(new ProgressNotificationValue { Progress = 0, Total = 100, Message = "Loading the approved MSBuild project model." });
-        var policy = new ToolPolicy("source_find_references_semantic", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn");
-        var allowed = auth.Authorize(policy, root);
-        if (!allowed.Success) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(allowed.Error!.Code, allowed.Error.Message);
-        var result = await source.FindSemanticReferencesAsync(root, symbolName, maxResults, cancellationToken).ConfigureAwait(false);
-        progress.Report(new ProgressNotificationValue { Progress = 100, Total = 100, Message = "Semantic reference search completed." });
-        auth.Complete(allowed.Value!, policy, root, result.Success, result.Success ? "OK" : result.Error?.Code ?? "FAILED");
-        return result;
-    }
+    public static Task<ToolResult<IReadOnlyList<SourceLocation>>> FindSemanticReferences(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Exact C# identifier to locate in approved source.")] string symbolName,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        CancellationToken cancellationToken,
+        IProgress<ProgressNotificationValue> progress,
+        [Description("Maximum number of results to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Async(auth, new ToolPolicy("source_find_references_semantic", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), root, async () =>
+        {
+            progress.Report(new ProgressNotificationValue { Progress = 0, Total = 100, Message = "Loading the approved MSBuild project model." });
+            var result = await source.FindSemanticReferencesAsync(root, symbolName, maxResults, cancellationToken).ConfigureAwait(false);
+            progress.Report(new ProgressNotificationValue { Progress = 100, Total = 100, Message = "Semantic reference search completed." });
+            return result;
+        });
 
     [McpServerTool(Name = "source_analyze_xaml", UseStructuredContent = true), Description("Audits approved XAML for measurable issues including hard-coded colors, sensitive-looking attributes, and missing automation metadata.")]
-    public static ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(string root, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_analyze_xaml", "source.xaml", root, () => source.AnalyzeXaml(root, maxResults), auth);
+    public static ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of findings to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("source_analyze_xaml", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.xaml"), root, () => source.AnalyzeXaml(root, maxResults));
 
     [McpServerTool(Name = "wpfui_audit_resources", UseStructuredContent = true), Description("Static WPF/WPF-UI resource guard: reports measurable hard-coded brush/color usage in approved XAML. It does not invent a project-specific token catalogue.")]
-    public static ToolResult<IReadOnlyList<XamlFinding>> AuditWpfUiResources(string root, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("wpfui_audit_resources", "wpfui.static_audit", root, () =>
+    public static ToolResult<IReadOnlyList<XamlFinding>> AuditWpfUiResources(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of findings to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("wpfui_audit_resources", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "wpfui.static_audit"), root, () =>
         {
             var analyzed = source.AnalyzeXaml(root, Math.Clamp(maxResults * 4, 1, 5_000));
             if (!analyzed.Success || analyzed.Value is null)
@@ -70,27 +106,31 @@ public static class SourceTools
                 .Where(x => string.Equals(x.Rule, "WPF001_HARDCODED_COLOR", StringComparison.Ordinal))
                 .Take(Math.Clamp(maxResults, 1, 1_000))
                 .ToArray());
-        }, auth);
+        });
 
     [McpServerTool(Name = "source_find_automation_id", UseStructuredContent = true), Description("Maps an AutomationId to approved XAML source locations.")]
-    public static ToolResult<IReadOnlyList<SourceLocation>> FindAutomationId(string root, string automationId, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_find_automation_id", "source.xaml", root, () => source.FindAutomationId(root, automationId, maxResults), auth);
+    public static ToolResult<IReadOnlyList<SourceLocation>> FindAutomationId(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Exact WPF AutomationId previously observed on a UI element.")] string automationId,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of results to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("source_find_automation_id", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.xaml"), root, () => source.FindAutomationId(root, automationId, maxResults));
 
     [McpServerTool(Name = "source_find_binding", UseStructuredContent = true), Description("Finds exact WPF Binding Path evidence in approved XAML without guessing from visually similar names.")]
-    public static ToolResult<IReadOnlyList<SourceLocation>> FindBinding(string root, string bindingPath, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_find_binding", "source.xaml", root, () => source.FindBinding(root, bindingPath, maxResults), auth);
+    public static ToolResult<IReadOnlyList<SourceLocation>> FindBinding(
+        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Exact WPF Binding Path to locate in approved XAML.")] string bindingPath,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of results to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("source_find_binding", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.xaml"), root, () => source.FindBinding(root, bindingPath, maxResults));
 
     [McpServerTool(Name = "source_map_stacktrace", UseStructuredContent = true), Description("Maps file/line locations already present in a stack trace to approved source paths. It does not fabricate missing symbols.")]
-    public static ToolResult<IReadOnlyList<SourceLocation>> MapStackTrace(string stackTrace, int maxResults, ISourceIntelligenceService source, IToolAuthorization auth)
-        => Run("source_map_stacktrace", "source.roslyn", "stacktrace", () => source.MapStackTrace(stackTrace, maxResults), auth);
-
-    private static ToolResult<T> Run<T>(string tool, string capability, string target, Func<ToolResult<T>> action, IToolAuthorization auth)
-    {
-        var policy = new ToolPolicy(tool, PermissionLevel.ApplicationDiagnostics, RiskClass.Read, capability);
-        var allowed = auth.Authorize(policy, target);
-        if (!allowed.Success) return ToolResult<T>.Fail(allowed.Error!.Code, allowed.Error.Message);
-        var result = action();
-        auth.Complete(allowed.Value!, policy, target, result.Success, result.Success ? "OK" : result.Error?.Code ?? "FAILED");
-        return result;
-    }
+    public static ToolResult<IReadOnlyList<SourceLocation>> MapStackTrace(
+        [Description("Redacted stack trace containing source file and line evidence to map.")] string stackTrace,
+        SourceIntelligenceService source,
+        ToolAuthorization auth,
+        [Description("Maximum number of results to return; the server applies a hard upper bound.")] int maxResults = 200)
+        => ToolRun.Sync(auth, new ToolPolicy("source_map_stacktrace", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "source.roslyn"), "stacktrace", () => source.MapStackTrace(stackTrace, maxResults));
 }

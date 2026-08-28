@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -21,24 +20,10 @@ public sealed record SourceProjectInventory(
     int XamlFiles,
     bool Truncated);
 
-public interface ISourceIntelligenceService
-{
-    ToolResult<SourceProjectInventory> Inventory(string root);
-    ToolResult<SourceReadResult> Read(string path, int startLine = 1, int maxLines = 200);
-    ToolResult<IReadOnlyList<SourceLocation>> FindSymbol(string root, string symbolName, int maxResults = 100);
-    ToolResult<IReadOnlyList<SourceLocation>> FindReferences(string root, string identifier, int maxResults = 200);
-    Task<ToolResult<IReadOnlyList<SourceLocation>>> FindSemanticReferencesAsync(string root, string symbolName, int maxResults = 200, CancellationToken cancellationToken = default);
-    ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(string root, int maxResults = 500);
-    ToolResult<IReadOnlyList<SourceLocation>> FindAutomationId(string root, string automationId, int maxResults = 50);
-    ToolResult<IReadOnlyList<SourceLocation>> FindBinding(string root, string bindingPath, int maxResults = 100);
-    ToolResult<IReadOnlyList<SourceLocation>> MapStackTrace(string stackTrace, int maxResults = 100);
-    ToolResult<IReadOnlyList<SourceLocation>> MapStackTrace(string stackTrace, string sourceRoot, int maxResults = 100);
-}
-
 public sealed partial class SourceIntelligenceService(
-    IFileGuard fileGuard,
-    IPolicyProvider policyProvider,
-    IRedactionService redactor) : ISourceIntelligenceService
+    FileGuard fileGuard,
+    FilePolicyProvider policyProvider,
+    RedactionService redactor)
 {
     private const int MaxFilesToScan = 10_000;
     private const long MaxFileBytes = 4 * 1024 * 1024;

@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Globalization;
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
 using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Diagnostics.Tracing;
@@ -11,22 +10,10 @@ using Microsoft.Diagnostics.Tracing.Parsers;
 
 namespace EngineeringMcp.Diagnostics;
 
-public interface IDotNetDiagnosticsService : IAsyncDisposable
-{
-    ToolResult<RuntimeProcessInfo> GetRuntimeInfo(int processId);
-    Task<ToolResult<IReadOnlyList<ExceptionObservation>>> CaptureExceptionsAsync(int processId, int durationMs, CancellationToken cancellationToken = default);
-    Task<ToolResult<IReadOnlyList<RuntimeCounterObservation>>> CaptureCountersAsync(int processId, int durationMs, CancellationToken cancellationToken = default);
-    ToolResult<IReadOnlyList<ProcessThreadObservation>> GetThreads(int processId, int maxThreads = 256);
-    ToolResult<IReadOnlyList<ProcessModuleObservation>> GetModules(int processId, int maxModules = 512);
-    Task<ToolResult<DiagnosticActionResult<T>>> CaptureExceptionsDuringAsync<T>(int processId, Func<CancellationToken, Task<T>> action, ConcurrentQueue<ExceptionObservation> exceptions, int postActionObservationMs = 0, CancellationToken cancellationToken = default);
-    ToolResult<TraceHandle> StartTrace(int processId);
-    Task<ToolResult<TraceHandle>> StopTraceAsync(string traceId, CancellationToken cancellationToken = default);
-}
-
 public sealed class DotNetDiagnosticsService(
-    IProcessGuard processGuard,
-    IPolicyProvider policyProvider,
-    IRedactionService redactor) : IDotNetDiagnosticsService
+    ProcessGuard processGuard,
+    FilePolicyProvider policyProvider,
+    RedactionService redactor)
 {
     private const int MaxActiveTraces = 2;
     private const long MaxTraceBytes = 64L * 1024 * 1024;

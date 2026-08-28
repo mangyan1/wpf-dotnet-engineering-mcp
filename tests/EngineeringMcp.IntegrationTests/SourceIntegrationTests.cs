@@ -1,5 +1,4 @@
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
 using EngineeringMcp.Source;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -74,7 +73,7 @@ public sealed class SourceIntegrationTests
     [Timeout(30_000)]
     public async Task SemanticReferences_LoadApprovedSolutionAndResolveSymbolIdentity()
     {
-        var root = FindRepositoryRoot();
+        var root = TestRepositoryLocator.FindRoot();
         var policy = McpPolicy.LockedDownDefault with { Filesystem = new FileSystemPolicy([root], []) };
         var provider = new FixedPolicyProvider(policy);
         var service = new SourceIntelligenceService(new FileGuard(provider), provider, new RedactionService());
@@ -87,19 +86,9 @@ public sealed class SourceIntegrationTests
         Assert.IsTrue(result.Value!.All(location => location.Kind == "SemanticReference"));
     }
 
-    private static string FindRepositoryRoot()
+    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
     {
-        for (var current = new DirectoryInfo(AppContext.BaseDirectory); current is not null; current = current.Parent)
-        {
-            if (File.Exists(Path.Combine(current.FullName, "DotNetEngineeringMcp.sln")))
-                return current.FullName;
-        }
-        throw new DirectoryNotFoundException("Could not locate DotNetEngineeringMcp.sln from the test output directory.");
-    }
-
-    private sealed class FixedPolicyProvider(McpPolicy policy) : IPolicyProvider
-    {
-        public McpPolicy Current { get; } = policy;
-        public string Source => "test";
+        public override McpPolicy Current { get; } = policy;
+        public override string Source => "test";
     }
 }

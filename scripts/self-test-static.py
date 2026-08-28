@@ -48,6 +48,9 @@ selftest = (ROOT / "src/EngineeringMcp.ControlCenter/McpSelfTestService.cs").rea
 maincs = (ROOT / "src/EngineeringMcp.ControlCenter/MainWindow.xaml.cs").read_text(encoding="utf-8")
 xaml = (ROOT / "src/EngineeringMcp.ControlCenter/MainWindow.xaml").read_text(encoding="utf-8")
 runtime = (ROOT / "src/EngineeringMcp.Contracts/McpRuntimeDefaults.cs").read_text(encoding="utf-8")
+artifact_layout = (ROOT / "src/EngineeringMcp.ControlCenter/SelfTestArtifactLayout.cs").read_text(encoding="utf-8")
+integration_test_support = "\n".join(path.read_text(encoding="utf-8") for path in
+                                     (ROOT / "tests/EngineeringMcp.IntegrationTests").glob("Test*Locator*.cs"))
 tool_sources = "\n".join(path.read_text(encoding="utf-8") for path in (ROOT / "src/EngineeringMcp.Host").glob("*Tools.cs"))
 
 check('ModelContextProtocol.AspNetCore' in packages and 'ModelContextProtocol.AspNetCore' in host_csproj,
@@ -68,6 +71,15 @@ check('HttpClientTransport' in selftest and 'HttpTransportMode.StreamableHttp' i
       "Control Center self-test uses shared HTTP MCP")
 check('RunStdioCompatibilitySmokeAsync' in selftest,
       "Full self-test retains stdio compatibility check")
+check('Command = layout.HostExecutable' in selftest and '"dotnet"' not in selftest[selftest.find('CreateStdioClientAsync'):selftest.find('CreateMinimalEnvironment')],
+      "stdio self-test launches the selected built host directly")
+check('"--artifacts-path", artifacts.Root' in maincs and 'SelfTestArtifactLayout.Create()' in maincs,
+      "Control Center validation uses isolated build artifacts")
+check('Directory.Delete(Root, recursive: true)' in artifact_layout and 'EnsureContained(Root)' in artifact_layout,
+      "Isolated artifact cleanup is containment guarded")
+check('RepositoryRootEnvironmentVariable' in runtime and 'ArtifactsPathEnvironmentVariable' in runtime and
+      'TestRepositoryLocator' in integration_test_support and 'TestArtifactLocator' in integration_test_support,
+      "Isolated tests receive explicit repository and artifact locations")
 check('EngineeringMcp.Host.exe' in (ROOT / 'src/EngineeringMcp.ControlCenter/ProjectLayout.cs').read_text(encoding='utf-8'),
       "Control Center launches built host executable")
 check('startInfo.ArgumentList.Add("http")' in maincs and 'StartMcpServerAsync' in maincs,
@@ -82,6 +94,8 @@ workspace_cfg = json.loads((ROOT / '.vscode/mcp.json').read_text(encoding='utf-8
 server = workspace_cfg.get('servers', {}).get('dotnetWpfEngineering', {})
 check(server.get('type') == 'http' and server.get('url') == 'http://127.0.0.1:8765/mcp',
       "Workspace MCP example uses shared HTTP endpoint")
+check(server.get('headers', {}).get('X-Engineering-Mcp-Client') == 'vscode',
+      "Workspace MCP example identifies live VS Code traffic")
 check('${workspaceFolder}' not in json.dumps(workspace_cfg),
       "Workspace MCP example has no repository-path coupling")
 
@@ -110,8 +124,8 @@ check('AddListToolsFilter' in (ROOT / 'src/EngineeringMcp.Host/McpContractFilter
 pipe_sources = '\n'.join((ROOT / path).read_text(encoding='utf-8') for path in [
     'src/EngineeringMcp.Probe.Wpf/WpfProbeServer.cs',
     'src/EngineeringMcp.Wpf/WpfProbeClient.cs',
-    'src/EngineeringMcp.AspNetCore/BackendDiagnostics.cs',
-    'src/EngineeringMcp.AspNetCore/BackendProbeClient.cs'])
+    'tests/EngineeringMcp.AspNetCore.TestApp/BackendDiagnostics.cs',
+    'src/EngineeringMcp.Diagnostics/BackendProbeClient.cs'])
 check('BoundedJsonPipeProtocol' in pipe_sources and 'ReadLineAsync' not in pipe_sources,
       "Diagnostic IPC uses bounded framed JSON")
 

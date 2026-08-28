@@ -1,23 +1,15 @@
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
 using EngineeringMcp.Security;
 using Microsoft.Diagnostics.Runtime;
 using Microsoft.Diagnostics.NETCore.Client;
 
 namespace EngineeringMcp.Diagnostics;
 
-public interface IClrMdService : IDisposable
-{
-    ToolResult<object> CaptureDump(int processId, string? destinationDirectory = null);
-    ToolResult<DumpAnalysisSummary> AnalyzeCapturedDump(string dumpId, int maxThreads = 128, int maxFramesPerThread = 128);
-    ToolResult<DumpAnalysisSummary> AnalyzeDump(string dumpPath, int maxThreads = 128, int maxFramesPerThread = 128);
-}
-
 public sealed class ClrMdService(
-    IProcessGuard processGuard,
-    IFileGuard fileGuard,
-    IPolicyProvider policyProvider,
-    IRedactionService redactor) : IClrMdService
+    ProcessGuard processGuard,
+    FileGuard fileGuard,
+    FilePolicyProvider policyProvider,
+    RedactionService redactor)
 {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _capturedDumps = new(StringComparer.Ordinal);
     public ToolResult<object> CaptureDump(int processId, string? destinationDirectory = null)

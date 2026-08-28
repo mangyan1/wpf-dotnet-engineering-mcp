@@ -3,12 +3,7 @@ using EngineeringMcp.Contracts;
 
 namespace EngineeringMcp.Security;
 
-public interface IFileGuard
-{
-    ToolResult<string> RequireReadable(string path);
-}
-
-public sealed class FileGuard(IPolicyProvider policyProvider) : IFileGuard
+public sealed class FileGuard(FilePolicyProvider policyProvider)
 {
     private static readonly string[] BuiltInSensitiveFileNames =
     {

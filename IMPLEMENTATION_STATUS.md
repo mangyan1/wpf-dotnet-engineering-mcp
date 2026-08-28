@@ -1,17 +1,17 @@
 # Implementation Status
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 
 ## Verification state
 
-Verified on Windows on 2026-08-26 with .NET SDK 10.0.400:
+Verified on Windows on 2026-08-27 with .NET SDK 10.0.400:
 
 - `dotnet build DotNetEngineeringMcp.sln --no-restore`: passed with 0 warnings and 0 errors.
-- `dotnet test DotNetEngineeringMcp.sln --configuration Release --no-build`: 15 tests passed across security, adversarial, and integration suites, including an approved-root MSBuild/Roslyn semantic-reference resolution test.
-- Live authenticated Streamable HTTP initialization and `tools/list`: HTTP 200, protocol `2025-06-18`, 68 tools.
+- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 18 tests passed across security, adversarial, and integration suites, including an approved-root MSBuild/Roslyn semantic-reference resolution test.
+- Live authenticated Streamable HTTP initialization and `tools/list`: HTTP 200, protocol `2025-06-18`, 53 tools.
 - Live contract gate: every tool has an output schema, title, annotations, and descriptions for every input property; a deterministic domain failure returned MCP `isError=true`.
 - WPF runtime smoke: allowlisted attach succeeded, a 50-element semantic snapshot succeeded, framed WPF probe status succeeded, and screenshot output contained one native MCP image block plus metadata with no structured base64 duplicate.
-- The rebuilt Debug Control Center owns the rebuilt Debug host at `127.0.0.1:8765`; post-restart live discovery confirmed 68 tools, 204/204 described inputs, and complete schema/title/annotation coverage.
+- The rebuilt Debug Control Center owns the rebuilt Debug host at `127.0.0.1:8765`; post-restart live discovery confirmed 53 tools and complete input-description/schema/title/annotation coverage.
 - Live tool-name contract: 0 invalid names, 0 dotted names, `wpf_attach` present, legacy `wpf.attach` absent.
 - Authentication negative checks: missing and invalid bearer tokens both returned HTTP 401.
 

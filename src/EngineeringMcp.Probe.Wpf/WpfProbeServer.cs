@@ -11,7 +11,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using EngineeringMcp.Contracts;
-using EngineeringMcp.Redaction;
+using EngineeringMcp.Security;
 
 namespace EngineeringMcp.Probe.Wpf;
 

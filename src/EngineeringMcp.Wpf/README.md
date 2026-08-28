@@ -1,3 +1,3 @@
 # WPF Adapter
 
-Reserved by the architecture. **Not implemented yet.** Follow `docs/ROADMAP.md` and do not advertise this capability until its phase gate passes.
+Out-of-process WPF UI Automation adapter: bounded element queries and mutations, the WPF probe client, and UIA-based audit services.

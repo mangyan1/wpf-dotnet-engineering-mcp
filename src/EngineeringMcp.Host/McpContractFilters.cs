@@ -17,7 +17,7 @@ internal static class McpContractFilters
             {
                 var result = await next(context, cancellationToken);
                 var services = context.Services ?? throw new InvalidOperationException("MCP request services are unavailable.");
-                var policy = services.GetRequiredService<IPolicyProvider>().Current;
+                var policy = services.GetRequiredService<FilePolicyProvider>().Current;
 
                 for (var index = result.Tools.Count - 1; index >= 0; index--)
                 {
@@ -30,7 +30,6 @@ internal static class McpContractFilters
 
                     tool.Title ??= ToolContractCatalog.Title(tool.Name);
                     tool.Annotations = ToolContractCatalog.Annotations(tool.Name);
-                    tool.InputSchema = ToolContractCatalog.DescribeInputSchema(tool.InputSchema);
                 }
 
                 return result;
@@ -39,7 +38,7 @@ internal static class McpContractFilters
             filters.AddCallToolFilter(next => async (context, cancellationToken) =>
             {
                 var services = context.Services ?? throw new InvalidOperationException("MCP request services are unavailable.");
-                var policy = services.GetRequiredService<IPolicyProvider>().Current;
+                var policy = services.GetRequiredService<FilePolicyProvider>().Current;
                 if (!ToolContractCatalog.IsEnabled(context.Params.Name, policy))
                     throw new McpException("This tool is disabled by the active capability profile or tool policy.");
 
@@ -47,7 +46,7 @@ internal static class McpContractFilters
                 if (context.Params.Arguments?.TryGetValue("processId", out var processIdValue) == true &&
                     processIdValue.ValueKind == JsonValueKind.Number && processIdValue.TryGetInt32(out var processId))
                 {
-                    processLease = await services.GetRequiredService<IProcessOperationCoordinator>()
+                    processLease = await services.GetRequiredService<ProcessOperationCoordinator>()
                         .EnterAsync(processId, cancellationToken);
                 }
 
@@ -60,6 +59,9 @@ internal static class McpContractFilters
                 {
                     if (processLease is not null) await processLease.DisposeAsync();
                 }
+
+                // ponytail: isError is derived from the serialized structured result because the SDK
+                // owns the ToolResult->CallToolResult mapping; McpHttpIntegrationTests guards this key.
                 if (result.StructuredContent is JsonElement structured &&
                     structured.ValueKind == JsonValueKind.Object &&
                     structured.TryGetProperty("success", out var success) &&
@@ -68,9 +70,59 @@ internal static class McpContractFilters
                     result.IsError = true;
                 }
 
+                // ponytail: defense-in-depth redaction of every output string. Services redact their
+                // own outputs; this pass catches a service that forgets. Upgrade path: none needed
+                // unless output volumes make the per-call walk measurable.
+                RedactOutput(result, services.GetRequiredService<RedactionService>(), policy.Pii);
+
                 return result;
             });
         });
+
+    private static void RedactOutput(CallToolResult result, RedactionService redaction, PiiMode pii)
+    {
+        foreach (var block in result.Content)
+        {
+            if (block is TextContentBlock text && !string.IsNullOrEmpty(text.Text))
+                text.Text = redaction.Redact(text.Text, pii);
+        }
+
+        if (result.StructuredContent is not JsonElement structured)
+            return;
+        var node = JsonNode.Parse(structured.GetRawText());
+        if (node is not null)
+            result.StructuredContent = JsonSerializer.SerializeToElement(RedactNode(node, redaction, pii, 0));
+    }
+
+    private static JsonNode? RedactNode(JsonNode? node, RedactionService redaction, PiiMode pii, int depth)
+    {
+        if (node is null || depth > 32) return node;
+        switch (node)
+        {
+            case JsonObject obj:
+            {
+                // Clear-then-rebuild: reassigning a node still parented to obj throws
+                // "The node already has a parent", so detach children before walking them.
+                var entries = obj.ToArray();
+                obj.Clear();
+                foreach (var (key, value) in entries)
+                    obj[key] = RedactNode(value, redaction, pii, depth + 1);
+                return obj;
+            }
+            case JsonArray array:
+            {
+                var items = array.ToArray();
+                array.Clear();
+                foreach (var item in items)
+                    array.Add(RedactNode(item, redaction, pii, depth + 1));
+                return array;
+            }
+            case JsonValue value when value.TryGetValue<string>(out var text):
+                return JsonValue.Create(redaction.Redact(text, pii));
+            default:
+                return node;
+        }
+    }
 }
 
 internal static class ToolContractCatalog
@@ -86,48 +138,6 @@ internal static class ToolContractCatalog
     {
         "wpf_attach", "wpf_detach", "wpf_expand", "wpf_collapse", "wpf_scroll", "wpf_focus",
         "dotnet_trace_stop"
-    };
-
-    private static readonly Dictionary<string, string> ParameterDescriptions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["processId"] = "Operating-system process identifier of an allowlisted target process.",
-        ["automationId"] = "Exact WPF AutomationId. Prefer this stable semantic selector over visible text.",
-        ["name"] = "Exact accessible element name when AutomationId is unavailable.",
-        ["controlType"] = "WPF UI Automation control type, such as Button, TextBox, or Window.",
-        ["reference"] = "Opaque UI element reference returned by an earlier MCP UI query.",
-        ["maxElements"] = "Maximum number of UI elements to return; the server applies a hard upper bound.",
-        ["maxDepth"] = "Maximum traversal depth; the server applies a hard upper bound.",
-        ["timeoutMs"] = "Bounded timeout in milliseconds before the operation is cancelled.",
-        ["requireEnabled"] = "When true, wait for or assert that the selected element is enabled.",
-        ["requireVisible"] = "When true, wait for or assert that the selected element is visible.",
-        ["expectedValue"] = "Expected sanitized value used by the requested assertion.",
-        ["value"] = "Non-sensitive value to enter or compare. Credentials and secret-looking values are rejected.",
-        ["itemName"] = "Exact accessible name of the item to select.",
-        ["durationMs"] = "Bounded observation duration in milliseconds.",
-        ["traceId"] = "Opaque trace identifier previously returned by this MCP session.",
-        ["dumpId"] = "Opaque dump identifier previously returned by this MCP session.",
-        ["root"] = "Path beneath a source root explicitly allowed by policy.",
-        ["path"] = "File path beneath a source root explicitly allowed by policy.",
-        ["pattern"] = "Bounded file-search pattern applied only within an approved source root.",
-        ["startLine"] = "One-based first source line to return.",
-        ["lineCount"] = "Maximum number of source lines to return.",
-        ["symbol"] = "Exact C# identifier to locate in approved source.",
-        ["bindingPath"] = "Exact WPF Binding Path to locate in approved XAML.",
-        ["stackTrace"] = "Redacted stack trace containing source file and line evidence to map.",
-        ["backendName"] = "Configured local ASP.NET diagnostic adapter name.",
-        ["limit"] = "Maximum number of observations to return; the server applies a hard upper bound.",
-        ["sinceUtc"] = "Optional UTC lower bound for returned observations.",
-        ["windowMs"] = "Bounded correlation window in milliseconds.",
-        ["propertyName"] = "Explicitly allowlisted WPF dependency property or safe property name.",
-        ["resourceKey"] = "Exact WPF resource key to inspect through the authorized probe.",
-        ["targetAutomationId"] = "Exact AutomationId of the target element within the attached WPF process.",
-        ["includeChildren"] = "Whether the bounded inspection may include descendants of the selected element.",
-        ["forceGc"] = "Whether to request a target GC before collecting the diagnostic observation; requires policy approval.",
-        ["typeName"] = "Exact or bounded partial managed type name used for dump analysis.",
-        ["maxFrames"] = "Maximum number of stack frames returned per bounded diagnostic result.",
-        ["maxTypes"] = "Maximum number of managed types returned by bounded dump analysis.",
-        ["offset"] = "Zero-based result offset for deterministic bounded pagination.",
-        ["pageSize"] = "Number of results requested for one page; the server applies a hard upper bound."
     };
 
     public static bool IsEnabled(string name, McpPolicy policy)
@@ -158,25 +168,6 @@ internal static class ToolContractCatalog
             IdempotentHint = readOnly || IdempotentMutations.Contains(name),
             OpenWorldHint = false
         };
-    }
-
-    public static JsonElement DescribeInputSchema(JsonElement schema)
-    {
-        var root = JsonNode.Parse(schema.GetRawText())?.AsObject()
-            ?? throw new InvalidDataException("Generated tool input schema is not a JSON object.");
-        if (root["properties"] is not JsonObject properties)
-            return schema;
-
-        foreach (var property in properties)
-        {
-            if (property.Value is not JsonObject definition || definition.ContainsKey("description"))
-                continue;
-            definition["description"] = ParameterDescriptions.TryGetValue(property.Key, out var description)
-                ? description
-                : $"Value for the '{property.Key}' parameter. Follow the tool description and schema constraints.";
-        }
-
-        return JsonSerializer.SerializeToElement(root);
     }
 
     private static string Profile(string name)

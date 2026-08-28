@@ -8,6 +8,9 @@
     <RootNamespace>EngineeringMcp.ControlCenter</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Resource Include="Assets/Fonts/*.ttf" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
     <PackageReference Include="WPF-UI" />
     <PackageReference Include="ModelContextProtocol" />

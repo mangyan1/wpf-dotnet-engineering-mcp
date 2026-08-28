@@ -39,7 +39,7 @@ The same `EngineeringMcp.Host.exe` supports both:
 - `--transport http` — normal shared service used by Control Center and VS Code.
 - `--transport stdio` — compatibility mode for clients that prefer to spawn the server themselves.
 
-The HTTP service binds only to the loopback interface. The host rejects non-loopback peers and non-loopback Host headers, requires a bearer token on `/mcp`, compares that token in constant time, and does not enable CORS. Health metadata remains available locally without credentials so the Control Center can safely identify and manage the host process.
+The HTTP service binds only to the loopback interface. The host rejects non-loopback peers and non-loopback Host headers, requires a bearer token on `/mcp` and `/healthz`, compares that token in constant time, and does not enable CORS. The Control Center supplies the same token when probing health so it can identify and manage the host process.
 
 ## Troubleshooting
 

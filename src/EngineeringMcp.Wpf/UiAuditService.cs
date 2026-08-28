@@ -4,14 +4,7 @@ namespace EngineeringMcp.Wpf;
 
 public sealed record UiAuditFinding(string Severity, string Category, string ElementReference, string Message, string Evidence);
 
-public interface IUiAuditService
-{
-    ToolResult<IReadOnlyList<UiAuditFinding>> AccessibilityAudit(int processId);
-    ToolResult<IReadOnlyList<UiAuditFinding>> GuiAudit(int processId);
-    ToolResult<IReadOnlyList<UiAuditFinding>> UxHeuristicReview(int processId);
-}
-
-public sealed class UiAuditService(IWpfAutomationService wpf) : IUiAuditService
+public sealed class UiAuditService(WpfAutomationService wpf)
 {
     public ToolResult<IReadOnlyList<UiAuditFinding>> AccessibilityAudit(int processId)
     {

@@ -1,3 +1,3 @@
-# Source Intelligence
+# Source
 
-Reserved by the architecture. **Not implemented yet.** Follow `docs/ROADMAP.md` and do not advertise this capability until its phase gate passes.
+Roslyn/MSBuild and XAML source intelligence over approved roots: inventories, bounded reads, symbol/reference lookup, XAML findings, automation-id and binding evidence, stack-trace mapping.
