@@ -128,6 +128,7 @@ public sealed partial class McpHttpIntegrationTests
             Assert.IsFalse(names.Contains("wpf.attach", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("diagnose", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("source_find_references_semantic", StringComparer.Ordinal));
+            Assert.IsTrue(names.Contains("system_policy_diagnostics", StringComparer.Ordinal));
 
             foreach (var tool in tools)
             {
@@ -157,7 +158,11 @@ public sealed partial class McpHttpIntegrationTests
             using var failedPayload = await ReadMcpJsonAsync(failedCall);
             var failedResult = failedPayload.RootElement.GetProperty("result");
             Assert.IsTrue(failedResult.GetProperty("isError").GetBoolean(), "Domain failures must set MCP isError=true.");
-            Assert.IsFalse(failedResult.GetProperty("structuredContent").GetProperty("success").GetBoolean());
+            var failedStructured = failedResult.GetProperty("structuredContent");
+            Assert.IsFalse(failedStructured.GetProperty("success").GetBoolean());
+            Assert.AreEqual(JsonValueKind.String,
+                failedStructured.GetProperty("error").GetProperty("remediation").ValueKind,
+                "Policy and guard failures must provide safe remediation guidance.");
         }
         finally
         {

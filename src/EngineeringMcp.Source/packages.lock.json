@@ -189,7 +189,7 @@
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.3, )"
+          "EngineeringMcp.Contracts": "[0.3.4, )"
         }
       }
     },

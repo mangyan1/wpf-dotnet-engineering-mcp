@@ -33,4 +33,8 @@ public static class SystemTools
         piiMode = policy.Current.Pii.ToString(),
         mode = "default-deny"
     };
+
+    [McpServerTool(Name = "system_policy_diagnostics", UseStructuredContent = true), Description("Explains effective policy restrictions and safe remediation steps without returning policy paths, process paths, source roots, secrets, or tokens.")]
+    public static PolicyDiagnosticReport PolicyDiagnosticReport(FilePolicyProvider policy)
+        => PolicyDiagnostics.Analyze(policy.Current, policy.Source);
 }

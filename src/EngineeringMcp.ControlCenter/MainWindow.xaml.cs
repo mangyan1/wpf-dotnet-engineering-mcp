@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows;
 using EngineeringMcp.Contracts;
+using EngineeringMcp.Security;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
@@ -232,6 +233,7 @@ public partial class MainWindow : FluentWindow
             : McpStatusText.Text.StartsWith("● PASS", StringComparison.Ordinal) ? McpStatusText.Text : "● Stopped";
         VsCodeStatusText.Text = vscodeOk ? "● Ready" : "● Offline";
         SecurityStatusText.Text = securityOk ? "● Armed" : "● Policy missing";
+        RefreshPolicyDiagnostics();
         FixtureStatusText.Text = _fixtureProcess is not null && !_fixtureProcess.HasExited
             ? $"● Running · PID {_fixtureProcess.Id}"
             : "● Stopped";

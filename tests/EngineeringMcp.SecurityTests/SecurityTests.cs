@@ -45,6 +45,52 @@ public sealed class SecurityTests
         var decision = new PolicyEngine().Authorize(new ToolPolicy("dotnet_capture_dump", PermissionLevel.SensitiveDiagnostics, RiskClass.Privileged, "dotnet.clrmd"), policy, true);
         Assert.IsFalse(decision.Allowed);
         Assert.AreEqual("PRIVILEGED_DIAGNOSTICS_DISABLED", decision.Code);
+        StringAssert.Contains(decision.Remediation, "allowPrivilegedDiagnostics");
+    }
+
+    [TestMethod]
+    public void PolicyEngine_PermissionDenialNamesRequiredSettingAndControlCenterAction()
+    {
+        var decision = new PolicyEngine().Authorize(
+            new ToolPolicy("dotnet_runtime_info", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "dotnet.eventpipe"),
+            McpPolicy.LockedDownDefault,
+            capabilityAvailable: true);
+
+        Assert.IsFalse(decision.Allowed);
+        Assert.AreEqual("PERMISSION_DENIED", decision.Code);
+        StringAssert.Contains(decision.Reason, nameof(PermissionLevel.ApplicationDiagnostics));
+        StringAssert.Contains(decision.Remediation, "permissionCeiling");
+        StringAssert.Contains(decision.Remediation, "Control Center");
+    }
+
+    [TestMethod]
+    public void PolicyDiagnostics_ExplainsLockedDownDefaultWithoutExposingPaths()
+    {
+        var report = PolicyDiagnostics.Analyze(McpPolicy.LockedDownDefault, "locked-down-default");
+
+        Assert.AreEqual("locked-down-default", report.PolicySource);
+        Assert.IsTrue(report.Findings.Any(finding => finding.Code == "POLICY_NOT_CONFIGURED"));
+        Assert.IsTrue(report.Findings.Any(finding => finding.Code == "PROCESS_ALLOWLIST_EMPTY"));
+        Assert.IsTrue(report.Findings.Any(finding => finding.Code == "SOURCE_ROOTS_EMPTY"));
+        Assert.IsTrue(report.Findings.All(finding => !finding.Remediation.Contains("C:\\", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
+    public void ProcessEnvironmentSanitizer_RemovesNetworkRelativeAndDuplicatePathEntries()
+    {
+        var first = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "engineering-mcp-path-a"));
+        var second = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "engineering-mcp-path-b"));
+        var input = string.Join(Path.PathSeparator,
+            first,
+            @"\\Truenas\downloaded\GitHub-Projects\ApexDrive\.dotnet_cli\.dotnet\tools",
+            "relative-tools",
+            first,
+            second);
+
+        var sanitized = ProcessEnvironmentSanitizer.SanitizePath(input);
+        var entries = sanitized.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+
+        CollectionAssert.AreEqual(new[] { first, second }, entries);
     }
 
     [TestMethod]
@@ -92,10 +138,13 @@ public sealed class SecurityTests
     public async Task BoundedJsonPipeProtocol_RoundTripsAndRejectsOversizedFrame()
     {
         await using var stream = new MemoryStream();
-        await BoundedJsonPipeProtocol.WriteAsync(stream, new ToolFailure("SYNTHETIC", "Synthetic failure"), 1024);
+        await BoundedJsonPipeProtocol.WriteAsync(stream,
+            new ToolFailure("SYNTHETIC", "Synthetic failure", Remediation: "Use the synthetic safe action."),
+            1024);
         stream.Position = 0;
         var value = await BoundedJsonPipeProtocol.ReadAsync<ToolFailure>(stream, 1024);
         Assert.AreEqual("SYNTHETIC", value?.Code);
+        Assert.AreEqual("Use the synthetic safe action.", value?.Remediation);
 
         await using var oversized = new MemoryStream(BitConverter.GetBytes(2048));
         await Assert.ThrowsExactlyAsync<InvalidDataException>(async () =>

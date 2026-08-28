@@ -15,7 +15,7 @@ internal static class ToolRun
     {
         var started = Stopwatch.StartNew();
         var allowed = auth.Authorize(policy, target);
-        if (!allowed.Success) return ToolResult<T>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable);
+        if (!allowed.Success) return ToolResult<T>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         try
         {
             var result = action();
@@ -32,7 +32,7 @@ internal static class ToolRun
     {
         var started = Stopwatch.StartNew();
         var allowed = auth.Authorize(policy, target);
-        if (!allowed.Success) return ToolResult<T>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable);
+        if (!allowed.Success) return ToolResult<T>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         try
         {
             var result = await action().ConfigureAwait(false);

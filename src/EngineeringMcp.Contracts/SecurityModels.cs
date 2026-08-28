@@ -48,7 +48,11 @@ public enum PiiMode
     Remove
 }
 
-public sealed record ToolFailure(string Code, string Message, bool Retryable = false);
+public sealed record ToolFailure(
+    string Code,
+    string Message,
+    bool Retryable = false,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Remediation = null);
 
 public sealed record ToolResult<T>(
     bool Success,
@@ -56,8 +60,8 @@ public sealed record ToolResult<T>(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ToolFailure? Error = null)
 {
     public static ToolResult<T> Ok(T value) => new(true, value);
-    public static ToolResult<T> Fail(string code, string message, bool retryable = false)
-        => new(false, default, new ToolFailure(code, message, retryable));
+    public static ToolResult<T> Fail(string code, string message, bool retryable = false, string? remediation = null)
+        => new(false, default, new ToolFailure(code, message, retryable, remediation));
 }
 
 public sealed record EvidenceItem(

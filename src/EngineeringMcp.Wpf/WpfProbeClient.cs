@@ -13,7 +13,7 @@ public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService r
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
-            return ToolResult<ProbeResponse>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<ProbeResponse>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         var token = Environment.GetEnvironmentVariable("ENGINEERING_MCP_PROBE_TOKEN");

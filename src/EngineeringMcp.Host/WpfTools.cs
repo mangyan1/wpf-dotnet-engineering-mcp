@@ -101,7 +101,7 @@ public static class WpfTools
         // policy allowlisting wpf_click does not silently deny the whole operation.
         var readPolicy = ToolPolicies.Read("wpf_click", "wpf.uia.read");
         var read = auth.Authorize(readPolicy, processId.ToString());
-        if (!read.Success) return ToolResult<object>.Fail(read.Error!.Code, read.Error.Message);
+        if (!read.Success) return ToolResult<object>.Fail(read.Error!.Code, read.Error.Message, read.Error.Retryable, read.Error.Remediation);
         var element = wpf.Query(processId, selector);
         auth.Complete(read.Value!, readPolicy, processId.ToString(), element.Success, element.Success ? "OK" : element.Error?.Code ?? "FAILED");
         if (!element.Success || element.Value is null) return ToolResult<object>.Fail(element.Error!.Code, element.Error.Message);

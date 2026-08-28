@@ -22,7 +22,10 @@ public sealed class ToolAuthorization(
     public ToolResult<string> Authorize(ToolPolicy policy, string? target = null)
     {
         if (policyProvider.Current.Audit.Enabled && Volatile.Read(ref _auditHealthy) == 0)
-            return ToolResult<string>.Fail("AUDIT_UNAVAILABLE", "Operation was denied because the required audit trail is unhealthy. Restart after repairing the audit destination.");
+            return ToolResult<string>.Fail(
+                "AUDIT_UNAVAILABLE",
+                "Operation was denied because the required audit trail is unhealthy.",
+                remediation: "Repair the configured audit destination, verify it is writable, and restart Engineering MCP. Do not disable audit to bypass this gate.");
 
         var correlation = Guid.NewGuid().ToString("N");
         var decision = gate.Authorize(policy, capabilities.IsAvailable(policy.CapabilityId));
@@ -37,12 +40,15 @@ public sealed class ToolAuthorization(
         if (!auditWritten && policyProvider.Current.Audit.Enabled)
         {
             Volatile.Write(ref _auditHealthy, 0);
-            return ToolResult<string>.Fail("AUDIT_UNAVAILABLE", "Operation was denied because the required audit record could not be persisted.");
+            return ToolResult<string>.Fail(
+                "AUDIT_UNAVAILABLE",
+                "Operation was denied because the required audit record could not be persisted.",
+                remediation: "Repair the configured audit destination, verify it is writable, and restart Engineering MCP. Do not disable audit to bypass this gate.");
         }
 
         return decision.Allowed
             ? ToolResult<string>.Ok(correlation)
-            : ToolResult<string>.Fail(decision.Code, decision.Reason);
+            : ToolResult<string>.Fail(decision.Code, decision.Reason, remediation: decision.Remediation);
     }
 
     public void Complete(string correlationId, ToolPolicy policy, string? target, bool success, string resultCode, long durationMs = 0)

@@ -8,7 +8,7 @@
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )"
+          "EngineeringMcp.Contracts": "[0.3.4, )"
         }
       }
     }

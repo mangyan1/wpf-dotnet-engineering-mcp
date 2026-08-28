@@ -10,10 +10,21 @@ public class FilePolicyProvider
     public virtual string Source { get; }
 
     public FilePolicyProvider()
+        : this(Environment.GetEnvironmentVariable("ENGINEERING_MCP_POLICY"), allowLockedDownDefault: true)
     {
-        var path = Environment.GetEnvironmentVariable("ENGINEERING_MCP_POLICY");
+    }
+
+    public FilePolicyProvider(string policyPath)
+        : this(policyPath, allowLockedDownDefault: false)
+    {
+    }
+
+    private FilePolicyProvider(string? path, bool allowLockedDownDefault)
+    {
         if (string.IsNullOrWhiteSpace(path))
         {
+            if (!allowLockedDownDefault)
+                throw new ArgumentException("A policy path is required.", nameof(path));
             Current = McpPolicy.LockedDownDefault;
             Source = "locked-down-default";
             return;

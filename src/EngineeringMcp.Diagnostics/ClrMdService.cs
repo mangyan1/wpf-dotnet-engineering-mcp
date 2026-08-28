@@ -19,7 +19,7 @@ public sealed class ClrMdService(
 
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
-            return ToolResult<object>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<object>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         try
@@ -62,7 +62,7 @@ public sealed class ClrMdService(
 
         var allowed = fileGuard.RequireReadable(dumpPath);
         if (!allowed.Success || allowed.Value is null)
-            return ToolResult<DumpAnalysisSummary>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<DumpAnalysisSummary>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
 
         return AnalyzeTrustedLocalDump(allowed.Value, maxThreads, maxFramesPerThread);
     }

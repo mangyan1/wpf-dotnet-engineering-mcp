@@ -8,9 +8,27 @@
 - Adversarial/prompt-injection tests
 - Redaction tests
 
-The live HTTP integration suite additionally requires bearer rejection, Origin rejection, portable unique tool names, output schemas, parameter descriptions, titles, all MCP annotations, and `isError=true` for a deterministic domain failure. Security tests cover versioned policy rejection, built-in sensitive-file denial, expanded synthetic PII classes, and oversized framed-IPC rejection.
+The live HTTP integration suite additionally requires bearer rejection, Origin rejection, portable unique tool names, output schemas, parameter descriptions, titles, all MCP annotations, `isError=true` for a deterministic domain failure, and safe remediation text for policy/guard denials. Security tests cover versioned policy rejection, built-in sensitive-file denial, expanded synthetic PII classes, oversized framed-IPC rejection, policy readiness diagnostics, and child-process PATH sanitization.
 
-Release validation also runs the static contract script, NuGet vulnerable-package scan, locked dependency restore, Release packaging, SPDX SBOM generation, and checksum generation. Authenticode signing is a promotion gate and requires an operator-provided certificate thumbprint.
+## Installed-package and VS Code acceptance
+
+Run the installed runtime test without changing the installation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1
+```
+
+Before promoting an MSI, exercise the complete install/uninstall/reinstall lifecycle:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
+  -MsiPath artifacts/release/EngineeringMcp-0.3.4-win-x64-Setup.msi `
+  -ExerciseReinstall
+```
+
+The lifecycle gate stops only Engineering MCP processes whose executable path is beneath the selected installation root. It verifies that the per-user policy and VS Code `mcp.json` hashes remain unchanged through install, uninstall, and reinstall. It then starts the installed host on an isolated loopback port and performs a VS Code-style initialize, 54-tool discovery, policy-diagnostic call, successful runtime diagnostic, and intentionally denied privileged call with actionable remediation. The test never prints bearer tokens or policy contents.
+
+Release validation also runs the static contract script, NuGet vulnerable-package scan, locked dependency restore, Release packaging, SPDX SBOM generation, checksum generation, and installed-package acceptance. Authenticode signing is a promotion gate and requires an operator-provided certificate thumbprint or the explicitly labelled development self-signing mode.
 
 ## Golden WPF fixture must eventually contain
 

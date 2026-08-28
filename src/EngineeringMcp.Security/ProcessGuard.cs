@@ -19,27 +19,42 @@ public sealed class ProcessGuard(FilePolicyProvider policyProvider)
     {
         Process process;
         try { process = Process.GetProcessById(processId); }
-        catch (ArgumentException) { return ToolResult<Process>.Fail("PROCESS_NOT_FOUND", "The target process does not exist."); }
+        catch (ArgumentException)
+        {
+            return ToolResult<Process>.Fail(
+                "PROCESS_NOT_FOUND",
+                "The target process does not exist.",
+                remediation: "Refresh the target process list and retry with a currently running process identifier.");
+        }
 
         string? path = null;
         try { path = process.MainModule?.FileName; }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             process.Dispose();
-            return ToolResult<Process>.Fail("PROCESS_PATH_UNAVAILABLE", "The executable path could not be verified; fail-closed policy rejected the target.");
+            return ToolResult<Process>.Fail(
+                "PROCESS_PATH_UNAVAILABLE",
+                "The executable path could not be verified; fail-closed policy rejected the target.",
+                remediation: "Run Engineering MCP and the target in the same user session and elevation level, then retry. Do not bypass path verification.");
         }
 
         var match = FindMatchingRule(process.ProcessName, path);
         if (match is null)
         {
             process.Dispose();
-            return ToolResult<Process>.Fail("PROCESS_NOT_ALLOWED", "The target process is outside the configured allowlist.");
+            return ToolResult<Process>.Fail(
+                "PROCESS_NOT_ALLOWED",
+                "The target process name or executable path does not match the configured allowlist.",
+                remediation: "In Control Center, select or provision a policy containing the exact trusted executable name and local path, then restart the MCP server.");
         }
 
         if (!string.IsNullOrWhiteSpace(match.Publisher))
         {
             process.Dispose();
-            return ToolResult<Process>.Fail("PROCESS_PUBLISHER_VERIFICATION_UNAVAILABLE", "Publisher verification is not implemented in V1; a policy requiring Publisher therefore fails closed.");
+            return ToolResult<Process>.Fail(
+                "PROCESS_PUBLISHER_VERIFICATION_UNAVAILABLE",
+                "Publisher verification is not implemented in V1; a policy requiring Publisher therefore fails closed.",
+                remediation: "Use an exact executable path and optional SHA-256 rule instead of Publisher until publisher verification is implemented.");
         }
 
         if (!string.IsNullOrWhiteSpace(match.Sha256))
@@ -47,28 +62,40 @@ public sealed class ProcessGuard(FilePolicyProvider policyProvider)
             if (string.IsNullOrWhiteSpace(path))
             {
                 process.Dispose();
-                return ToolResult<Process>.Fail("PROCESS_HASH_UNVERIFIABLE", "Process hash was required but executable path was unavailable.");
+                return ToolResult<Process>.Fail(
+                    "PROCESS_HASH_UNVERIFIABLE",
+                    "Process hash was required but the executable path was unavailable.",
+                    remediation: "Run Engineering MCP and the target in the same user session and elevation level so the executable can be verified.");
             }
 
             var expectedText = NormalizeHash(match.Sha256);
             if (expectedText.Length != 64)
             {
                 process.Dispose();
-                return ToolResult<Process>.Fail("PROCESS_POLICY_INVALID", "Configured SHA-256 must contain exactly 64 hexadecimal characters.");
+                return ToolResult<Process>.Fail(
+                    "PROCESS_POLICY_INVALID",
+                    "Configured SHA-256 must contain exactly 64 hexadecimal characters.",
+                    remediation: "Correct the process allowlist sha256 value in the selected policy, validate the policy, and restart the MCP server.");
             }
             byte[] expected;
             try { expected = Convert.FromHexString(expectedText); }
             catch (FormatException)
             {
                 process.Dispose();
-                return ToolResult<Process>.Fail("PROCESS_POLICY_INVALID", "Configured SHA-256 is not valid hexadecimal.");
+                return ToolResult<Process>.Fail(
+                    "PROCESS_POLICY_INVALID",
+                    "Configured SHA-256 is not valid hexadecimal.",
+                    remediation: "Correct the process allowlist sha256 value in the selected policy, validate the policy, and restart the MCP server.");
             }
             using var stream = File.OpenRead(path);
             var actual = SHA256.HashData(stream);
             if (!CryptographicOperations.FixedTimeEquals(expected, actual))
             {
                 process.Dispose();
-                return ToolResult<Process>.Fail("PROCESS_HASH_MISMATCH", "The executable hash does not match policy.");
+                return ToolResult<Process>.Fail(
+                    "PROCESS_HASH_MISMATCH",
+                    "The executable hash does not match policy.",
+                    remediation: "Treat the binary as untrusted. Verify the deployment source before approving and recording a new SHA-256 value.");
             }
         }
 

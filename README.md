@@ -67,6 +67,8 @@ Provide controlled, auditable tools for:
 
 The server is **not** a general shell, arbitrary process inspector, credential extractor, remote administration agent, or unrestricted debugger.
 
+Policy denials are actionable without becoming permissive: `system_policy_diagnostics` returns safe readiness findings, and structured failures include a remediation field naming the relevant policy setting or Control Center action. Child processes receive a sanitized local-only `PATH`; relative and UNC/network tool paths are removed before launch.
+
 ## Source-of-truth order
 
 1. `docs/SECURITY.md`
@@ -82,7 +84,7 @@ If implementation conflicts with security policy, the implementation is defectiv
 
 ## Current build status
 
-The project files target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-26 the Windows Release build completed with zero warnings/errors, all 15 automated tests passed, the authenticated live HTTP contract and MSBuild semantic-reference tests passed, the static checks passed, and NuGet reported no known vulnerable packages from the configured sources. Full interactive WPF fixture coverage remains an operator-run Control Center gate.
+The project files target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-28 the Windows Release build completed with zero warnings/errors, the security, adversarial, and integration suites passed, the authenticated 54-tool HTTP contract and MSBuild semantic-reference tests passed, and the static checks passed. Installed-package acceptance is available through `scripts/test-installed-vscode.ps1`, including an explicit install/uninstall/reinstall persistence mode. Full interactive WPF fixture coverage remains an operator-run Control Center gate.
 
 ## Release hardening
 

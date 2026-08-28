@@ -67,7 +67,11 @@ public sealed class WpfAutomationService(
 
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success || allowed.Value is null)
-            return ToolResult<object>.Fail(allowed.Error?.Code ?? "PROCESS_NOT_ALLOWED", allowed.Error?.Message ?? "Process is not allowed.");
+            return ToolResult<object>.Fail(
+                allowed.Error?.Code ?? "PROCESS_NOT_ALLOWED",
+                allowed.Error?.Message ?? "Process is not allowed.",
+                allowed.Error?.Retryable ?? false,
+                allowed.Error?.Remediation);
 
         using var process = allowed.Value;
         try
@@ -520,7 +524,7 @@ public sealed class WpfAutomationService(
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
-            return ToolResult<AttachedSession>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<AttachedSession>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         if (_sessions.TryGetValue(processId, out var session)) return ToolResult<AttachedSession>.Ok(session);

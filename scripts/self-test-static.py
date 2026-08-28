@@ -107,6 +107,8 @@ check(tabs == ['Home', 'Validation', 'Integration', 'Tools', 'Logs', 'Security']
 for label in ['Run MCP Server', 'Test MCP Server', 'Repair MCP Server', 'Connect to VS Code', 'MCP Server Logs']:
     check(f'Content="{label}"' in xaml, f'GUI action present: {label}')
 check('Text="Configure ApexDrive"' in xaml, 'GUI action present: Configure ApexDrive')
+check('x:Name="PolicyDiagnosticsText"' in xaml and 'POLICY READINESS' in xaml,
+      'Control Center exposes local policy readiness guidance')
 
 handlers = set(re.findall(r'(?:Click|SelectionChanged)="([A-Za-z_][A-Za-z0-9_]*)"', xaml))
 missing_handlers = [h for h in sorted(handlers) if re.search(rf'\b{re.escape(h)}\s*\(', maincs) is None]
@@ -120,6 +122,8 @@ tool_count = len(re.findall(r'\[McpServerTool\(Name\s*=\s*"', tool_sources))
 structured_count = len(re.findall(r'\[McpServerTool\(Name\s*=\s*"[^\"]+"\s*,\s*UseStructuredContent\s*=\s*true', tool_sources))
 check(tool_count > 0 and structured_count == tool_count,
       "Every MCP tool opts into structured content", f"{structured_count}/{tool_count}")
+check(tool_count == 54 and 'system_policy_diagnostics' in tool_sources,
+      "54-tool surface includes safe policy diagnostics", str(tool_count))
 check('AddListToolsFilter' in (ROOT / 'src/EngineeringMcp.Host/McpContractFilters.cs').read_text(encoding='utf-8') and
       'AddCallToolFilter' in (ROOT / 'src/EngineeringMcp.Host/McpContractFilters.cs').read_text(encoding='utf-8'),
       "Central list/call contract filters are installed")
@@ -139,6 +143,11 @@ for policy_name in ['policy.example.json', 'policy.vscode-test.json']:
 
 check((ROOT / 'build/release-hardening.ps1').exists(),
       "Local release hardening automation exists")
+check((ROOT / 'scripts/test-installed-vscode.ps1').exists(),
+      "Installed-package VS Code acceptance automation exists")
+check('ProcessEnvironmentSanitizer.SanitizePathInPlace' in selftest and
+      'remediation' in (ROOT / 'src/EngineeringMcp.Contracts/SecurityModels.cs').read_text(encoding='utf-8').lower(),
+      "Child environment sanitization and actionable failure contract are wired")
 
 print(f"\nStatic self-test: {len(passes)} passed, {len(failures)} failed")
 if failures:

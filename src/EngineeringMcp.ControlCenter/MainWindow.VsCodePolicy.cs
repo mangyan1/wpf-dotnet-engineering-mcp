@@ -240,6 +240,45 @@ public partial class MainWindow
     private void OpenPolicy_Click(object sender, RoutedEventArgs e) => OpenFile(_layout.Policy);
     private void OpenSecurity_Click(object sender, RoutedEventArgs e) => OpenFile(_layout.SecurityDoc);
 
+    private void RefreshPolicyDiagnostics()
+    {
+        if (PolicyDiagnosticsText is null)
+            return;
+
+        if (!File.Exists(_layout.Policy))
+        {
+            PolicyDiagnosticsText.Text = "Policy file missing. Select or configure a policy before starting the MCP server.";
+            SecurityStatusText.Text = "● Policy missing";
+            return;
+        }
+
+        try
+        {
+            var provider = new FilePolicyProvider(_layout.Policy);
+            var report = PolicyDiagnostics.Analyze(provider.Current, provider.Source);
+            if (report.Findings.Count == 0)
+            {
+                PolicyDiagnosticsText.Text =
+                    $"Policy ready: {report.PermissionCeiling}; {report.ProcessRuleCount} process rule(s); {report.SourceRootCount} source root(s).";
+                SecurityStatusText.Text = "● Armed";
+                SecurityStatusText.ToolTip = "Configured policy passed readiness checks.";
+                return;
+            }
+
+            PolicyDiagnosticsText.Text = string.Join(Environment.NewLine,
+                report.Findings.Take(3).Select(finding => $"{finding.Code}: {finding.Summary} {finding.Remediation}"));
+            SecurityStatusText.Text = $"● {report.Findings.Count} policy warning(s)";
+            SecurityStatusText.ToolTip = string.Join(Environment.NewLine,
+                report.Findings.Select(finding => $"{finding.Code}: {finding.Remediation}"));
+        }
+        catch (Exception ex) when (ex is InvalidDataException or JsonException or IOException or UnauthorizedAccessException)
+        {
+            PolicyDiagnosticsText.Text = "Policy validation failed. Select a valid policy and restart the MCP server.";
+            SecurityStatusText.Text = "● Policy invalid";
+            SecurityStatusText.ToolTip = ex.GetType().Name;
+        }
+    }
+
     private void OpenFile(string path)
     {
         if (!File.Exists(path))

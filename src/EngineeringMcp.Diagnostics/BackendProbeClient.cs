@@ -13,7 +13,7 @@ public sealed class BackendProbeClient(ProcessGuard processGuard, RedactionServi
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
-            return ToolResult<BackendProbeResponse>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<BackendProbeResponse>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         var token = Environment.GetEnvironmentVariable("ENGINEERING_MCP_BACKEND_TOKEN");

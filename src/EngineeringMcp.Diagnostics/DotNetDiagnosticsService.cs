@@ -45,7 +45,7 @@ public sealed class DotNetDiagnosticsService(
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success || allowed.Value is null)
-            return ToolResult<RuntimeProcessInfo>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<RuntimeProcessInfo>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         using var process = allowed.Value;
 
         try
@@ -73,7 +73,7 @@ public sealed class DotNetDiagnosticsService(
     {
         durationMs = Math.Clamp(durationMs, 1000, 30_000);
         var allowed = processGuard.RequireAllowed(processId);
-        if (!allowed.Success) return ToolResult<IReadOnlyList<RuntimeCounterObservation>>.Fail(allowed.Error!.Code, allowed.Error.Message);
+        if (!allowed.Success) return ToolResult<IReadOnlyList<RuntimeCounterObservation>>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         EventPipeSession? session = null;
@@ -129,7 +129,7 @@ public sealed class DotNetDiagnosticsService(
     public ToolResult<IReadOnlyList<ProcessThreadObservation>> GetThreads(int processId, int maxThreads = 256)
     {
         var allowed = processGuard.RequireAllowed(processId);
-        if (!allowed.Success || allowed.Value is null) return ToolResult<IReadOnlyList<ProcessThreadObservation>>.Fail(allowed.Error!.Code, allowed.Error.Message);
+        if (!allowed.Success || allowed.Value is null) return ToolResult<IReadOnlyList<ProcessThreadObservation>>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         using var process = allowed.Value;
         maxThreads = Math.Clamp(maxThreads, 1, 2_000);
         try
@@ -150,7 +150,7 @@ public sealed class DotNetDiagnosticsService(
     public ToolResult<IReadOnlyList<ProcessModuleObservation>> GetModules(int processId, int maxModules = 512)
     {
         var allowed = processGuard.RequireAllowed(processId);
-        if (!allowed.Success || allowed.Value is null) return ToolResult<IReadOnlyList<ProcessModuleObservation>>.Fail(allowed.Error!.Code, allowed.Error.Message);
+        if (!allowed.Success || allowed.Value is null) return ToolResult<IReadOnlyList<ProcessModuleObservation>>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         using var process = allowed.Value;
         maxModules = Math.Clamp(maxModules, 1, 5_000);
         try
@@ -189,7 +189,7 @@ public sealed class DotNetDiagnosticsService(
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
-            return ToolResult<DiagnosticActionResult<T>>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<DiagnosticActionResult<T>>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         postActionObservationMs = Math.Clamp(postActionObservationMs, 0, 10_000);
@@ -299,7 +299,7 @@ public sealed class DotNetDiagnosticsService(
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
-            return ToolResult<TraceHandle>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<TraceHandle>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         allowed.Value?.Dispose();
 
         if (_traces.Count >= MaxActiveTraces)

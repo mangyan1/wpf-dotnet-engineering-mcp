@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using EngineeringMcp.Contracts;
+using EngineeringMcp.Security;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -23,6 +24,7 @@ internal sealed class McpSelfTestService
         "system_health",
         "system_capabilities",
         "system_permissions",
+        "system_policy_diagnostics",
         "wpf_list_processes",
         "wpf_attach",
         "wpf_snapshot",
@@ -75,7 +77,7 @@ internal sealed class McpSelfTestService
 
         Record(new DevTestStep("Protocol", "Tool discovery", "PASS", $"{tools.Count} tools discovered; required core surface present."));
 
-        foreach (var tool in new[] { "system_version", "system_health", "system_capabilities", "system_permissions" })
+        foreach (var tool in new[] { "system_version", "system_health", "system_capabilities", "system_permissions", "system_policy_diagnostics" })
         {
             if (!await CallAndRecordAsync(client, "Core", tool, null, Record, onLog, cancellationToken).ConfigureAwait(false))
                 return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
@@ -266,9 +268,13 @@ internal sealed class McpSelfTestService
         foreach (var name in new[] { "DOTNET_ROOT", "NUGET_PACKAGES", "DOTNET_CLI_HOME" })
         {
             var value = Environment.GetEnvironmentVariable(name);
-            if (!string.IsNullOrWhiteSpace(value))
+            if (ProcessEnvironmentSanitizer.IsSafeLocalAbsolutePath(value))
                 environment[name] = value;
         }
+
+        ProcessEnvironmentSanitizer.SanitizePathInPlace(environment);
+        environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+        environment["DOTNET_NOLOGO"] = "1";
 
         return environment;
     }

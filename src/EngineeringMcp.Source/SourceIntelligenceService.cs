@@ -32,7 +32,7 @@ public sealed partial class SourceIntelligenceService(
     {
         var allowed = fileGuard.RequireReadable(root);
         if (!allowed.Success || allowed.Value is null)
-            return ToolResult<SourceProjectInventory>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<SourceProjectInventory>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         if (!Directory.Exists(allowed.Value))
             return ToolResult<SourceProjectInventory>.Fail("DIRECTORY_REQUIRED", "Inventory requires an approved directory.");
 
@@ -56,7 +56,7 @@ public sealed partial class SourceIntelligenceService(
     {
         var allowed = fileGuard.RequireReadable(path);
         if (!allowed.Success || allowed.Value is null)
-            return ToolResult<SourceReadResult>.Fail(allowed.Error!.Code, allowed.Error.Message);
+            return ToolResult<SourceReadResult>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         if (!File.Exists(allowed.Value)) return ToolResult<SourceReadResult>.Fail("FILE_REQUIRED", "Source read requires a file path.");
         var info = new FileInfo(allowed.Value);
         if (info.Length > MaxFileBytes) return ToolResult<SourceReadResult>.Fail("FILE_TOO_LARGE", "Source file exceeds the 4 MiB read limit.");
@@ -349,7 +349,7 @@ public sealed partial class SourceIntelligenceService(
     private ToolResult<string> RequireDirectory(string root)
     {
         var allowed = fileGuard.RequireReadable(root);
-        if (!allowed.Success || allowed.Value is null) return ToolResult<string>.Fail(allowed.Error!.Code, allowed.Error.Message);
+        if (!allowed.Success || allowed.Value is null) return ToolResult<string>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
         return Directory.Exists(allowed.Value) ? ToolResult<string>.Ok(allowed.Value) : ToolResult<string>.Fail("DIRECTORY_REQUIRED", "An approved directory is required.");
     }
 

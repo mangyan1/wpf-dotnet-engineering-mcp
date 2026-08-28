@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using EngineeringMcp.Security;
 
 namespace EngineeringMcp.ControlCenter;
 
@@ -31,6 +32,7 @@ internal sealed class FixedProcessRunner
             foreach (var (key, value) in environment)
                 startInfo.Environment[key] = value;
         }
+        ProcessEnvironmentSanitizer.SanitizePathInPlace(startInfo.Environment);
 
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         process.OutputDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) onOutput(e.Data); };
@@ -75,6 +77,7 @@ internal sealed class FixedProcessRunner
             foreach (var (key, value) in environment)
                 startInfo.Environment[key] = value;
         }
+        ProcessEnvironmentSanitizer.SanitizePathInPlace(startInfo.Environment);
 
         return Process.Start(startInfo) ?? throw new InvalidOperationException($"Failed to start {fileName}.");
     }

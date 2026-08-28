@@ -22,14 +22,14 @@
       "engineeringmcp.probe.wpf": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )",
-          "EngineeringMcp.Security": "[0.3.0, )"
+          "EngineeringMcp.Contracts": "[0.3.4, )",
+          "EngineeringMcp.Security": "[0.3.4, )"
         }
       },
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.0, )"
+          "EngineeringMcp.Contracts": "[0.3.4, )"
         }
       }
     }

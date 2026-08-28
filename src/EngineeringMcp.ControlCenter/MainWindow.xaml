@@ -523,7 +523,7 @@
                                 <TextBlock Text="Tools" Margin="11,0,0,0" VerticalAlignment="Center" />
                                 <TextBlock DockPanel.Dock="Right" FontFamily="{DynamicResource FontMono}"
                                            FontSize="10" Foreground="{DynamicResource Text3Brush}"
-                                           VerticalAlignment="Center" Text="53" />
+                                           VerticalAlignment="Center" Text="54" />
                             </DockPanel>
                         </RadioButton>
                         <RadioButton Style="{StaticResource NavRadio}" GroupName="Nav" Tag="4"
@@ -720,7 +720,7 @@
                                                 <StackPanel Margin="0,0,22,0">
                                                     <TextBlock Style="{StaticResource MonoDim}" FontSize="9" Text="TOOLS EXPOSED" />
                                                     <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="12"
-                                                               Foreground="{DynamicResource Text2Brush}" Margin="0,4,0,0" Text="53" />
+                                                               Foreground="{DynamicResource Text2Brush}" Margin="0,4,0,0" Text="54" />
                                                 </StackPanel>
                                                 <Border Margin="0,0,22,0" BorderBrush="{DynamicResource HairBrush}"
                                                         BorderThickness="1,0,0,0" Padding="22,0">
@@ -1275,7 +1275,7 @@
                                                     <StackPanel>
                                                         <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="Reload VS Code" />
                                                         <TextBlock Foreground="{DynamicResource Text2Brush}" FontSize="12" TextWrapping="Wrap"
-                                                                   Margin="0,3,0,0" Text="The Tools panel lists all 53 tools once the connection is live." />
+                                                                   Margin="0,3,0,0" Text="The Tools panel lists all 54 tools once the connection is live." />
                                                     </StackPanel>
                                                 </StackPanel>
                                             </StackPanel>
@@ -1330,11 +1330,29 @@
                                                        Foreground="{DynamicResource TextBrush}" Margin="0,9,0,12" Text="tools/list handshake" />
                                             <Border Grid.Row="3" Grid.Column="2" BorderBrush="{DynamicResource PillOkBorderBrush}" BorderThickness="1"
                                                     Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,6">
-                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="53 EXPOSED" />
+                                                <TextBlock Style="{StaticResource PillText}" Foreground="{DynamicResource GreenBrush}" Text="54 EXPOSED" />
                                             </Border>
                                             <TextBlock Grid.Row="3" Grid.Column="3" FontFamily="{DynamicResource FontMono}" FontSize="11"
                                                        Foreground="{DynamicResource Text2Brush}" Margin="16,9,0,12" Text="default-deny policy" />
                                         </Grid>
+                                    </StackPanel>
+                                </ContentControl>
+
+                                <ContentControl Style="{StaticResource Card}" Margin="0,18,0,0">
+                                    <StackPanel>
+                                        <Border Style="{StaticResource CardHead}">
+                                            <Grid>
+                                                <TextBlock Style="{StaticResource CardTitle}" Text="POLICY READINESS" />
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                    <TextBlock Style="{StaticResource Link}" Text="Configure ApexDrive" MouseLeftButtonUp="ConfigureApexDrivePolicy_Click" />
+                                                    <TextBlock Style="{StaticResource Link}" Margin="14,0,0,0" Text="Select policy" MouseLeftButtonUp="SelectPolicy_Click" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                        <TextBlock x:Name="PolicyDiagnosticsText" Margin="16,12,16,16"
+                                                   Foreground="{DynamicResource Text2Brush}" FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Text="Policy diagnostics are evaluated locally without exposing paths or secrets." />
                                     </StackPanel>
                                 </ContentControl>
 
@@ -1364,7 +1382,7 @@
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
                                             <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="10.5"
-                                                       Foreground="{DynamicResource Text2Brush}" Text="53 EXPOSED · DEFAULT-DENY" />
+                                                       Foreground="{DynamicResource Text2Brush}" Text="54 EXPOSED · DEFAULT-DENY" />
                                         </StackPanel>
                                     </Border>
                                 </Grid>

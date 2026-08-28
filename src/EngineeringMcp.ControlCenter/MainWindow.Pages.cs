@@ -12,7 +12,7 @@ namespace EngineeringMcp.ControlCenter;
 
 /// <summary>
 /// Pages beyond the core shell: Tools registry (static catalog mirroring the host's
-/// 53 tools), Logs stream presentation, Integration helpers and value converters.
+/// 54 tools), Logs stream presentation, Integration helpers and value converters.
 /// </summary>
 public partial class MainWindow
 {
@@ -82,6 +82,7 @@ public partial class MainWindow
         ("system_health","Server self-health check","system","read"),
         ("system_capabilities","List capabilities and permissions","system","read"),
         ("system_permissions","Show effective policy for the caller","system","read"),
+        ("system_policy_diagnostics","Explain policy denials and safe remediation","system","read"),
     ];
 
     private static Brush ResBrush(string key) => (Brush)Application.Current.Resources[key];
