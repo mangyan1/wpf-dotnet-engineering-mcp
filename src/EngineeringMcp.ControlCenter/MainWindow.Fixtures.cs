@@ -9,7 +9,7 @@ public partial class MainWindow
 {
     private void LaunchFixture_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureReady()) return;
+        if (!EnsureDeveloperMode("Launch WPF fixture")) return;
         var process = EnsureFixtureRunning();
         if (process is not null)
             SetStatus("WPF fixture running.");
@@ -17,7 +17,7 @@ public partial class MainWindow
 
     private void LaunchStack_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureReady()) return;
+        if (!EnsureDeveloperMode("Launch fixture stack")) return;
         var fixture = EnsureFixtureRunning();
         if (fixture is null) return;
 

@@ -185,6 +185,12 @@ public partial class MainWindow
         // fires during InitializeComponent as well; guard against the half-built tree
         if (sender is System.Windows.Controls.RadioButton { Tag: string tag } && McpJsonPathText is not null)
         {
+            if (_layout is not null && !_layout.IsRepositoryMode && tag == "workspace")
+            {
+                GlobalScopeRadio.IsChecked = true;
+                return;
+            }
+
             _mcpScope = tag;
             McpJsonPathText.Text = tag == "workspace"
                 ? "// <repo>\\.vscode\\mcp.json"
@@ -221,6 +227,8 @@ public partial class MainWindow
 
     private void OpenArtifacts_Click(object sender, RoutedEventArgs e)
     {
+        if (!EnsureDeveloperMode("Open developer-test artifacts")) return;
+
         var root = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "DotNetEngineeringMcp", "selftest"));
         if (!Directory.Exists(root))
         {

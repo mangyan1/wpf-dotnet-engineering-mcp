@@ -1,0 +1,44 @@
+{
+  "$schema": "./policy.schema.json",
+  "policyVersion": 1,
+  "permissionCeiling": "Metadata",
+  "processes": {
+    "allow": []
+  },
+  "filesystem": {
+    "readRoots": [],
+    "denyGlobs": [
+      "**/.env",
+      "**/secrets.json",
+      "**/appsettings.Production.json",
+      "**/*.pfx",
+      "**/*.key",
+      "**/*.dmp",
+      "**/*.dump",
+      "**/.git/**"
+    ]
+  },
+  "network": {
+    "default": "deny",
+    "allow": []
+  },
+  "pii": "Mask",
+  "audit": {
+    "enabled": true,
+    "directory": null,
+    "retentionDays": 30
+  },
+  "screenshots": {
+    "enabled": false,
+    "maskPasswordControls": true,
+    "maskSensitiveNames": true,
+    "failClosedOnRedactionError": true
+  },
+  "allowDestructiveActions": false,
+  "allowPrivilegedDiagnostics": false,
+  "uiActions": {
+    "denyAutomationIds": [],
+    "destructiveAutomationIds": [],
+    "statefulAutomationIds": []
+  }
+}

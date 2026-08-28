@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Name="Engineering MCP"
+    Manufacturer="White-Lotus"
+    Version="$(var.ProductVersion)"
+    UpgradeCode="{67B99C2D-A79E-4C3A-B7EB-C76E36641135}"
+    Scope="perUser"
+    Language="1033"
+    InstallerVersion="500"
+    Compressed="yes">
+
+    <SummaryInformation
+      Description="Engineering MCP Control Center and local MCP host"
+      Keywords="Engineering,MCP,.NET,WPF,VS Code" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Engineering MCP is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="EngineeringMcpIcon" SourceFile="$(var.RepositoryRoot)\src\EngineeringMcp.ControlCenter\Assets\AppIcon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="EngineeringMcpIcon" />
+    <Property Id="ARPCOMMENTS" Value="White-Lotus source-available software for personal, non-commercial, and qualifying small-developer use." />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Engineering MCP was installed successfully. Use the Start Menu or Desktop shortcut to open the Control Center." />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="LocalProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Engineering MCP" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Engineering MCP" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Feature Id="ProductFeature" Title="Engineering MCP" Level="1">
+      <ComponentGroupRef Id="PayloadComponents" />
+    </Feature>
+
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+  </Package>
+</Wix>

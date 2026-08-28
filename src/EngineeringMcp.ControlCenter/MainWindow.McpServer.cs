@@ -52,9 +52,11 @@ public partial class MainWindow
 
         if (!File.Exists(layout.HostExecutable))
         {
-            if (runtimeLayout is not null)
+            if (runtimeLayout is not null || !layout.IsRepositoryMode)
             {
-                AppendLog("Isolated MCP host executable is missing after the validation build.");
+                AppendLog(layout.IsRepositoryMode
+                    ? "Isolated MCP host executable is missing after the validation build."
+                    : "Packaged MCP host executable is missing. Reinstall or extract the complete application package.");
                 return false;
             }
 
@@ -258,6 +260,21 @@ public partial class MainWindow
             // repair in case an older stdio configuration is still present.
             if (IsVsCodeUserMcpInstalled())
                 WriteVsCodeMcpConfiguration(GetVsCodeUserMcpConfigPath());
+
+            if (!_layout.IsRepositoryMode)
+            {
+                if (!ValidateLocalFiles())
+                {
+                    SetStatus("Repair failed: packaged runtime files are missing.");
+                    MainTabs.SelectedItem = LogsTab;
+                    return;
+                }
+
+                AppendLog("Packaged host and policy verified. No source restore or rebuild is required.");
+                SetStatus("Packaged MCP server verified. Click Run MCP Server.");
+                RefreshStatus();
+                return;
+            }
 
             var restore = await RunDotNetAsync(
                 "Restore MCP server",

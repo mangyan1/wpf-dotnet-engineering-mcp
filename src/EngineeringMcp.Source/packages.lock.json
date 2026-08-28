@@ -186,18 +186,13 @@
       "engineeringmcp.contracts": {
         "type": "Project"
       },
-      "engineeringmcp.redaction": {
-        "type": "Project",
-        "dependencies": {
-          "EngineeringMcp.Contracts": "[1.0.0, )"
-        }
-      },
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[1.0.0, )"
+          "EngineeringMcp.Contracts": "[0.3.0, )"
         }
       }
-    }
+    },
+    "net10.0/win-x64": {}
   }
 }

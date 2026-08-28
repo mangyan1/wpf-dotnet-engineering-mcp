@@ -9,13 +9,19 @@ namespace EngineeringMcp.ControlCenter;
 public partial class MainWindow
 {
     private async void RunAllDevTests_Click(object sender, RoutedEventArgs e)
-        => await RunDevOperationAsync("Full developer validation", RunAllDevTestsAsync);
+    {
+        if (!EnsureDeveloperMode("Full developer validation")) return;
+        await RunDevOperationAsync("Full developer validation", RunAllDevTestsAsync);
+    }
 
     private async void RunMcpSelfTest_Click(object sender, RoutedEventArgs e)
         => await RunDevOperationAsync("MCP protocol self-test", RunMcpSelfTestAsync);
 
     private async void RunWpfEndToEnd_Click(object sender, RoutedEventArgs e)
-        => await RunDevOperationAsync("WPF end-to-end test", RunWpfEndToEndAsync);
+    {
+        if (!EnsureDeveloperMode("WPF end-to-end test")) return;
+        await RunDevOperationAsync("WPF end-to-end test", RunWpfEndToEndAsync);
+    }
 
     private void CancelDevTest_Click(object sender, RoutedEventArgs e)
     {
@@ -312,7 +318,7 @@ public partial class MainWindow
 
     private async void Build_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureReady() || _busy) return;
+        if (!EnsureDeveloperMode("Build solution") || _busy) return;
         _busy = true;
         try { await RunIsolatedValidationAsync(runAutomatedTests: false, runtimeValidation: null, cancellationToken: CancellationToken.None); }
         finally { _busy = false; }
@@ -320,7 +326,7 @@ public partial class MainWindow
 
     private async void Test_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureReady() || _busy) return;
+        if (!EnsureDeveloperMode("Run code tests") || _busy) return;
         _busy = true;
         try { await RunIsolatedValidationAsync(runAutomatedTests: true, runtimeValidation: null, cancellationToken: CancellationToken.None); }
         finally { _busy = false; }
@@ -328,7 +334,7 @@ public partial class MainWindow
 
     private async void RunReadiness_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureReady() || _busy) return;
+        if (!EnsureDeveloperMode("Repository readiness") || _busy) return;
         _busy = true;
         try
         {

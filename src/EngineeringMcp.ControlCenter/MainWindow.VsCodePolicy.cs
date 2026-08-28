@@ -17,12 +17,14 @@ public partial class MainWindow
         if (!EnsureReady()) return;
         try
         {
-            var configPath = WriteVsCodeMcpConfiguration(_mcpScope == "workspace"
+            var useWorkspaceScope = _layout.IsRepositoryMode && _mcpScope == "workspace";
+            var configPath = WriteVsCodeMcpConfiguration(useWorkspaceScope
                 ? Path.Combine(_layout.Root, ".vscode", "mcp.json")
                 : GetVsCodeUserMcpConfigPath());
             RefreshStatus();
-            AppendLog($"VS Code MCP configuration ({_mcpScope} scope) installed: " + configPath);
-            SetStatus(_mcpScope == "workspace"
+            var installedScope = useWorkspaceScope ? "workspace" : "global";
+            AppendLog($"VS Code MCP configuration ({installedScope} scope) installed: " + configPath);
+            SetStatus(useWorkspaceScope
                 ? "VS Code integration installed for this workspace. Reload VS Code to enable live connection status."
                 : "VS Code integration installed for this profile. Reload VS Code to enable live connection status.");
         }

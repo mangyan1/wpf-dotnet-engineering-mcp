@@ -4,10 +4,12 @@ param(
     [string]$Configuration = 'Release',
     [string]$OutputDirectory = 'artifacts/release',
     [string]$CertificateThumbprint = $env:ENGINEERING_MCP_SIGNING_THUMBPRINT,
+    [switch]$SelfSign,
     [switch]$RequireSigning
 )
 
 $ErrorActionPreference = 'Stop'
+$RuntimeIdentifier = 'win-x64'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $resolvedOutput = [IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputDirectory))
 $artifactsRoot = [IO.Path]::GetFullPath((Join-Path $repositoryRoot 'artifacts'))
@@ -15,17 +17,115 @@ if (-not $resolvedOutput.StartsWith($artifactsRoot + [IO.Path]::DirectorySeparat
     throw 'OutputDirectory must resolve beneath the repository artifacts directory.'
 }
 
-New-Item -ItemType Directory -Force -Path $resolvedOutput | Out-Null
-$hostOutput = Join-Path $resolvedOutput 'host-win-x64'
-$controlCenterOutput = Join-Path $resolvedOutput 'control-center-win-x64'
+function Find-SignTool {
+    $command = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    if ($null -ne $command) { return $command.Source }
 
-dotnet publish (Join-Path $repositoryRoot 'src/EngineeringMcp.Host/EngineeringMcp.Host.csproj') -c $Configuration -r win-x64 --self-contained false -o $hostOutput
+    $windowsKitsBin = 'C:\Program Files (x86)\Windows Kits\10\bin'
+    if (-not [IO.Directory]::Exists($windowsKitsBin)) {
+        throw 'SignTool was not found. Install the Windows SDK signing tools.'
+    }
+
+    $candidate = Get-ChildItem -LiteralPath $windowsKitsBin -Filter signtool.exe -Recurse -File |
+        Where-Object { $_.Directory.Name -eq 'x64' } |
+        Sort-Object { [version]$_.Directory.Parent.Name } -Descending |
+        Select-Object -First 1
+    if ($null -eq $candidate) { throw 'The Windows SDK does not contain an x64 SignTool.' }
+    return $candidate.FullName
+}
+
+if ([IO.Directory]::Exists($resolvedOutput)) {
+    [IO.Directory]::Delete($resolvedOutput, $true)
+}
+[IO.Directory]::CreateDirectory($resolvedOutput) | Out-Null
+
+$buildProperties = [xml][IO.File]::ReadAllText((Join-Path $repositoryRoot 'Directory.Build.props'))
+$version = [string]($buildProperties.Project.PropertyGroup.Version | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($version)) { throw 'Directory.Build.props does not define Version.' }
+
+$packageName = "EngineeringMcp-$version-$RuntimeIdentifier"
+$packageOutput = Join-Path $resolvedOutput $packageName
+$hostOutput = Join-Path $packageOutput 'host'
+$configOutput = Join-Path $packageOutput 'config'
+$docsOutput = Join-Path $packageOutput 'docs'
+$licensePath = Join-Path $repositoryRoot 'LICENSE'
+[IO.Directory]::CreateDirectory($packageOutput) | Out-Null
+[IO.Directory]::CreateDirectory($hostOutput) | Out-Null
+[IO.Directory]::CreateDirectory($configOutput) | Out-Null
+[IO.Directory]::CreateDirectory($docsOutput) | Out-Null
+
+$hostProject = Join-Path $repositoryRoot 'src/EngineeringMcp.Host/EngineeringMcp.Host.csproj'
+$controlCenterProject = Join-Path $repositoryRoot 'src/EngineeringMcp.ControlCenter/EngineeringMcp.ControlCenter.csproj'
+
+dotnet publish $hostProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:DebugType=None -p:DebugSymbols=false -o $hostOutput
 if ($LASTEXITCODE -ne 0) { throw 'Host publish failed.' }
-dotnet publish (Join-Path $repositoryRoot 'src/EngineeringMcp.ControlCenter/EngineeringMcp.ControlCenter.csproj') -c $Configuration -r win-x64 --self-contained false -o $controlCenterOutput
+dotnet publish $controlCenterProject -c $Configuration -r $RuntimeIdentifier --self-contained true -p:DebugType=None -p:DebugSymbols=false -o $packageOutput
 if ($LASTEXITCODE -ne 0) { throw 'Control Center publish failed.' }
 
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/policy.packaged.json') -Destination $configOutput
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/policy.schema.json') -Destination $configOutput
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/SECURITY.md') -Destination $docsOutput
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/VSCODE.md') -Destination $docsOutput
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination (Join-Path $docsOutput 'README.md')
+Copy-Item -LiteralPath $licensePath -Destination (Join-Path $packageOutput 'LICENSE.txt')
+
+$signingKind = 'unsigned'
+if ($SelfSign) {
+    $selfSignSubject = 'CN=Engineering MCP Development'
+    $certificate = Get-ChildItem -Path Cert:\CurrentUser\My -CodeSigningCert |
+        Where-Object {
+            $_.Subject -eq $selfSignSubject -and
+            $_.HasPrivateKey -and
+            $_.NotAfter -gt [DateTime]::Now.AddDays(30)
+        } |
+        Sort-Object NotAfter -Descending |
+        Select-Object -First 1
+
+    if ($null -eq $certificate) {
+        $certificate = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject $selfSignSubject `
+            -CertStoreLocation 'Cert:\CurrentUser\My' `
+            -HashAlgorithm SHA256 `
+            -KeyAlgorithm RSA `
+            -KeyLength 3072 `
+            -KeyExportPolicy NonExportable `
+            -NotAfter ([DateTime]::Now.AddYears(2))
+    }
+
+    $CertificateThumbprint = $certificate.Thumbprint
+    $publicCertificatePath = Join-Path $docsOutput 'EngineeringMcp-Development-CodeSigning.cer'
+    Export-Certificate -Cert $certificate -FilePath $publicCertificatePath -Force | Out-Null
+    $signingKind = 'development-self-signed'
+}
+
+$manifest = [ordered]@{
+    schemaVersion = 1
+    product = 'Engineering MCP'
+    version = $version
+    runtimeIdentifier = $RuntimeIdentifier
+    selfContained = $true
+    entryPoint = 'EngineeringMcp.ControlCenter.exe'
+    host = 'host/EngineeringMcp.Host.exe'
+    defaultPolicy = 'config/policy.packaged.json'
+    createdUtc = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+    signing = [ordered]@{
+        kind = $signingKind
+        certificateThumbprint = if ([string]::IsNullOrWhiteSpace($CertificateThumbprint)) { $null } else { $CertificateThumbprint }
+        publicCertificate = if ($SelfSign) { 'docs/EngineeringMcp-Development-CodeSigning.cer' } else { $null }
+    }
+    update = [ordered]@{
+        channel = 'stable'
+        manifestUrl = $null
+    }
+}
+[IO.File]::WriteAllText(
+    (Join-Path $packageOutput 'app-manifest.json'),
+    ($manifest | ConvertTo-Json -Depth 5),
+    [Text.UTF8Encoding]::new($false))
+
 $dependencyInventoryPath = Join-Path $resolvedOutput 'dependencies.json'
-$dependencyJson = dotnet list (Join-Path $repositoryRoot 'DotNetEngineeringMcp.sln') package --include-transitive --format json
+$dependencyJson = dotnet list (Join-Path $repositoryRoot 'DotNetEngineeringMcp.sln') package --include-transitive --format json --no-restore
 if ($LASTEXITCODE -ne 0) { throw 'Dependency inventory generation failed.' }
 [IO.File]::WriteAllText($dependencyInventoryPath, ($dependencyJson -join [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
 
@@ -44,12 +144,12 @@ $spdxPackages = @(
     [ordered]@{
         SPDXID = 'SPDXRef-EngineeringMcp'
         name = 'DotNetEngineeringMcp'
-        versionInfo = 'local-build'
+        versionInfo = $version
         downloadLocation = 'NOASSERTION'
         filesAnalyzed = $false
-        licenseConcluded = 'NOASSERTION'
-        licenseDeclared = 'NOASSERTION'
-        copyrightText = 'NOASSERTION'
+        licenseConcluded = 'LicenseRef-White-Lotus-Personal-NonCommercial-SmallDeveloper-1.0'
+        licenseDeclared = 'LicenseRef-White-Lotus-Personal-NonCommercial-SmallDeveloper-1.0'
+        copyrightText = 'Copyright (c) 2026 White-Lotus. All rights reserved.'
     }
 )
 $relationships = @()
@@ -69,28 +169,89 @@ foreach ($package in $packages) {
     $relationships += [ordered]@{ spdxElementId = 'SPDXRef-EngineeringMcp'; relationshipType = 'DEPENDS_ON'; relatedSpdxElement = $spdxId }
 }
 
+$sbomPath = Join-Path $resolvedOutput 'sbom.spdx.json'
 $sbom = [ordered]@{
     spdxVersion = 'SPDX-2.3'
     dataLicense = 'CC0-1.0'
     SPDXID = 'SPDXRef-DOCUMENT'
-    name = 'DotNetEngineeringMcp-release'
+    name = "EngineeringMcp-$version"
     documentNamespace = 'https://example.invalid/spdx/DotNetEngineeringMcp/' + [Guid]::NewGuid().ToString('N')
     creationInfo = [ordered]@{ created = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'); creators = @('Tool: build/release-hardening.ps1') }
     packages = $spdxPackages
     relationships = $relationships
+    hasExtractedLicensingInfos = @(
+        [ordered]@{
+            licenseId = 'LicenseRef-White-Lotus-Personal-NonCommercial-SmallDeveloper-1.0'
+            extractedText = [IO.File]::ReadAllText($licensePath)
+            name = 'White-Lotus Personal, Non-Commercial, and Small Developer Source License 1.0'
+        }
+    )
 }
-[IO.File]::WriteAllText((Join-Path $resolvedOutput 'sbom.spdx.json'), ($sbom | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText($sbomPath, ($sbom | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+Copy-Item -LiteralPath $dependencyInventoryPath -Destination $docsOutput
+Copy-Item -LiteralPath $sbomPath -Destination $docsOutput
 
 if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
     if ($CertificateThumbprint -notmatch '^[A-Fa-f0-9]{40,64}$') { throw 'Signing certificate thumbprint is invalid.' }
-    $signTool = Get-Command signtool.exe -ErrorAction Stop
-    Get-ChildItem -LiteralPath $resolvedOutput -Recurse -File | Where-Object Extension -in '.exe', '.dll' | ForEach-Object {
-        & $signTool.Source sign /sha1 $CertificateThumbprint /fd SHA256 /tr 'https://timestamp.digicert.com' /td SHA256 $_.FullName
-        if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for $($_.Name)." }
+    $signTool = Find-SignTool
+    $signedFiles = @(Get-ChildItem -LiteralPath $packageOutput -Recurse -File |
+        Where-Object { $_.Name -like 'EngineeringMcp.*' -and $_.Extension -in '.exe', '.dll' })
+    foreach ($file in $signedFiles) {
+        & $signTool sign /sha1 $CertificateThumbprint /fd SHA256 /tr 'http://timestamp.digicert.com' /td SHA256 $file.FullName
+        if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for $($file.Name)." }
+        $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+        if ($null -eq $signature.SignerCertificate -or
+            $signature.SignerCertificate.Thumbprint -ne $CertificateThumbprint) {
+            throw "Authenticode signature verification failed for $($file.Name)."
+        }
     }
 } elseif ($RequireSigning) {
     throw 'Release signing is required but ENGINEERING_MCP_SIGNING_THUMBPRINT was not provided.'
 }
+
+$installerPayloadSource = Join-Path $resolvedOutput 'installer-payload.wxs'
+$installerLicenseRtf = Join-Path $resolvedOutput 'installer-license.rtf'
+& (Join-Path $repositoryRoot 'build/New-InstallerPayload.ps1') `
+    -PayloadDirectory $packageOutput `
+    -OutputFile $installerPayloadSource
+if ($LASTEXITCODE -ne 0) { throw 'Installer payload authoring failed.' }
+& (Join-Path $repositoryRoot 'build/New-LicenseRtf.ps1') `
+    -LicenseFile $licensePath `
+    -OutputFile $installerLicenseRtf
+if ($LASTEXITCODE -ne 0) { throw 'Installer license generation failed.' }
+
+$installerName = $packageName + '-Setup'
+$installerProject = Join-Path $repositoryRoot 'installer/EngineeringMcp.Installer.wixproj'
+$installerOutputPath = $resolvedOutput + '\'
+dotnet build $installerProject `
+    -c $Configuration `
+    -p:PayloadSourceFile=$installerPayloadSource `
+    -p:ProductVersion=$version `
+    -p:RepositoryRoot=$repositoryRoot `
+    -p:LicenseRtf=$installerLicenseRtf `
+    -p:OutputName=$installerName `
+    -p:OutputPath=$installerOutputPath
+if ($LASTEXITCODE -ne 0) { throw 'MSI installer build failed.' }
+
+$installerPath = Join-Path $resolvedOutput ($installerName + '.msi')
+if (-not [IO.File]::Exists($installerPath)) { throw 'MSI installer output is missing.' }
+if (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+    if ([string]::IsNullOrWhiteSpace($signTool)) { $signTool = Find-SignTool }
+    & $signTool sign /sha1 $CertificateThumbprint /fd SHA256 /tr 'http://timestamp.digicert.com' /td SHA256 $installerPath
+    if ($LASTEXITCODE -ne 0) { throw 'Authenticode signing failed for the MSI installer.' }
+    $installerSignature = Get-AuthenticodeSignature -LiteralPath $installerPath
+    if ($null -eq $installerSignature.SignerCertificate -or
+        $installerSignature.SignerCertificate.Thumbprint -ne $CertificateThumbprint) {
+        throw 'Authenticode signature verification failed for the MSI installer.'
+    }
+}
+
+[IO.File]::Delete($installerPayloadSource)
+[IO.File]::Delete($installerLicenseRtf)
+[IO.File]::Delete((Join-Path $resolvedOutput ($installerName + '.wixpdb')))
+
+$archivePath = Join-Path $resolvedOutput ($packageName + '.zip')
+Compress-Archive -LiteralPath $packageOutput -DestinationPath $archivePath -CompressionLevel Optimal
 
 $outputUri = [Uri]($resolvedOutput.TrimEnd('\') + '\')
 $checksums = Get-ChildItem -LiteralPath $resolvedOutput -Recurse -File |
@@ -102,4 +263,11 @@ $checksums = Get-ChildItem -LiteralPath $resolvedOutput -Recurse -File |
     }
 $checksums | Set-Content -LiteralPath (Join-Path $resolvedOutput 'SHA256SUMS.txt') -Encoding ascii
 
-Write-Host "Release artifacts, SPDX SBOM, dependency inventory, and SHA-256 checksums created at $resolvedOutput"
+Write-Host "Self-contained package: $archivePath"
+Write-Host "Windows installer: $installerPath"
+Write-Host "Release directory: $resolvedOutput"
+if ([string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+    Write-Warning 'The package is unsigned. Provide ENGINEERING_MCP_SIGNING_THUMBPRINT and -RequireSigning for an official release.'
+} elseif ($SelfSign) {
+    Write-Warning 'The package uses a development self-signed certificate. Other machines will not trust its publisher until the included public certificate is explicitly trusted.'
+}

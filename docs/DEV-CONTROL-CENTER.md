@@ -2,6 +2,13 @@
 
 The Control Center is the primary development interface. Normal development does not require terminal commands.
 
+It has two explicit runtime modes:
+
+- **Developer mode** discovers the source solution and enables build, test, readiness, fixture, and WPF end-to-end actions.
+- **Standalone mode** discovers `app-manifest.json` beside the executable and uses the bundled host and policy. It keeps runtime MCP tests and global VS Code integration enabled while disabling source-only actions.
+
+Build the standalone app with `build/release-hardening.ps1`, extract the generated ZIP, and launch `EngineeringMcp.ControlCenter.exe`. The package is self-contained and does not require a machine-wide .NET installation.
+
 ## Home
 
 - **Run MCP Server** — starts one shared loopback Streamable HTTP service at `http://127.0.0.1:8765/mcp`.
@@ -16,7 +23,7 @@ The Control Center and VS Code use the same HTTP server process. Closing the Con
 - **Stop MCP Server**
 - **Test MCP Server**
 - **MCP Server Logs**
-- **Repair MCP Server** — use only if Run/Test fails; restores and rebuilds the host and refreshes VS Code integration if it already exists.
+- **Repair MCP Server** — use only if Run/Test fails. Developer mode restores and rebuilds the host; standalone mode verifies the packaged host/policy. Both modes refresh VS Code integration if it already exists.
 - **Test WPF End-to-End** — starts the server if necessary and verifies the controlled fixture.
 
 ## Integration

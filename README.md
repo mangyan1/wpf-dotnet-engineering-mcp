@@ -6,6 +6,10 @@ Normal development now uses **one shared local MCP service**. Start it from the 
 
 **Connect to VS Code** installs a user-profile HTTP MCP entry, so ApexDrive and other workspaces see the same server without opening this repository. On first launch, the Control Center creates `ENGINEERING_MCP_HTTP_TOKEN` in the current Windows user's environment without displaying it. Fully restart VS Code after that first launch so it inherits the token. The Control Center owns the local service lifetime and stops it when the Control Center closes.
 
+## License
+
+Copyright (c) 2026 White-Lotus. All rights reserved. This project is source-available, not open source. The repository license permits personal and non-commercial use by individuals. It also permits internal development and DevOps use, including revenue-generating work, by qualifying small developers with no more than five workers and no more than USD 100,000 in annual gross revenue. Other organizational or commercial use requires prior written permission from White-Lotus. Redistribution, hosted services, product integration, and commercial AI/ML training remain prohibited. See `LICENSE` for the complete controlling terms. Third-party components remain under their respective licenses.
+
 ## Developer Control Center (recommended)
 
 For normal development, do not type routine build/test/MCP commands. Double-click `Start-ControlCenter.cmd` in the repository root.
@@ -13,6 +17,20 @@ For normal development, do not type routine build/test/MCP commands. Double-clic
 The Dev Lab can run the complete local validation path with buttons: solution build, automated tests, a real MCP stdio client/server self-test, WPF fixture launch, FlaUI/UIA attach and snapshot, semantic interaction/assertion, WPF probe checks, and sanitized screenshot verification. In-process build, test, readiness, and end-to-end actions compile into a unique temporary artifacts directory. Runtime validation executes every transport and fixture from that same fresh build, then removes the artifacts and restores the previous local MCP runtime state. This prevents Windows file locks from the running Control Center or host from invalidating validation. VS Code is tested after the MCP itself is known-good.
 
 Optional: double-click `Install-ControlCenter-Shortcut.cmd` once to create a Desktop shortcut. See `docs/DEV-CONTROL-CENTER.md`.
+
+## Standalone Windows app
+
+Create a self-contained Windows package with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build/release-hardening.ps1
+```
+
+The resulting `artifacts/release/EngineeringMcp-<version>-win-x64.zip` includes the branded Control Center, its private MCP host, a locked-down default policy, security/VS Code documentation, an SPDX SBOM, and the .NET runtime. Extract the complete folder and run `EngineeringMcp.ControlCenter.exe`; installing .NET or opening the source repository is not required.
+
+The same release command also creates `EngineeringMcp-<version>-win-x64-Setup.msi`. The per-user installer requires no elevation, installs under `%LOCALAPPDATA%\Programs\Engineering MCP`, adds Start Menu and Desktop shortcuts, and supports standard Windows Installer repair, upgrade, and uninstall operations. Application files and shortcuts are removed on uninstall; user-level MCP configuration and security tokens are preserved intentionally.
+
+Standalone mode keeps live MCP server control, protocol testing, policy selection, and the global **Connect to VS Code** action. Source builds, fixtures, and repository validation remain available only when the Control Center is launched from this checkout. The package manifest contains a reserved stable-channel update field, but automatic updating is intentionally inactive until a trusted release feed is configured.
 
 ## Control Center (recommended)
 
@@ -63,7 +81,9 @@ The project files target .NET 10 and pin the official `ModelContextProtocol` pac
 
 ## Release hardening
 
-`build/release-hardening.ps1` publishes the Windows host and Control Center, emits an SPDX 2.3 SBOM, saves the transitive dependency inventory, and creates SHA-256 checksums. Run it locally after the build, test, static-check, and vulnerable-dependency gates. Set `ENGINEERING_MCP_SIGNING_THUMBPRINT` and pass `-RequireSigning` for an official signed release. Unsigned output must not be promoted as an official release.
+`build/release-hardening.ps1` publishes a self-contained `win-x64` Windows app folder, portable ZIP, and per-user MSI installer; emits an SPDX 2.3 SBOM; saves the transitive dependency inventory; and creates SHA-256 checksums. Run it locally after the build, test, static-check, and vulnerable-dependency gates. Set `ENGINEERING_MCP_SIGNING_THUMBPRINT` and pass `-RequireSigning` for an official signed release. Unsigned output must not be promoted as an official release.
+
+For internal development builds, pass `-SelfSign -RequireSigning`. This creates or reuses a non-exportable `Engineering MCP Development` code-signing key in `Cert:\CurrentUser\My`, signs the Engineering MCP binaries with SHA-256 plus an RFC 3161 timestamp, and includes the public `.cer` in the package documentation. The certificate is not placed in Trusted Root automatically. Other machines must explicitly trust the included public certificate; this does not establish public publisher identity or Microsoft Defender SmartScreen reputation.
 
 ## VS Code
 

@@ -74,8 +74,9 @@ public partial class MainWindow : FluentWindow
             RootPathText.Text = _layout.Root;
             PolicyPathText.Text = _layout.Policy;
             LoadPolicyPreview();
+            ApplyRuntimeMode();
             RefreshStatus();
-            AppendLog("Developer Control Center ready. Private probe and HTTP authentication tokens will not be displayed or logged.");
+            AppendLog($"{_layout.ModeLabel} Control Center ready. Private probe and HTTP authentication tokens will not be displayed or logged.");
         }
         catch (Exception ex)
         {
@@ -86,7 +87,7 @@ public partial class MainWindow : FluentWindow
             VsCodeStatusText.Text = "● Unavailable";
             SecurityStatusText.Text = "● Unavailable";
             AppendLog(ex.Message);
-            SetStatus("Repository discovery failed.");
+            SetStatus("Runtime discovery failed.");
         }
     }
 
@@ -199,11 +200,9 @@ public partial class MainWindow : FluentWindow
 
     private bool ValidateLocalFiles()
     {
-        var required = new[]
-        {
-            _layout.Solution, _layout.HostProject, _layout.FixtureProject,
-            _layout.Policy
-        };
+        var required = _layout.IsRepositoryMode
+            ? new[] { _layout.Solution, _layout.HostProject, _layout.FixtureProject, _layout.Policy }
+            : new[] { _layout.HostExecutable, _layout.Policy };
         var missing = required.Where(path => !File.Exists(path)).ToArray();
         if (missing.Length == 0)
         {
@@ -219,11 +218,15 @@ public partial class MainWindow : FluentWindow
     private void RefreshStatus()
     {
         if (_layout is null) return;
-        var repoOk = File.Exists(_layout.Solution) && File.Exists(_layout.HostProject);
+        var runtimeOk = _layout.IsRepositoryMode
+            ? File.Exists(_layout.Solution) && File.Exists(_layout.HostProject)
+            : File.Exists(_layout.HostExecutable) && File.Exists(_layout.Policy);
         var vscodeOk = IsVsCodeUserMcpInstalled();
         var securityOk = File.Exists(_layout.Policy) && File.Exists(_layout.SecurityDoc);
 
-        RepositoryStatusText.Text = repoOk ? "● Ready" : "● Missing files";
+        RepositoryStatusText.Text = runtimeOk
+            ? $"● {_layout.ModeLabel} ready"
+            : "● Missing files";
         McpStatusText.Text = _mcpServerProcess is not null && !_mcpServerProcess.HasExited
             ? "● Running · HTTP"
             : McpStatusText.Text.StartsWith("● PASS", StringComparison.Ordinal) ? McpStatusText.Text : "● Stopped";
@@ -258,17 +261,52 @@ public partial class MainWindow : FluentWindow
     {
         Dispatcher.Invoke(() =>
         {
-            RunAllDevTestsButton.IsEnabled = !busy;
+            RunAllDevTestsButton.IsEnabled = !busy && _layout.SupportsDeveloperValidation;
+            RunWpfEndToEndButton.IsEnabled = !busy && _layout.SupportsDeveloperValidation;
             CancelDevTestButton.IsEnabled = busy;
         });
+    }
+
+    private void ApplyRuntimeMode()
+    {
+        if (_layout.IsRepositoryMode) return;
+
+        LaunchFixtureButton.IsEnabled = false;
+        BuildSolutionButton.IsEnabled = false;
+        RunCodeTestsButton.IsEnabled = false;
+        CheckReadinessButton.IsEnabled = false;
+        RunAllDevTestsButton.IsEnabled = false;
+        RunWpfEndToEndButton.IsEnabled = false;
+        OpenArtifactsButton.IsEnabled = false;
+        WorkspaceScopeRadio.IsEnabled = false;
+        GlobalScopeRadio.IsChecked = true;
+        _mcpScope = "global";
+
+        DevTestSummaryText.Text = "RUNTIME";
+        DevValidationDescription.Text =
+            "Repository builds, code tests, fixtures, and WPF end-to-end validation are available in Developer Mode. " +
+            "Use Test MCP Server below to verify this packaged runtime.";
+        RepairDescription.Text =
+            "Stops the local service, verifies the packaged host and policy, and refreshes the VS Code connection.";
+        LatestEmpty.Text = "// standalone runtime — use Test MCP Server for live protocol verification";
     }
 
     private bool EnsureReady()
     {
         if (_layout is not null) return true;
-        AppendLog("Repository root could not be discovered.");
-        SetStatus("Repository root not found. See Logs.");
+        AppendLog("Engineering MCP runtime could not be discovered.");
+        SetStatus("Runtime not found. See Logs.");
         MainTabs.SelectedItem = LogsTab;
+        return false;
+    }
+
+    private bool EnsureDeveloperMode(string operation)
+    {
+        if (!EnsureReady()) return false;
+        if (_layout.SupportsDeveloperValidation) return true;
+
+        AppendLog($"{operation} is available only in Developer Mode from a source checkout.");
+        SetStatus($"{operation} requires Developer Mode.");
         return false;
     }
 
@@ -301,7 +339,9 @@ public partial class MainWindow : FluentWindow
         Dispatcher.Invoke(() =>
         {
             OperationStatusText.Text = status;
-            FooterStatusText.Text = _busy ? "Developer test running" : "Local dev mode";
+            FooterStatusText.Text = _busy
+                ? (_layout?.IsRepositoryMode == true ? "Developer test running" : "Runtime operation running")
+                : $"{_layout?.ModeLabel ?? "Unavailable"} mode";
         });
     }
 
