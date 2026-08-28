@@ -36,6 +36,7 @@ public partial class MainWindow : FluentWindow
     private System.Windows.Threading.DispatcherTimer? _clockTimer;
     private string _activeThemeMode = "Print";
     private bool _printDecoBuilt;
+    private FrameworkElement? _printDecoration;
 
     public MainWindow()
     {
@@ -95,6 +96,8 @@ public partial class MainWindow : FluentWindow
             MainTabs is not null && int.TryParse(tag, out var index))
         {
             MainTabs.SelectedIndex = index;
+            if (_printDecoration is not null)
+                PrintSheet.SetSecondaryPageLayout(_printDecoration, index > 0);
             // page transition (mockup glitch/blur-in, simplified to fade + slide)
             var slide = new System.Windows.Media.TranslateTransform(0, 9);
             MainTabs.RenderTransform = slide;
@@ -183,7 +186,9 @@ public partial class MainWindow : FluentWindow
         }
         if (!_printDecoBuilt)
         {
-            PrintDecoHost.Children.Add(PrintSheet.Build());
+            _printDecoration = PrintSheet.Build();
+            PrintSheet.SetSecondaryPageLayout(_printDecoration, MainTabs.SelectedIndex > 0);
+            PrintDecoHost.Children.Add(_printDecoration);
             _printDecoBuilt = true;
         }
         PrintDecoHost.Visibility = Visibility.Visible;

@@ -24,6 +24,8 @@ internal static class PrintSheet
     private const double InkOpacity = 0.26;
     private const string CenterlineDash = "8 4 2 4";
     private const string PitchDash = "7 3 2 3";
+    private const double GearTrainVerticalOffset = -18;
+    private const double SecondaryPageGearTrainVerticalOffset = 82;
 
     private sealed record GearSpec(double R, int Teeth, double X, double Y, double Seconds, bool Ccw, bool Centerlines);
 
@@ -113,13 +115,33 @@ internal static class PrintSheet
             gears.Add((wheel, s, c));
             anchored.Children.Add(wheel);
         }
+        var currentGearVerticalOffset = GearTrainVerticalOffset;
         anchored.SizeChanged += (_, _) =>
         {
             foreach (var (wheel, spec, c) in gears)
+            {
                 Canvas.SetLeft(wheel, anchored.ActualWidth / 2 + spec.X - c);
+                Canvas.SetTop(wheel, spec.Y + currentGearVerticalOffset - c);
+            }
         };
 
+        root.Tag = (Action<bool>)(secondaryPage =>
+        {
+            currentGearVerticalOffset = secondaryPage
+                ? SecondaryPageGearTrainVerticalOffset
+                : GearTrainVerticalOffset;
+
+            foreach (var (wheel, spec, c) in gears)
+                Canvas.SetTop(wheel, spec.Y + currentGearVerticalOffset - c);
+        });
+
         return root;
+    }
+
+    public static void SetSecondaryPageLayout(FrameworkElement sheet, bool secondaryPage)
+    {
+        if (sheet.Tag is Action<bool> updateLayout)
+            updateLayout(secondaryPage);
     }
 
     private static FrameworkElement Frame(double inset) => new Rectangle
@@ -219,7 +241,7 @@ internal static class PrintSheet
             RepeatBehavior = RepeatBehavior.Forever
         });
 
-        Canvas.SetTop(body, s.Y - c);
+        Canvas.SetTop(body, s.Y + GearTrainVerticalOffset - c);
         return (body, c);
     }
 

@@ -365,6 +365,8 @@
             <Setter Property="FontFamily" Value="{DynamicResource FontSerif}" />
             <Setter Property="FontSize" Value="31" />
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="TextAlignment" Value="Left" />
         </Style>
         <Style x:Key="PageSub" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource Text2Brush}" />
@@ -372,6 +374,12 @@
             <Setter Property="MaxWidth" Value="560" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="0,7,0,0" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="TextAlignment" Value="Left" />
+        </Style>
+        <Style x:Key="SecondaryPageHeader" TargetType="Grid">
+            <Setter Property="MinHeight" Value="330" />
+            <Setter Property="Margin" Value="0,0,0,18" />
         </Style>
         <Style x:Key="LiveBox" TargetType="Border">
             <Setter Property="BorderBrush" Value="{DynamicResource Stroke2Brush}" />
@@ -960,7 +968,7 @@
                             <StackPanel Style="{StaticResource PageRoot}">
 
                                 <!-- page head -->
-                                <Grid Margin="0,0,0,18">
+                                <Grid Style="{StaticResource SecondaryPageHeader}">
                                     <TextBlock Style="{StaticResource Ghost}" Text="02" />
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource PageTitle}">
@@ -969,8 +977,8 @@
                                         <TextBlock Style="{StaticResource PageSub}"
                                                    Text="Isolated build → tests → transport → WPF E2E → cleanup. Everything runs in temp artifacts; nothing touches your working tree." />
                                     </StackPanel>
-                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
-                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Top"
+                                            HorizontalAlignment="Right" Margin="0,4,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource AmberBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -1154,7 +1162,7 @@
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Style="{StaticResource PageRoot}">
 
-                                <Grid Margin="0,0,0,18">
+                                <Grid Style="{StaticResource SecondaryPageHeader}">
                                     <TextBlock Style="{StaticResource Ghost}" Text="04" />
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource PageTitle}">
@@ -1163,8 +1171,8 @@
                                         <TextBlock Style="{StaticResource PageSub}"
                                                    Text="Connect VS Code to the MCP server you started on Home. Start it here once, use it everywhere." />
                                     </StackPanel>
-                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
-                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Top"
+                                            HorizontalAlignment="Right" Margin="0,4,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -1219,7 +1227,7 @@
                                                 <StackPanel Orientation="Horizontal">
                                                     <Button Style="{StaticResource Btn}" Padding="14,8" Content="Copy config" Click="CopyMcpConfig_Click" />
                                                     <Button Style="{StaticResource Btn}" Padding="14,8" Margin="10,0,0,0" Content="Open file" Click="OpenMcpConfig_Click" />
-                                                    <Button Style="{StaticResource BtnPrimary}" Padding="14,8" Margin="10,0,0,0" Content="Write automatically" Click="ConnectVsCode_Click" />
+                                                    <Button Style="{StaticResource BtnPrimary}" Padding="14,8" Margin="10,0,0,0" Content="Connect to VS Code" Click="ConnectVsCode_Click" />
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
@@ -1340,7 +1348,7 @@
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Style="{StaticResource PageRoot}">
 
-                                <Grid Margin="0,0,0,18">
+                                <Grid Style="{StaticResource SecondaryPageHeader}">
                                     <TextBlock Style="{StaticResource Ghost}" Text="03" />
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource PageTitle}">
@@ -1349,8 +1357,8 @@
                                         <TextBlock Style="{StaticResource PageSub}"
                                                    Text="Every tool the shared MCP server exposes. Risk class decides whether VS Code can run it without asking." />
                                     </StackPanel>
-                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
-                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Top"
+                                            HorizontalAlignment="Right" Margin="0,4,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -1421,7 +1429,7 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
 
-                            <Grid Margin="0,0,0,4">
+                            <Grid Style="{StaticResource SecondaryPageHeader}">
                                 <TextBlock Style="{StaticResource Ghost}" Text="05" />
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource PageTitle}">
@@ -1430,8 +1438,8 @@
                                     <TextBlock Style="{StaticResource PageSub}"
                                                Text="Everything the shared server did, tagged by source. Filter chips follow the log sources." />
                                 </StackPanel>
-                                <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
-                                        HorizontalAlignment="Right" Margin="0,0,0,4">
+                                <Border Style="{StaticResource LiveBox}" VerticalAlignment="Top"
+                                        HorizontalAlignment="Right" Margin="0,4,0,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
                                                  VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -1498,7 +1506,7 @@
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Style="{StaticResource PageRoot}">
 
-                                <Grid Margin="0,0,0,18">
+                                <Grid Style="{StaticResource SecondaryPageHeader}">
                                     <TextBlock Style="{StaticResource Ghost}" Text="06" />
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource PageTitle}">
@@ -1507,8 +1515,8 @@
                                         <TextBlock Style="{StaticResource PageSub}"
                                                    Text="Guardrails enforced by the shared MCP server before any tool reaches your machine." />
                                     </StackPanel>
-                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Bottom"
-                                            HorizontalAlignment="Right" Margin="0,0,0,4">
+                                    <Border Style="{StaticResource LiveBox}" VerticalAlignment="Top"
+                                            HorizontalAlignment="Right" Margin="0,4,0,0">
                                         <StackPanel Orientation="Horizontal">
                                             <Ellipse Width="6" Height="6" Fill="{DynamicResource GreenBrush}"
                                                      VerticalAlignment="Center" Margin="0,0,8,0" />
