@@ -73,6 +73,7 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/policy.packaged.json')
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/policy.schema.json') -Destination $configOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/SECURITY.md') -Destination $docsOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/VSCODE.md') -Destination $docsOutput
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/WPF-WORKSPACES.md') -Destination $docsOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination (Join-Path $docsOutput 'README.md')
 Copy-Item -LiteralPath $licensePath -Destination (Join-Path $packageOutput 'LICENSE.txt')
 Copy-Item -LiteralPath $noticePath -Destination (Join-Path $packageOutput 'NOTICE.txt')

@@ -66,18 +66,20 @@ Build the self-contained Windows package, portable ZIP, and per-user MSI with:
 powershell -ExecutionPolicy Bypass -File build/release-hardening.ps1
 ```
 
-Version 0.3.7-preview.2 produces:
+Version 0.3.7-preview.3 produces:
 
-- `artifacts/release/EngineeringMcp-0.3.7-preview.2-win-x64.zip`
-- `artifacts/release/EngineeringMcp-0.3.7-preview.2-win-x64-Setup.msi`
+- `artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64.zip`
+- `artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi`
 
-Preview labels remain in the portable ZIP/MSI filenames and application manifest. The MSI uses the numeric Windows Installer product version (`0.3.7`) because MSI product versions do not accept semantic-version suffixes; `app-manifest.json` identifies the `preview` channel and full `0.3.7-preview.2` version.
+Preview labels remain in the portable ZIP/MSI filenames and application manifest. The MSI uses the numeric Windows Installer product version (`0.3.7`) because MSI product versions do not accept semantic-version suffixes; `app-manifest.json` identifies the `preview` channel and full `0.3.7-preview.3` version.
 
 The package contains the Control Center, private MCP host, locked-down default policy, documentation (including this README), SPDX 2.3 SBOM, dependency inventory, SHA-256 checksums, and the .NET runtime. The portable package runs without installing .NET or opening the source repository.
 
 The MSI installs per-user under `%LOCALAPPDATA%\Programs\Engineering MCP` without elevation, adds Start Menu and Desktop shortcuts, and supports repair, upgrade, and uninstall. Application files and shortcuts are removed on uninstall. User-level MCP configuration, security tokens, selected policy, and environment selection are intentionally preserved so a reinstall does not break editor registration.
 
-Standalone mode keeps server control, protocol testing, policy selection, and **Connect to VS Code**. Repository builds and fixtures remain available only from a source checkout. For durable ApexDrive access, use **Configure ApexDrive** and select its repository root; this explicitly creates and activates a least-privilege per-user policy outside the installation directory. The installer itself defaults to metadata-only access.
+Standalone mode keeps server control, protocol testing, policy selection, and **Connect to VS Code**. Repository builds and fixtures remain available only from a source checkout. To authorize any WPF application, use **Authorize WPF workspace** and select the solution or repository root after building the application. Engineering MCP discovers built `UseWPF=true` executable projects, creates exact-path process rules, enables privacy-safe WPF/source diagnostics, and stores the validated policy outside the installation directory. Multiple workspaces receive distinct durable policies. The installer itself defaults to metadata-only access.
+
+See [`docs/WPF-WORKSPACES.md`](docs/WPF-WORKSPACES.md) for safe centralized-property discovery, manual executable authorization, policy boundaries, classic WPF support, and the application-integration contract.
 
 Automatic updating is inactive until a trusted release feed is configured.
 
@@ -107,7 +109,7 @@ Validate the installed MSI, VS Code registration, uninstall/reinstall persistenc
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
-  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.2-win-x64-Setup.msi `
+  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi `
   -ExerciseReinstall `
   -Configuration Release
 ```
@@ -116,7 +118,7 @@ Tests use synthetic fixtures. The automated suite exercises a real WPF process f
 
 ## Project status
 
-The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-29, the `0.3.7-preview.2` Release suite passed 38 normal tests with one opt-in installed-package acceptance skipped in the ordinary run; this includes real-process screenshot masking, restartable authenticated WPF probing, live ASP.NET action correlation, exact-file XAML auditing, provider-chrome selector classification, and PII-redaction regressions. The installed acceptance passed separately against the development-signed MSI after install, uninstall, and reinstall. See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
+The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-29, the `0.3.7-preview.3` Release suite added bounded universal WPF workspace discovery and durable exact-path policy provisioning to the existing real-process screenshot masking, restartable authenticated WPF probing, live ASP.NET action correlation, exact-file XAML auditing, provider-chrome selector classification, and PII-redaction coverage. See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
 
 ## Source-of-truth order
 

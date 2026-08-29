@@ -6,8 +6,8 @@
   "processes": {
     "allow": [
       {
-        "name": "ApexDrive.exe",
-        "path": "C:\\Development\\ApexDrive\\bin\\Debug\\net10.0-windows\\ApexDrive.exe",
+        "name": "Sample.Desktop.exe",
+        "path": "C:\\Development\\WpfSampleWorkspace\\src\\Sample.Desktop\\bin\\Debug\\net10.0-windows\\Sample.Desktop.exe",
         "sha256": null,
         "publisher": null
       }
@@ -15,7 +15,7 @@
   },
   "filesystem": {
     "readRoots": [
-      "C:\\Development\\ApexDrive"
+      "C:\\Development\\WpfSampleWorkspace"
     ],
     "denyGlobs": [
       "**/.env",

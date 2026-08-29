@@ -1347,7 +1347,7 @@
                                             <Grid>
                                                 <TextBlock Style="{StaticResource CardTitle}" Text="POLICY READINESS" />
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                                    <TextBlock Style="{StaticResource Link}" Text="Configure ApexDrive" MouseLeftButtonUp="ConfigureApexDrivePolicy_Click" />
+                                                    <TextBlock Style="{StaticResource Link}" Text="Authorize WPF workspace" MouseLeftButtonUp="AuthorizeWpfWorkspace_Click" />
                                                     <TextBlock Style="{StaticResource Link}" Margin="14,0,0,0" Text="Select policy" MouseLeftButtonUp="SelectPolicy_Click" />
                                                 </StackPanel>
                                             </Grid>
@@ -1724,7 +1724,7 @@
                                                                        VerticalAlignment="Center" Text="policy.json" />
                                                         </StackPanel>
                                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                                            <TextBlock Style="{StaticResource Link}" MouseLeftButtonUp="ConfigureApexDrivePolicy_Click" Text="Configure ApexDrive" />
+                                                            <TextBlock Style="{StaticResource Link}" MouseLeftButtonUp="AuthorizeWpfWorkspace_Click" Text="Authorize WPF workspace" />
                                                             <TextBlock Style="{StaticResource Link}" Margin="10,0,0,0" MouseLeftButtonUp="SelectPolicy_Click" Text="Select policy" />
                                                             <TextBlock Style="{StaticResource Link}" Margin="10,0,0,0" MouseLeftButtonUp="OpenPolicy_Click" Text="Open policy" />
                                                             <TextBlock Style="{StaticResource Link}" Margin="10,0,0,0" MouseLeftButtonUp="OpenSecurity_Click" Text="Security guide" />

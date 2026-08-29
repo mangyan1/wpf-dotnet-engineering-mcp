@@ -106,7 +106,8 @@ check(tabs == ['Home', 'Validation', 'Integration', 'Tools', 'Logs', 'Security']
       "Control Center has the expected six dashboard pages", str(tabs))
 for label in ['Run MCP Server', 'Test MCP Server', 'Repair MCP Server', 'Connect to VS Code', 'MCP Server Logs']:
     check(f'Content="{label}"' in xaml, f'GUI action present: {label}')
-check('Text="Configure ApexDrive"' in xaml, 'GUI action present: Configure ApexDrive')
+check('Text="Authorize WPF workspace"' in xaml and 'AuthorizeWpfWorkspace_Click' in maincs,
+      'GUI action present: Authorize WPF workspace')
 check('x:Name="VersionText"' in xaml and
       'InitializeBuildIdentity();' in maincs and
       'AssemblyInformationalVersionAttribute' in maincs,
@@ -177,6 +178,37 @@ check('ICE61' in (ROOT / 'installer/EngineeringMcp.Installer.wixproj').read_text
 check('ProcessEnvironmentSanitizer.SanitizePathInPlace' in selftest and
       'remediation' in (ROOT / 'src/EngineeringMcp.Contracts/SecurityModels.cs').read_text(encoding='utf-8').lower(),
       "Child environment sanitization and actionable failure contract are wired")
+
+workspace_provisioner = (ROOT / 'src/EngineeringMcp.Security/WpfWorkspacePolicyProvisioner.cs').read_text(encoding='utf-8')
+check('MaximumDirectories = 4096' in workspace_provisioner and
+      'FileAttributes.ReparsePoint' in workspace_provisioner and
+      'UseWPF' in workspace_provisioner and
+      'ProjectTypeGuids' in workspace_provisioner and
+      'GetDefaultPolicyPath' in workspace_provisioner,
+      "Universal bounded WPF workspace authorization is installed")
+check('MaximumImportedProjectFiles = 32' in workspace_provisioner and
+      'Directory.Build.props' in workspace_provisioner and
+      'DtdProcessing.Prohibit' in workspace_provisioner and
+      'ProvisionExecutable' in workspace_provisioner and
+      'PEReader' in workspace_provisioner,
+      "Centralized WPF properties and manual executable fallback remain inert and verified")
+
+neutrality_roots = [ROOT / 'src', ROOT / 'tests', ROOT / 'config', ROOT / 'docs', ROOT / 'scripts']
+neutrality_files = [ROOT / 'README.md', ROOT / 'IMPLEMENTATION_STATUS.md']
+for neutrality_root in neutrality_roots:
+    neutrality_files.extend(path for path in neutrality_root.rglob('*')
+                            if path.is_file() and path != ROOT / 'scripts/self-test-static.py' and
+                            'bin' not in path.parts and 'obj' not in path.parts)
+product_specific_paths = []
+for path in neutrality_files:
+    try:
+        if 'apexdrive' in path.read_text(encoding='utf-8').lower():
+            product_specific_paths.append(str(path.relative_to(ROOT)))
+    except UnicodeDecodeError:
+        continue
+check(not product_specific_paths,
+      "Universal product surface contains no ApexDrive coupling",
+      ', '.join(sorted(set(product_specific_paths))))
 
 print(f"\nStatic self-test: {len(passes)} passed, {len(failures)} failed")
 if failures:

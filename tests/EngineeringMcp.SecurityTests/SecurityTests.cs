@@ -142,7 +142,7 @@ public sealed class SecurityTests
         var second = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "engineering-mcp-path-b"));
         var input = string.Join(Path.PathSeparator,
             first,
-            @"\\Truenas\downloaded\GitHub-Projects\ApexDrive\.dotnet_cli\.dotnet\tools",
+            @"\\BuildServer\shared\WpfSampleWorkspace\.dotnet_cli\.dotnet\tools",
             "relative-tools",
             first,
             second);

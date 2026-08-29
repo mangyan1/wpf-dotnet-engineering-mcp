@@ -31,7 +31,7 @@ public static class PolicyDiagnostics
                 "POLICY_NOT_CONFIGURED",
                 "warning",
                 "Engineering MCP is using its metadata-only fallback policy.",
-                "In Control Center, choose Configure ApexDrive or Select policy, then restart the MCP server."));
+                "In Control Center, choose Authorize WPF workspace or Select policy, then restart the MCP server."));
         }
 
         if (policy.PermissionCeiling == PermissionLevel.Metadata)
@@ -49,7 +49,7 @@ public static class PolicyDiagnostics
                 "PROCESS_ALLOWLIST_EMPTY",
                 "warning",
                 "No target processes are allowlisted, so process and WPF tools fail closed.",
-                "Use Control Center to configure a repository policy with an exact executable name and path."));
+                "Use Authorize WPF workspace to discover built WPF applications, or select an approved policy with exact executable names and paths."));
         }
 
         if (policy.Filesystem.ReadRoots.Count == 0)

@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 
-Current source version: 0.3.7-preview.2. This preview carries the target-only DPI-aware screenshot capture, conservative text masking, provider-chrome audit corrections, Apache-2.0 relicensing, and the associated regression coverage. Release hardening and installed-package verification are complete.
+Current source version: 0.3.7-preview.3. This preview carries universal bounded WPF workspace discovery and authorization, inert centralized-property import discovery, verified manual executable fallback, target-only DPI-aware screenshot capture, conservative text masking, provider-chrome audit corrections, Apache-2.0 licensing, and the associated regression coverage.
 
 ## Verification state
 
@@ -21,14 +21,16 @@ Verified on Windows on 2026-08-28 with .NET SDK 10.0.400:
 
 Additional source verification on 2026-08-29:
 
-- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 38 normal tests passed and the opt-in installed-package acceptance test skipped by design.
+- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 46 normal tests passed and the opt-in installed-package acceptance test skipped by design.
+- Ten universal workspace-policy tests passed for multiple modern WPF apps, classic WPF metadata, safe centralized imports, external-import rejection, verified manual executable fallback, non-WPF exclusion, unbuilt-project failure, invalid-root rejection, and stable path-specific policy files.
 - A real WPF fixture produced a valid masked PNG with UIA text/sensitive-region redactions, and capture remained fail-closed.
 - The authenticated WPF probe completed a request, disposed, restarted, and completed another request without a stale singleton or pipe timeout.
 - A live ASP.NET fixture recorded an HTTP request and returned it through the authenticated pipe with an exact diagnostic-action correlation marker.
 - One-file XAML audits were limited to the selected file, and redaction preserved ISO timestamps, dotted versions, and target-framework path fragments while still masking realistic phone numbers.
-- Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.2-win-x64.zip` and `EngineeringMcp-0.3.7-preview.2-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.2` on the `preview` channel and packages the Apache-2.0 `LICENSE.txt` and White-Lotus `NOTICE.txt`.
-- The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.2`.
-- Live ApexDrive verification returned backend adapter status `ready` with one bounded request observation and a repair-order selector audit of 43/43 stable actionable selectors with zero missing or duplicate IDs.
+- Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.3-win-x64.zip` and `EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.3` on the `preview` channel and packages the Apache-2.0 license, White-Lotus notice, and universal WPF workspace guide.
+- The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.3`.
+- All 51 static contract/security checks passed, including product-neutrality and inert centralized-property/manual-executable authorization gates.
+- A real application integration fixture returned backend adapter status `ready` with one bounded request observation and a selector audit of 43/43 stable actionable selectors with zero missing or duplicate IDs; the fixture remains external to the universal MCP product.
 
 | Area | Status | Notes |
 |---|---|---|
@@ -51,7 +53,7 @@ Additional source verification on 2026-08-29:
 | ClrMD/dump analysis | IMPLEMENTED, PRIVILEGED | policy-gated sensitive diagnostic path |
 | UX heuristics | IMPLEMENTED | explicitly heuristic output |
 | VS Code integration | IMPLEMENTED | authenticated HTTP definition and environment-backed bearer token |
-| Durable ApexDrive policy provisioning | IMPLEMENTED, LIFECYCLE VERIFIED | explicit Control Center action writes a validated per-user policy outside the install directory and restarts MCP; install/uninstall/reinstall preserves it without weakening packaged default-deny behavior |
+| Universal WPF workspace authorization | IMPLEMENTED | bounded project discovery identifies built `UseWPF=true` executable projects, writes distinct exact-path per-workspace policies outside the install directory, and restarts MCP without weakening packaged default-deny behavior |
 | Actionable policy denials | IMPLEMENTED, VERIFIED | structured remediation field, safe system policy diagnostic report, and Control Center Policy Readiness card |
 | Child environment sanitization | IMPLEMENTED, VERIFIED | local absolute PATH entries only; relative, duplicate, and UNC/network entries are removed before child launch |
 | Codex integration | IMPLEMENTED, VERIFIED CONFIG | global `dotnetWpfEngineering` entry uses bearer-token environment variable |

@@ -39,7 +39,7 @@ public partial class MainWindow
 
     // User-profile scope is intentional default: a workspace-local .vscode/mcp.json only exists
     // while that repository is open. The engineering MCP is a developer tool that must
-    // remain available when the user switches to ApexDrive or another authorized project.
+    // remain available when the user switches between authorized workspaces.
     private string WriteVsCodeMcpConfiguration(string configPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
@@ -191,14 +191,14 @@ public partial class MainWindow
         SetStatus("MCP policy selected. Restart the MCP server to apply it.");
     }
 
-    private async void ConfigureApexDrivePolicy_Click(object sender, RoutedEventArgs e)
+    private async void AuthorizeWpfWorkspace_Click(object sender, RoutedEventArgs e)
     {
         if (!EnsureReady() || _busy) return;
 
-        var suggestedRoot = ApexDrivePolicyProvisioner.FindSuggestedRepositoryRoot();
+        var suggestedRoot = WpfWorkspacePolicyProvisioner.FindSuggestedWorkspaceRoot();
         var dialog = new OpenFolderDialog
         {
-            Title = "Select the ApexDrive repository",
+            Title = "Select a WPF solution or workspace",
             Multiselect = false,
             InitialDirectory = suggestedRoot
         };
@@ -208,7 +208,32 @@ public partial class MainWindow
 
         try
         {
-            var provisioned = ApexDrivePolicyProvisioner.Provision(dialog.FolderName);
+            WpfWorkspacePolicyProvisioningResult provisioned;
+            try
+            {
+                provisioned = WpfWorkspacePolicyProvisioner.Provision(dialog.FolderName);
+            }
+            catch (WpfWorkspaceDiscoveryException discoveryException)
+            {
+                AppendLog("Automatic WPF discovery did not find an application: " + discoveryException.Message);
+                var executableDialog = new OpenFileDialog
+                {
+                    Title = "Select a built WPF executable inside the workspace",
+                    Filter = "Windows executable (*.exe)|*.exe",
+                    CheckFileExists = true,
+                    Multiselect = false,
+                    InitialDirectory = dialog.FolderName
+                };
+                if (executableDialog.ShowDialog(this) is not true)
+                {
+                    SetStatus("WPF workspace authorization was cancelled.");
+                    return;
+                }
+
+                provisioned = WpfWorkspacePolicyProvisioner.ProvisionExecutable(
+                    dialog.FolderName,
+                    executableDialog.FileName);
+            }
             Environment.SetEnvironmentVariable(
                 "ENGINEERING_MCP_POLICY",
                 provisioned.PolicyPath,
@@ -221,18 +246,19 @@ public partial class MainWindow
             _layout = _layout with { Policy = provisioned.PolicyPath };
             PolicyPathText.Text = provisioned.PolicyPath;
             RefreshStatus();
-            AppendLog("Provisioned durable ApexDrive MCP policy: " + provisioned.PolicyPath);
-            AppendLog("ApexDrive workstation allowlist target: " + provisioned.WorkstationExecutable);
+            AppendLog("Provisioned durable WPF workspace policy: " + provisioned.PolicyPath);
+            AppendLog($"Authorized {provisioned.Applications.Count} built WPF application(s): " +
+                      string.Join(", ", provisioned.Applications.Select(application => application.Name)));
 
             if (await StartMcpServerAsync(restart: true, CancellationToken.None))
-                SetStatus("ApexDrive policy installed. MCP restarted and ready for VS Code.");
+                SetStatus($"WPF workspace authorized for {provisioned.Applications.Count} application(s). MCP restarted and ready for VS Code.");
             else
-                SetStatus("ApexDrive policy installed, but MCP restart failed. See Logs.");
+                SetStatus("WPF workspace policy installed, but MCP restart failed. See Logs.");
         }
         catch (Exception ex)
         {
-            AppendLog("Configure ApexDrive failed: " + ex.GetType().Name + ": " + ex.Message);
-            SetStatus("Could not configure the ApexDrive policy. See Logs.");
+            AppendLog("Authorize WPF workspace failed: " + ex.GetType().Name + ": " + ex.Message);
+            SetStatus("Could not authorize the WPF workspace. Build or select a verifiable WPF application and see Logs for details.");
             MainTabs.SelectedItem = LogsTab;
         }
     }

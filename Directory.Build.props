@@ -7,7 +7,7 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
     <Deterministic>true</Deterministic>
-    <Version>0.3.7-preview.2</Version>
+    <Version>0.3.7-preview.3</Version>
     <Authors>White-Lotus</Authors>
     <Copyright>Copyright 2026 White-Lotus</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
