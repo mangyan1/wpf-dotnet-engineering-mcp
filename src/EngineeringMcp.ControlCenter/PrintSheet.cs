@@ -17,7 +17,8 @@ namespace EngineeringMcp.ControlCenter;
 /// </summary>
 internal static class PrintSheet
 {
-    private static readonly Brush Ink = new SolidColorBrush(Color.FromRgb(0xBF, 0xE6, 0xFF));
+    private const string InkBrushKey = "EngineeringDecorationBrush";
+    private const string InkFillBrushKey = "EngineeringDecorationFillBrush";
     // mockup renders ink at 0.38 opacity + mix-blend-mode:screen, which measures to a
     // peak stroke of ~(64,89,109) over the sheet. WPF has no screen blend; solving
     // bg + a*(ink-bg) for that output gives a=0.26 — verified pixel-equal.
@@ -27,22 +28,26 @@ internal static class PrintSheet
     private const double GearTrainVerticalOffset = -18;
     private const double SecondaryPageGearTrainVerticalOffset = 82;
 
+    private sealed record DecorationState(FrameworkElement Furniture, Action<bool> SetSecondaryPageLayout);
+
     public static FrameworkElement Build()
     {
         // margin/alignment-positioned sheet furniture...
         var root = new Grid { IsHitTestVisible = false, Opacity = InkOpacity };
+        var furniture = new Grid();
+        root.Children.Add(furniture);
 
-        root.Children.Add(Frame(10));
-        root.Children.Add(Frame(13));
+        furniture.Children.Add(Frame(10));
+        furniture.Children.Add(Frame(13));
 
         // grid-reference rulers: A–H across the top, 1–6 down the side
         var rulerX = new UniformGrid { Rows = 1, Columns = 8, Height = 16, Margin = new Thickness(22, 13, 22, 0), VerticalAlignment = VerticalAlignment.Top };
         foreach (var c in "ABCDEFGH") rulerX.Children.Add(RulerLabel(c.ToString()));
-        root.Children.Add(rulerX);
+        furniture.Children.Add(rulerX);
 
         var rulerY = new UniformGrid { Columns = 1, Rows = 6, Width = 16, Margin = new Thickness(13, 22, 0, 22), HorizontalAlignment = HorizontalAlignment.Left };
         for (var i = 1; i <= 6; i++) rulerY.Children.Add(RulerLabel(i.ToString()));
-        root.Children.Add(rulerY);
+        furniture.Children.Add(rulerY);
 
         // dimension line (bottom-left): 840.0 + 45° angle arc
         var dims = new Canvas
@@ -60,7 +65,7 @@ internal static class PrintSheet
         dims.Children.Add(InkPath("M30 40 a30 30 0 0 1 21 -9", 1));
         dims.Children.Add(InkText("840.0", 98, 70, 11));
         dims.Children.Add(InkText("45°", 44, 18, 11));
-        root.Children.Add(dims);
+        furniture.Children.Add(dims);
 
         // bolt circle (top right)
         var bolts = new Canvas
@@ -78,44 +83,46 @@ internal static class PrintSheet
         bolts.Children.Add(InkLine(80, 146, 80, 156, 1));
         bolts.Children.Add(InkLine(4, 80, 14, 80, 1));
         bolts.Children.Add(InkLine(146, 80, 156, 80, 1));
-        root.Children.Add(bolts);
+        furniture.Children.Add(bolts);
 
-        // ...and one full-size canvas for items anchored to viewport size/center
-        var anchored = new Canvas { ClipToBounds = false };
-        root.Children.Add(anchored);
+        // Full-size furniture canvas for crosshairs anchored to viewport size/center.
+        var furnitureAnchored = new Canvas { ClipToBounds = false };
+        furniture.Children.Add(furnitureAnchored);
 
         // crosshair targets: c1 at 38% width / y 84, c2 at x 120 / 44% height
         var cross1 = Crosshair();
         var cross2 = Crosshair();
-        anchored.SizeChanged += (_, _) =>
+        furnitureAnchored.SizeChanged += (_, _) =>
         {
-            Canvas.SetLeft(cross1, anchored.ActualWidth * 0.38 - 27);
+            Canvas.SetLeft(cross1, furnitureAnchored.ActualWidth * 0.38 - 27);
             Canvas.SetTop(cross1, 84);
             Canvas.SetLeft(cross2, 120);
-            Canvas.SetTop(cross2, anchored.ActualHeight * 0.44 - 27);
+            Canvas.SetTop(cross2, furnitureAnchored.ActualHeight * 0.44 - 27);
         };
-        anchored.Children.Add(cross1);
-        anchored.Children.Add(cross2);
+        furnitureAnchored.Children.Add(cross1);
+        furnitureAnchored.Children.Add(cross2);
 
-        // clock gear train, top-center (mirrors the mockup's buildGearTrain)
+        // Gear canvas is independent from print-only furniture so dashboard identity persists in every theme.
+        var gearCanvas = new Canvas { ClipToBounds = false };
+        root.Children.Add(gearCanvas);
         var gears = new List<(FrameworkElement Wheel, GearSpec Spec, double C)>();
         foreach (var s in GearTrainLayout.Specs)
         {
             var (wheel, c) = GearWheel(s);
             gears.Add((wheel, s, c));
-            anchored.Children.Add(wheel);
+            gearCanvas.Children.Add(wheel);
         }
         var currentGearVerticalOffset = GearTrainVerticalOffset;
-        anchored.SizeChanged += (_, _) =>
+        gearCanvas.SizeChanged += (_, _) =>
         {
             foreach (var (wheel, spec, c) in gears)
             {
-                Canvas.SetLeft(wheel, anchored.ActualWidth / 2 + spec.X - c);
+                Canvas.SetLeft(wheel, gearCanvas.ActualWidth / 2 + spec.X - c);
                 Canvas.SetTop(wheel, spec.Y + currentGearVerticalOffset - c);
             }
         };
 
-        root.Tag = (Action<bool>)(secondaryPage =>
+        root.Tag = new DecorationState(furniture, secondaryPage =>
         {
             currentGearVerticalOffset = secondaryPage
                 ? SecondaryPageGearTrainVerticalOffset
@@ -130,26 +137,47 @@ internal static class PrintSheet
 
     public static void SetSecondaryPageLayout(FrameworkElement sheet, bool secondaryPage)
     {
-        if (sheet.Tag is Action<bool> updateLayout)
-            updateLayout(secondaryPage);
+        if (sheet.Tag is DecorationState state)
+            state.SetSecondaryPageLayout(secondaryPage);
     }
 
-    private static FrameworkElement Frame(double inset) => new Rectangle
+    public static void SetThemeMode(FrameworkElement sheet, string themeMode)
     {
-        Margin = new Thickness(inset),
-        Stroke = Ink,
-        StrokeThickness = 1
-    };
+        if (sheet.Tag is not DecorationState state) return;
 
-    private static TextBlock RulerLabel(string text) => new()
+        state.Furniture.Visibility = themeMode == "Print" ? Visibility.Visible : Visibility.Collapsed;
+        sheet.Opacity = themeMode switch
+        {
+            "Light" => 0.28,
+            "Dark" => 0.23,
+            _ => InkOpacity,
+        };
+    }
+
+    private static FrameworkElement Frame(double inset)
     {
-        Text = text,
-        FontFamily = new FontFamily("Consolas"),
-        FontSize = 8,
-        Foreground = Ink,
-        HorizontalAlignment = HorizontalAlignment.Center,
-        VerticalAlignment = VerticalAlignment.Center
-    };
+        var rectangle = new Rectangle
+        {
+            Margin = new Thickness(inset),
+            StrokeThickness = 1
+        };
+        SetInk(rectangle, Shape.StrokeProperty);
+        return rectangle;
+    }
+
+    private static TextBlock RulerLabel(string text)
+    {
+        var label = new TextBlock
+        {
+            Text = text,
+            FontFamily = new FontFamily("Consolas"),
+            FontSize = 8,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        SetInk(label, TextBlock.ForegroundProperty);
+        return label;
+    }
 
     // ---- one wheel, technical-drawing style: outlined teeth (valley arcs + flanks + tips),
     //      dash-dot pitch circle, double rim, bolt holes, radial spokes, marker spoke ----
@@ -179,13 +207,14 @@ internal static class PrintSheet
               .Append(Pt(c, s.R, (i + 1) * step - 0.30 * step));
         }
         sb.Append(" Z");
-        body.Children.Add(new Path
+        var teeth = new Path
         {
             Data = Geometry.Parse(sb.ToString()),
-            Stroke = Ink,
-            StrokeThickness = 1.1, // mockup: .teeth stroke-width 1.1
-            Fill = new SolidColorBrush(Color.FromArgb(10, 0xBF, 0xE6, 0xFF)) // mockup: rgba(...,.04)
-        });
+            StrokeThickness = 1.1 // mockup: .teeth stroke-width 1.1
+        };
+        SetInk(teeth, Shape.StrokeProperty);
+        teeth.SetResourceReference(Shape.FillProperty, InkFillBrushKey);
+        body.Children.Add(teeth);
 
         body.Children.Add(InkEllipse(c, c, s.R + tooth * 0.45, s.R + tooth * 0.45, 0.7, PitchDash));
         body.Children.Add(InkEllipse(c, c, s.R - 3, s.R - 3, 1.2));
@@ -239,11 +268,13 @@ internal static class PrintSheet
     {
         const double size = 54, h = size / 2;
         var g = new Canvas { Width = size, Height = size };
-        var ring = new Ellipse { Width = 36, Height = 36, Stroke = Ink, StrokeThickness = 1 };
+        var ring = new Ellipse { Width = 36, Height = 36, StrokeThickness = 1 };
+        SetInk(ring, Shape.StrokeProperty);
         Canvas.SetLeft(ring, h - 18);
         Canvas.SetTop(ring, h - 18);
         g.Children.Add(ring);
-        var dot = new Ellipse { Width = 5, Height = 5, Fill = Ink };
+        var dot = new Ellipse { Width = 5, Height = 5 };
+        SetInk(dot, Shape.FillProperty);
         Canvas.SetLeft(dot, h - 2.5);
         Canvas.SetTop(dot, h - 2.5);
         g.Children.Add(dot);
@@ -254,23 +285,25 @@ internal static class PrintSheet
 
     private static Line InkLine(double x1, double y1, double x2, double y2, double thickness, string? dash = null)
     {
-        var l = new Line { X1 = x1, Y1 = y1, X2 = x2, Y2 = y2, Stroke = Ink, StrokeThickness = thickness };
+        var l = new Line { X1 = x1, Y1 = y1, X2 = x2, Y2 = y2, StrokeThickness = thickness };
+        SetInk(l, Shape.StrokeProperty);
         if (dash is not null) l.StrokeDashArray = ParseDashes(dash);
         return l;
     }
 
-    private static Path Filled(string geometry) => new()
+    private static Path Filled(string geometry)
     {
-        Data = Geometry.Parse(geometry),
-        Fill = Ink
-    };
+        var path = new Path { Data = Geometry.Parse(geometry) };
+        SetInk(path, Shape.FillProperty);
+        return path;
+    }
 
-    private static Path InkPath(string geometry, double thickness) => new()
+    private static Path InkPath(string geometry, double thickness)
     {
-        Data = Geometry.Parse(geometry),
-        Stroke = Ink,
-        StrokeThickness = thickness
-    };
+        var path = new Path { Data = Geometry.Parse(geometry), StrokeThickness = thickness };
+        SetInk(path, Shape.StrokeProperty);
+        return path;
+    }
 
     private static Ellipse InkEllipse(double cx, double cy, double rx, double ry, double thickness, string? dash = null)
     {
@@ -278,9 +311,9 @@ internal static class PrintSheet
         {
             Width = rx * 2,
             Height = ry * 2,
-            Stroke = Ink,
             StrokeThickness = thickness
         };
+        SetInk(e, Shape.StrokeProperty);
         Canvas.SetLeft(e, cx - rx);
         Canvas.SetTop(e, cy - ry);
         if (dash is not null) e.StrokeDashArray = ParseDashes(dash);
@@ -289,7 +322,8 @@ internal static class PrintSheet
 
     private static Ellipse FilledDot(double cx, double cy, double r)
     {
-        var e = new Ellipse { Width = r * 2, Height = r * 2, Fill = Ink };
+        var e = new Ellipse { Width = r * 2, Height = r * 2 };
+        SetInk(e, Shape.FillProperty);
         Canvas.SetLeft(e, cx - r);
         Canvas.SetTop(e, cy - r);
         return e;
@@ -301,13 +335,16 @@ internal static class PrintSheet
         {
             Text = text,
             FontFamily = new FontFamily("Consolas"),
-            FontSize = size,
-            Foreground = Ink
+            FontSize = size
         };
+        SetInk(t, TextBlock.ForegroundProperty);
         Canvas.SetLeft(t, x);
         Canvas.SetTop(t, y);
         return t;
     }
+
+    private static void SetInk(FrameworkElement element, DependencyProperty property) =>
+        element.SetResourceReference(property, InkBrushKey);
 
     private static DoubleCollection ParseDashes(string dash)
     {

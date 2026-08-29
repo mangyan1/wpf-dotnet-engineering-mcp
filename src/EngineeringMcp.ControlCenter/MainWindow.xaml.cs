@@ -194,19 +194,14 @@ public partial class MainWindow : FluentWindow
                 Background = (System.Windows.Media.Brush)FindResource("BgBrush");
         }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
 
-        // print sheet decoration + vignette strength follow the palette
+        // shared gear decoration, print-only sheet furniture, and vignette strength follow the palette
         UpdatePrintDecoration();
         VignetteLayer.Opacity = mode == "Light" ? 0.15 : 0.35;
     }
 
-    /// <summary>Shows the engineering print sheet only in the Print theme, building it on first use.</summary>
+    /// <summary>Keeps the gear train visible in every theme while reserving sheet furniture for Print.</summary>
     private void UpdatePrintDecoration()
     {
-        if (_activeThemeMode != "Print")
-        {
-            PrintDecoHost.Visibility = Visibility.Collapsed;
-            return;
-        }
         if (!_printDecoBuilt)
         {
             _printDecoration = PrintSheet.Build();
@@ -214,6 +209,7 @@ public partial class MainWindow : FluentWindow
             PrintDecoHost.Children.Add(_printDecoration);
             _printDecoBuilt = true;
         }
+        PrintSheet.SetThemeMode(_printDecoration!, _activeThemeMode);
         PrintDecoHost.Visibility = Visibility.Visible;
     }
 

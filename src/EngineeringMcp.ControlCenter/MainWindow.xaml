@@ -1836,7 +1836,7 @@
             <Path Stroke="{DynamicResource AmberBrush}" StrokeThickness="1.6" Opacity="0.55"
                   Data="M14,14 H0 M14,14 V0" Stretch="None"
                   HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" />
-            <!-- engineering print sheet decoration (Print theme only, built in code) -->
+            <!-- shared engineering gears + Print-theme sheet furniture, built in code -->
             <Grid x:Name="PrintDecoHost" Visibility="Collapsed" />
         </Grid>
     </Grid>

@@ -24,6 +24,8 @@
     <SolidColorBrush x:Key="GreenBrush" Color="#7EE2A8" />
     <SolidColorBrush x:Key="RedBrush" Color="#FF9D9D" />
     <SolidColorBrush x:Key="CyanBrush" Color="#9BE1FF" />
+    <SolidColorBrush x:Key="EngineeringDecorationBrush" Color="#BFE6FF" />
+    <SolidColorBrush x:Key="EngineeringDecorationFillBrush" Color="#BFE6FF" Opacity="0.04" />
     <Color x:Key="AmberHex">#FFB224</Color>
     <Color x:Key="StrokeHex">#31537A</Color>
     <Color x:Key="CyanDimHex">#809BE1FF</Color>
