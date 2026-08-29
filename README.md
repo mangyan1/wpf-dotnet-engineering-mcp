@@ -112,7 +112,7 @@ Tests use synthetic fixtures. Full interactive WPF fixture coverage remains an o
 
 ## Project status
 
-The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-28, the Windows Release build completed with zero warnings and errors; security, adversarial, integration, authenticated HTTP, MSBuild semantic-reference, and static checks passed for the 76-tool source surface. The next packaged build must pass the updated installed-package and persistence gate.
+The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-28, the Windows Release build completed with zero warnings and errors; security, adversarial, integration, authenticated HTTP, MSBuild semantic-reference, and static checks passed for the 76-tool surface. The signed development package also passed the updated installed-package and persistence gate.
 
 See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
 
