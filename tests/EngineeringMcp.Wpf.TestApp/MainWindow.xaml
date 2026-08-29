@@ -87,6 +87,13 @@
             <!-- Main test surface -->
             <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
+                    <!-- Regression fixture: WPF reports an empty 0x0 TextBlock as onscreen.
+                         Redaction must ignore it because it has no renderable content. -->
+                    <TextBlock Text="" Width="0" Height="0" />
+                    <TextBlock Text="SCREENSHOT REDACTION MARKER"
+                               Foreground="#FF00FF00"
+                               FontSize="18"
+                               FontWeight="Bold" />
                     <TextBlock Text="Runtime workflow" FontSize="28" FontWeight="SemiBold" />
                     <TextBlock Text="A real WPF-UI surface for validating semantic automation, state inspection, redaction and failure correlation."
                                Margin="0,6,0,22"

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
 using FlaUI.Core;
@@ -384,9 +385,19 @@ public sealed class WpfAutomationService(
 
         try
         {
+            using var dpiContext = DpiAwarenessScope.EnterPerMonitorV2();
             var target = elementResult.Value;
-            using var bitmap = target.Capture();
             var targetRect = target.Properties.BoundingRectangle.ValueOrDefault;
+            var captureBounds = new Rectangle(
+                (int)Math.Round((double)targetRect.X),
+                (int)Math.Round((double)targetRect.Y),
+                (int)Math.Round((double)targetRect.Width),
+                (int)Math.Round((double)targetRect.Height));
+            using var bitmap = CaptureWindowSurface(
+                processId,
+                captureBounds,
+                out var redactionOffsetX,
+                out var redactionOffsetY);
             var redactions = 0;
             var descendants = target.FindAllDescendants();
             using var graphics = Graphics.FromImage(bitmap);
@@ -401,17 +412,62 @@ public sealed class WpfAutomationService(
                 }
 
                 var r = candidate.Properties.BoundingRectangle.ValueOrDefault;
-                if ((r.Width <= 0 || r.Height <= 0) && !candidate.Properties.IsOffscreen.ValueOrDefault)
+                if (r.Width <= 0 || r.Height <= 0)
+                {
+                    if (candidate.Properties.IsOffscreen.ValueOrDefault)
+                        continue;
+
+                    // WPF can expose an empty TextBlock as onscreen even though it has
+                    // no renderable pixels (0x0 bounds). It contains nothing that can
+                    // leak into the bitmap, so it is safe to ignore. Keep failing closed
+                    // for password/edit/document/data-item controls and for any text
+                    // element whose UIA name indicates content despite unusable bounds.
+                    if (candidate.Properties.ControlType.ValueOrDefault == ControlType.Text &&
+                        string.IsNullOrWhiteSpace(candidate.Properties.Name.ValueOrDefault))
+                    {
+                        continue;
+                    }
+
                     return ToolResult<SanitizedScreenshot>.Fail(
                         "SCREENSHOT_REDACTION_FAILED",
                         "Screenshot was withheld because a visible sensitive UI region had no usable bounds.");
+                }
 
-                var relative = Rectangle.Intersect(
-                    new Rectangle(r.X - targetRect.X - 2, r.Y - targetRect.Y - 2, r.Width + 4, r.Height + 4),
-                    new Rectangle(0, 0, bitmap.Width, bitmap.Height));
-                if (relative.Width <= 0 || relative.Height <= 0) continue;
-                graphics.FillRectangle(Brushes.Black, relative);
-                redactions++;
+                var rawRelative = new Rectangle(
+                    r.X - targetRect.X - 2,
+                    r.Y - targetRect.Y - 2,
+                    r.Width + 4,
+                    r.Height + 4);
+                var bitmapBounds = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+                var applied = false;
+                var relative = Rectangle.Intersect(rawRelative, bitmapBounds);
+                if (relative.Width > 0 && relative.Height > 0)
+                {
+                    graphics.FillRectangle(Brushes.Black, relative);
+                    applied = true;
+                }
+
+                // PrintWindow renders WPF client content after the native frame.
+                // UIA coordinates are screen-relative, so mask the corresponding
+                // client-offset location as well. Keeping the original mask covers
+                // native/non-client providers and mixed-HWND surfaces conservatively.
+                if (redactionOffsetX != 0 || redactionOffsetY != 0)
+                {
+                    var shifted = Rectangle.Intersect(
+                        new Rectangle(
+                            rawRelative.X + redactionOffsetX,
+                            rawRelative.Y + redactionOffsetY,
+                            rawRelative.Width,
+                            rawRelative.Height),
+                        bitmapBounds);
+                    if (shifted.Width > 0 && shifted.Height > 0)
+                    {
+                        graphics.FillRectangle(Brushes.Black, shifted);
+                        applied = true;
+                    }
+                }
+
+                if (applied) redactions++;
             }
 
             using var stream = new MemoryStream();
@@ -442,6 +498,113 @@ public sealed class WpfAutomationService(
             return ToolResult<object>.Ok(new { processId, detached = true });
         }
         return ToolResult<object>.Ok(new { processId, detached = false, reason = "not-attached" });
+    }
+
+    private static Bitmap CaptureWindowSurface(
+        int processId,
+        Rectangle targetRect,
+        out int redactionOffsetX,
+        out int redactionOffsetY)
+    {
+        using var process = Process.GetProcessById(processId);
+        process.Refresh();
+        var windowHandle = process.MainWindowHandle;
+        if (windowHandle == IntPtr.Zero)
+            throw new InvalidOperationException("The target process has no main window handle available for safe capture.");
+        if (!NativeMethods.GetWindowRect(windowHandle, out var windowRect))
+            throw new InvalidOperationException("Windows did not return target-window bounds for safe capture.");
+
+        var windowWidth = windowRect.Right - windowRect.Left;
+        var windowHeight = windowRect.Bottom - windowRect.Top;
+        if (windowWidth <= 0 || windowHeight <= 0)
+            throw new InvalidOperationException("The target window has no renderable bounds for safe capture.");
+
+        var clientOrigin = new NativePoint();
+        if (!NativeMethods.ClientToScreen(windowHandle, ref clientOrigin))
+            throw new InvalidOperationException("Windows did not return the target client origin for safe redaction.");
+        redactionOffsetX = clientOrigin.X - windowRect.Left;
+        redactionOffsetY = clientOrigin.Y - windowRect.Top;
+
+        using var windowBitmap = new Bitmap(windowWidth, windowHeight, PixelFormat.Format32bppArgb);
+        using (var graphics = Graphics.FromImage(windowBitmap))
+        {
+            var deviceContext = graphics.GetHdc();
+            try
+            {
+                if (!NativeMethods.PrintWindow(windowHandle, deviceContext, NativeMethods.PwRenderFullContent))
+                    throw new InvalidOperationException("Windows could not render the target window independently of the desktop.");
+            }
+            finally
+            {
+                graphics.ReleaseHdc(deviceContext);
+            }
+        }
+
+        var desiredCrop = new Rectangle(
+            targetRect.X - windowRect.Left,
+            targetRect.Y - windowRect.Top,
+            targetRect.Width,
+            targetRect.Height);
+        var windowBounds = new Rectangle(0, 0, windowBitmap.Width, windowBitmap.Height);
+        if (desiredCrop.Width <= 0 || desiredCrop.Height <= 0 ||
+            !windowBounds.Contains(desiredCrop))
+        {
+            throw new InvalidOperationException("The requested UI element is outside the safely rendered main-window surface.");
+        }
+
+        return windowBitmap.Clone(desiredCrop, PixelFormat.Format32bppArgb);
+    }
+
+    private static class NativeMethods
+    {
+        internal const uint PwRenderFullContent = 0x00000002;
+        internal static readonly IntPtr DpiAwarenessContextPerMonitorAwareV2 = new(-4);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool PrintWindow(IntPtr windowHandle, IntPtr deviceContext, uint flags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetWindowRect(IntPtr windowHandle, out NativeRect rectangle);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool ClientToScreen(IntPtr windowHandle, ref NativePoint point);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+    }
+
+    private sealed class DpiAwarenessScope(IntPtr previousContext) : IDisposable
+    {
+        public static DpiAwarenessScope EnterPerMonitorV2()
+        {
+            var previous = NativeMethods.SetThreadDpiAwarenessContext(
+                NativeMethods.DpiAwarenessContextPerMonitorAwareV2);
+            if (previous == IntPtr.Zero)
+                throw new InvalidOperationException("Windows could not establish a per-monitor DPI context for safe capture.");
+            return new DpiAwarenessScope(previous);
+        }
+
+        public void Dispose()
+            => NativeMethods.SetThreadDpiAwarenessContext(previousContext);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        internal int Left;
+        internal int Top;
+        internal int Right;
+        internal int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        internal int X;
+        internal int Y;
     }
 
     private ToolResult<object> SetExpanded(int processId, UiSelector selector, bool expanded)

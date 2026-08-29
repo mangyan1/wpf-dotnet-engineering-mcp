@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 
-Current source version: 0.3.6 prerelease candidate. The signed 0.3.5 package evidence below remains the last completed installer lifecycle verification until a 0.3.6 candidate package is produced.
+Current source version: 0.3.7-preview.2. This preview carries the target-only DPI-aware screenshot capture, conservative text masking, provider-chrome audit corrections, Apache-2.0 relicensing, and the associated regression coverage. Release hardening and installed-package verification are complete.
 
 ## Verification state
 
@@ -21,11 +21,14 @@ Verified on Windows on 2026-08-28 with .NET SDK 10.0.400:
 
 Additional source verification on 2026-08-29:
 
-- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Debug`: 37 tests passed and the opt-in installed-package acceptance test skipped by design.
+- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 38 normal tests passed and the opt-in installed-package acceptance test skipped by design.
 - A real WPF fixture produced a valid masked PNG with UIA text/sensitive-region redactions, and capture remained fail-closed.
 - The authenticated WPF probe completed a request, disposed, restarted, and completed another request without a stale singleton or pipe timeout.
 - A live ASP.NET fixture recorded an HTTP request and returned it through the authenticated pipe with an exact diagnostic-action correlation marker.
 - One-file XAML audits were limited to the selected file, and redaction preserved ISO timestamps, dotted versions, and target-framework path fragments while still masking realistic phone numbers.
+- Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.2-win-x64.zip` and `EngineeringMcp-0.3.7-preview.2-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.2` on the `preview` channel and packages the Apache-2.0 `LICENSE.txt` and White-Lotus `NOTICE.txt`.
+- The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.2`.
+- Live ApexDrive verification returned backend adapter status `ready` with one bounded request observation and a repair-order selector audit of 43/43 stable actionable selectors with zero missing or duplicate IDs.
 
 | Area | Status | Notes |
 |---|---|---|

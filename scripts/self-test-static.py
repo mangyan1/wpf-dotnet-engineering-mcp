@@ -149,6 +149,25 @@ for policy_name in ['policy.example.json', 'policy.vscode-test.json']:
 
 check((ROOT / 'build/release-hardening.ps1').exists(),
       "Local release hardening automation exists")
+license_text = (ROOT / 'LICENSE').read_text(encoding='utf-8')
+notice_text = (ROOT / 'NOTICE').read_text(encoding='utf-8')
+build_props = (ROOT / 'Directory.Build.props').read_text(encoding='utf-8')
+release_script = (ROOT / 'build/release-hardening.ps1').read_text(encoding='utf-8')
+installer_source = (ROOT / 'installer/Package.wxs').read_text(encoding='utf-8')
+license_metadata = '\n'.join([notice_text, build_props, release_script, installer_source,
+                               (ROOT / 'README.md').read_text(encoding='utf-8')])
+check('Apache License' in license_text and 'Version 2.0, January 2004' in license_text and
+      'END OF TERMS AND CONDITIONS' in license_text,
+      "Apache-2.0 license text is installed")
+check('Copyright 2026 White-Lotus' in notice_text and '<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>' in build_props,
+      "White-Lotus attribution and SPDX project metadata are installed")
+check("licenseDeclared = 'Apache-2.0'" in release_script and
+      "Copy-Item -LiteralPath $noticePath" in release_script,
+      "Release SBOM and payload declare Apache-2.0")
+check(not any(marker in license_metadata.lower() for marker in [
+          'source-available', 'not open source', 'non-commercial',
+          'licenseref-white-lotus-personal']),
+      "Legacy restrictive license metadata is absent")
 check((ROOT / 'scripts/test-installed-vscode.ps1').exists(),
       "Installed-package VS Code acceptance automation exists")
 check('AllowSameVersionUpgrades="yes"' in (ROOT / 'installer/Package.wxs').read_text(encoding='utf-8'),

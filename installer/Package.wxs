@@ -21,7 +21,7 @@
 
     <Icon Id="EngineeringMcpIcon" SourceFile="$(var.RepositoryRoot)\src\EngineeringMcp.ControlCenter\Assets\AppIcon.ico" />
     <Property Id="ARPPRODUCTICON" Value="EngineeringMcpIcon" />
-    <Property Id="ARPCOMMENTS" Value="White-Lotus source-available software for personal, non-commercial, and qualifying small-developer use." />
+    <Property Id="ARPCOMMENTS" Value="Open-source software licensed under the Apache License, Version 2.0." />
     <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="Engineering MCP was installed successfully. Use the Start Menu or Desktop shortcut to open the Control Center." />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
 

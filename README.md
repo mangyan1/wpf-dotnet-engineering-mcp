@@ -66,10 +66,12 @@ Build the self-contained Windows package, portable ZIP, and per-user MSI with:
 powershell -ExecutionPolicy Bypass -File build/release-hardening.ps1
 ```
 
-Version 0.3.6 produces:
+Version 0.3.7-preview.2 produces:
 
-- `artifacts/release/EngineeringMcp-0.3.6-win-x64.zip`
-- `artifacts/release/EngineeringMcp-0.3.6-win-x64-Setup.msi`
+- `artifacts/release/EngineeringMcp-0.3.7-preview.2-win-x64.zip`
+- `artifacts/release/EngineeringMcp-0.3.7-preview.2-win-x64-Setup.msi`
+
+Preview labels remain in the portable ZIP/MSI filenames and application manifest. The MSI uses the numeric Windows Installer product version (`0.3.7`) because MSI product versions do not accept semantic-version suffixes; `app-manifest.json` identifies the `preview` channel and full `0.3.7-preview.2` version.
 
 The package contains the Control Center, private MCP host, locked-down default policy, documentation (including this README), SPDX 2.3 SBOM, dependency inventory, SHA-256 checksums, and the .NET runtime. The portable package runs without installing .NET or opening the source repository.
 
@@ -105,7 +107,7 @@ Validate the installed MSI, VS Code registration, uninstall/reinstall persistenc
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
-  -MsiPath artifacts/release/EngineeringMcp-0.3.6-win-x64-Setup.msi `
+  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.2-win-x64-Setup.msi `
   -ExerciseReinstall `
   -Configuration Release
 ```
@@ -114,9 +116,7 @@ Tests use synthetic fixtures. The automated suite exercises a real WPF process f
 
 ## Project status
 
-The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-29, the Windows test suite passed 37 tests with one opt-in installed-package acceptance test skipped; this includes real-process screenshot masking, restartable authenticated WPF probing, live ASP.NET action correlation, exact-file XAML auditing, and PII-redaction regressions. The signed 0.3.5 development package previously passed the installed-package and persistence gate.
-
-See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
+The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-29, the `0.3.7-preview.2` Release suite passed 38 normal tests with one opt-in installed-package acceptance skipped in the ordinary run; this includes real-process screenshot masking, restartable authenticated WPF probing, live ASP.NET action correlation, exact-file XAML auditing, provider-chrome selector classification, and PII-redaction regressions. The installed acceptance passed separately against the development-signed MSI after install, uninstall, and reinstall. See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
 
 ## Source-of-truth order
 
@@ -133,8 +133,6 @@ If implementation conflicts with security policy, the implementation is defectiv
 
 ## License
 
-Copyright (c) 2026 White-Lotus. All rights reserved.
+Copyright 2026 White-Lotus.
 
-This project is source-available, not open source. The repository license permits personal and non-commercial use by individuals. It also permits internal development and DevOps use, including revenue-generating work, by qualifying small developers with no more than five workers and no more than USD 100,000 in annual gross revenue. Other organizational or commercial use requires prior written permission from White-Lotus. Redistribution, hosted services, product integration, and commercial AI/ML training remain prohibited.
-
-See `LICENSE` for the complete controlling terms. Third-party components remain under their respective licenses.
+Engineering MCP is open-source software licensed under the [Apache License, Version 2.0](LICENSE). You may use, modify, and redistribute it, including commercially, subject to the license terms. Preserve the license and attribution notices when redistributing the software. Third-party components remain under their respective licenses.

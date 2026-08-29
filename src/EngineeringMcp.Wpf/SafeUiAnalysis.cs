@@ -28,7 +28,9 @@ public static class SafeUiAnalysis
 
     public static SelectorAuditSummary SelectorAudit(UiSnapshot snapshot)
     {
-        var actionable = snapshot.Elements.Where(element => ActionableTypes.Contains(element.ControlType)).ToArray();
+        var actionable = snapshot.Elements
+            .Where(element => ActionableTypes.Contains(element.ControlType) && !IsNativeProviderChrome(element))
+            .ToArray();
         var duplicateIds = snapshot.Elements
             .Where(element => !string.IsNullOrWhiteSpace(element.AutomationId))
             .GroupBy(element => element.AutomationId, StringComparer.Ordinal)
@@ -57,6 +59,11 @@ public static class SafeUiAnalysis
             findings.Take(250).ToArray(),
             snapshot.Truncated || findings.Count > 250);
     }
+
+    private static bool IsNativeProviderChrome(UiElementSnapshot element)
+        => element.ControlType.Equals("MenuItem", StringComparison.OrdinalIgnoreCase) &&
+           element.Name.Equals("System", StringComparison.OrdinalIgnoreCase) &&
+           string.IsNullOrWhiteSpace(element.AutomationId);
 
     public static DuplicateAutomationIdSummary DuplicateAutomationIds(UiSnapshot snapshot)
     {

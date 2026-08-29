@@ -63,6 +63,28 @@ public sealed class AdvancedWpfSafetyTests
         Assert.IsTrue(items.MetadataOnly);
     }
 
+    [TestMethod]
+    public void SelectorAudit_ExcludesNativeSystemMenuProviderChrome()
+    {
+        var snapshot = new UiSnapshot(
+            9,
+            "uia:9:1",
+            DateTimeOffset.UtcNow,
+            [
+                Element("uia:9:1", null, "Window", "Synthetic window", "WindowRoot", ["Window"]),
+                Element("uia:9:2", "uia:9:1", "MenuItem", "System", "", ["Invoke"]),
+                Element("uia:9:3", "uia:9:1", "Button", "Synthetic action", "SyntheticActionButton", ["Invoke"])
+            ],
+            false,
+            100);
+
+        var audit = SafeUiAnalysis.SelectorAudit(snapshot);
+
+        Assert.AreEqual(1, audit.ActionableElementCount);
+        Assert.AreEqual(1, audit.StableSelectorCount);
+        Assert.AreEqual(0, audit.MissingAutomationIdCount);
+    }
+
     private static UiElementSnapshot Element(
         string reference,
         string? parent,

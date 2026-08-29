@@ -42,6 +42,12 @@ if ([IO.Directory]::Exists($resolvedOutput)) {
 $buildProperties = [xml][IO.File]::ReadAllText((Join-Path $repositoryRoot 'Directory.Build.props'))
 $version = [string]($buildProperties.Project.PropertyGroup.Version | Select-Object -First 1)
 if ([string]::IsNullOrWhiteSpace($version)) { throw 'Directory.Build.props does not define Version.' }
+$versionMatch = [regex]::Match($version, '^(?<core>\d+\.\d+\.\d+)(?:-[0-9A-Za-z.-]+)?$')
+if (-not $versionMatch.Success) {
+    throw "Directory.Build.props Version '$version' is not a supported semantic version."
+}
+$installerVersion = $versionMatch.Groups['core'].Value
+$releaseChannel = if ($version.IndexOf('-', [StringComparison]::Ordinal) -ge 0) { 'preview' } else { 'stable' }
 
 $packageName = "EngineeringMcp-$version-$RuntimeIdentifier"
 $packageOutput = Join-Path $resolvedOutput $packageName
@@ -49,6 +55,7 @@ $hostOutput = Join-Path $packageOutput 'host'
 $configOutput = Join-Path $packageOutput 'config'
 $docsOutput = Join-Path $packageOutput 'docs'
 $licensePath = Join-Path $repositoryRoot 'LICENSE'
+$noticePath = Join-Path $repositoryRoot 'NOTICE'
 [IO.Directory]::CreateDirectory($packageOutput) | Out-Null
 [IO.Directory]::CreateDirectory($hostOutput) | Out-Null
 [IO.Directory]::CreateDirectory($configOutput) | Out-Null
@@ -68,6 +75,7 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/SECURITY.md') -Destinati
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/VSCODE.md') -Destination $docsOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination (Join-Path $docsOutput 'README.md')
 Copy-Item -LiteralPath $licensePath -Destination (Join-Path $packageOutput 'LICENSE.txt')
+Copy-Item -LiteralPath $noticePath -Destination (Join-Path $packageOutput 'NOTICE.txt')
 
 $signingKind = 'unsigned'
 if ($SelfSign) {
@@ -115,7 +123,7 @@ $manifest = [ordered]@{
         publicCertificate = if ($SelfSign) { 'docs/EngineeringMcp-Development-CodeSigning.cer' } else { $null }
     }
     update = [ordered]@{
-        channel = 'stable'
+        channel = $releaseChannel
         manifestUrl = $null
     }
 }
@@ -147,9 +155,9 @@ $spdxPackages = @(
         versionInfo = $version
         downloadLocation = 'NOASSERTION'
         filesAnalyzed = $false
-        licenseConcluded = 'LicenseRef-White-Lotus-Personal-NonCommercial-SmallDeveloper-1.0'
-        licenseDeclared = 'LicenseRef-White-Lotus-Personal-NonCommercial-SmallDeveloper-1.0'
-        copyrightText = 'Copyright (c) 2026 White-Lotus. All rights reserved.'
+        licenseConcluded = 'Apache-2.0'
+        licenseDeclared = 'Apache-2.0'
+        copyrightText = 'Copyright 2026 White-Lotus'
     }
 )
 $relationships = @()
@@ -179,13 +187,6 @@ $sbom = [ordered]@{
     creationInfo = [ordered]@{ created = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'); creators = @('Tool: build/release-hardening.ps1') }
     packages = $spdxPackages
     relationships = $relationships
-    hasExtractedLicensingInfos = @(
-        [ordered]@{
-            licenseId = 'LicenseRef-White-Lotus-Personal-NonCommercial-SmallDeveloper-1.0'
-            extractedText = [IO.File]::ReadAllText($licensePath)
-            name = 'White-Lotus Personal, Non-Commercial, and Small Developer Source License 1.0'
-        }
-    )
 }
 [IO.File]::WriteAllText($sbomPath, ($sbom | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath $dependencyInventoryPath -Destination $docsOutput
@@ -226,7 +227,7 @@ $installerOutputPath = $resolvedOutput + '\'
 dotnet build $installerProject `
     -c $Configuration `
     -p:PayloadSourceFile=$installerPayloadSource `
-    -p:ProductVersion=$version `
+    -p:ProductVersion=$installerVersion `
     -p:RepositoryRoot=$repositoryRoot `
     -p:LicenseRtf=$installerLicenseRtf `
     -p:OutputName=$installerName `
