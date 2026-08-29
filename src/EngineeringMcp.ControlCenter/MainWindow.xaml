@@ -486,6 +486,9 @@
                             <TextBlock FontFamily="{DynamicResource FontMono}" FontSize="9.5"
                                        Foreground="{DynamicResource Text3Brush}" Margin="0,3,0,0"
                                        Text="DEVELOPER CONTROL CENTER" />
+                            <TextBlock x:Name="VersionText" FontFamily="{DynamicResource FontMono}" FontSize="9.5"
+                                       Foreground="{DynamicResource AmberBrush}" Margin="0,3,0,0"
+                                       Text="VERSION --" ToolTip="Installed product version" />
                         </StackPanel>
                     </StackPanel>
 

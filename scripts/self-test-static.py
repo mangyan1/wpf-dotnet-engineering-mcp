@@ -107,6 +107,10 @@ check(tabs == ['Home', 'Validation', 'Integration', 'Tools', 'Logs', 'Security']
 for label in ['Run MCP Server', 'Test MCP Server', 'Repair MCP Server', 'Connect to VS Code', 'MCP Server Logs']:
     check(f'Content="{label}"' in xaml, f'GUI action present: {label}')
 check('Text="Configure ApexDrive"' in xaml, 'GUI action present: Configure ApexDrive')
+check('x:Name="VersionText"' in xaml and
+      'InitializeBuildIdentity();' in maincs and
+      'AssemblyInformationalVersionAttribute' in maincs,
+      'Control Center displays assembly-derived product version and build revision')
 check('x:Name="PolicyDiagnosticsText"' in xaml and 'POLICY READINESS' in xaml,
       'Control Center exposes local policy readiness guidance')
 

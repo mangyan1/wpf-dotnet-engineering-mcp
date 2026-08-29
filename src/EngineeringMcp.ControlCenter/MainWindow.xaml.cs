@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows;
@@ -42,6 +43,7 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
+        InitializeBuildIdentity();
         DevTestGrid.ItemsSource = _devSteps;
         LatestList.ItemsSource = _devSteps;
         LogStream.ItemsSource = _logEntries;
@@ -90,6 +92,25 @@ public partial class MainWindow : FluentWindow
             AppendLog(ex.Message);
             SetStatus("Runtime discovery failed.");
         }
+    }
+
+    private void InitializeBuildIdentity()
+    {
+        var assembly = typeof(MainWindow).Assembly;
+        var informationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion
+            ?? assembly.GetName().Version?.ToString()
+            ?? "unknown";
+        var versionParts = informationalVersion.Split('+', 2, StringSplitOptions.TrimEntries);
+        var version = versionParts[0];
+        var revision = versionParts.Length == 2 ? versionParts[1] : string.Empty;
+        var shortRevision = revision[..Math.Min(7, revision.Length)];
+
+        VersionText.Text = string.IsNullOrWhiteSpace(shortRevision)
+            ? $"VERSION {version}"
+            : $"VERSION {version} / BUILD {shortRevision}";
+        VersionText.ToolTip = $"Installed product version: {informationalVersion}";
     }
 
     private void Nav_Checked(object sender, RoutedEventArgs e)

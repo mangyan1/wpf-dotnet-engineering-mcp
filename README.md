@@ -46,7 +46,7 @@ Normal development uses one shared local MCP service:
 
 The host listens only on `http://127.0.0.1:8765/mcp`. The Control Center creates `ENGINEERING_MCP_HTTP_TOKEN` in the current Windows user's environment without displaying it, and editor clients connect to the same authenticated process. The host also supports `--transport stdio` for compatible clients.
 
-The Control Center owns the local service lifetime and stops it when the Control Center closes. It provides fixed actions for builds, tests, MCP protocol checks, VS Code repair, WPF and ASP.NET fixture workflows, policy selection, and end-to-end validation; it does not expose an arbitrary command shell. `EngineeringMcp.Wpf.TestApp` is an automation fixture with intentional faults, not the management UI.
+The Control Center owns the local service lifetime and stops it when the Control Center closes. Its sidebar always displays the running product version and short source-build revision, while the tooltip retains the full informational version for support checks. It provides fixed actions for builds, tests, MCP protocol checks, VS Code repair, WPF and ASP.NET fixture workflows, policy selection, and end-to-end validation; it does not expose an arbitrary command shell. `EngineeringMcp.Wpf.TestApp` is an automation fixture with intentional faults, not the management UI.
 
 Optional: run `Install-ControlCenter-Shortcut.cmd` once to create a Desktop shortcut. See `docs/DEV-CONTROL-CENTER.md`.
 
