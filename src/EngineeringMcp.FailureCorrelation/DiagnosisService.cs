@@ -155,13 +155,28 @@ public sealed class DiagnosisService(
             $"Target UI element resolved as {before.Value.ControlType} '{before.Value.Name}'.",
             "wpf_query", correlationId, DateTimeOffset.UtcNow));
 
+        BackendCorrelationObservation? backendCorrelation = null;
+        if (backendProcessId is int correlationBackendPid)
+        {
+            var begin = await backend.RequestAsync(
+                correlationBackendPid, "begin_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
+            if (begin.Success && begin.Value is { Success: true } beginResponse)
+                backendCorrelation = ReadBackendCorrelation(beginResponse.Value);
+            if (backendCorrelation is null)
+                unknowns.Add("The backend adapter did not establish an action correlation marker; backend evidence will use bounded time-window correlation.");
+        }
+
         var actionCapture = await diagnostics.CaptureExceptionsDuringAsync(
             wpfProcessId,
             _ => Task.FromResult(wpf.Click(wpfProcessId, selector)),
             exceptionQueue, observationWindowMs, cancellationToken).ConfigureAwait(false);
 
         if (!actionCapture.Success || actionCapture.Value is null)
+        {
+            if (backendProcessId is int failedBackendPid && backendCorrelation is not null)
+                _ = await backend.RequestAsync(failedBackendPid, "end_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
             return ToolResult<DiagnosisReport>.Fail(actionCapture.Error!.Code, actionCapture.Error.Message, actionCapture.Error.Retryable);
+        }
 
         var clickResult = actionCapture.Value.ActionResult;
         if (!actionCapture.Value.CaptureAvailable)
@@ -251,17 +266,21 @@ public sealed class DiagnosisService(
         IReadOnlyList<BackendRequestObservation> backendRequests = Array.Empty<BackendRequestObservation>();
         if (backendProcessId is int backendPid)
         {
-            var backendResult = await backend.RequestAsync(backendPid, "recent", 200, cancellationToken).ConfigureAwait(false);
+            var backendResult = backendCorrelation is null
+                ? await backend.RequestAsync(backendPid, "recent", 200, cancellationToken).ConfigureAwait(false)
+                : await backend.RequestAsync(backendPid, "correlated", 200, cancellationToken,
+                    correlationId, backendCorrelation.AfterSequence).ConfigureAwait(false);
             if (backendResult.Success && backendResult.Value is { Success: true } response)
             {
                 backendRequests = ReadBackendObservations(response.Value)
-                    .Where(x => x.TimestampUtc >= started.AddSeconds(-1))
+                    .Where(x => backendCorrelation is not null || x.TimestampUtc >= started.AddSeconds(-1))
                     .ToArray();
                 foreach (var request in backendRequests)
                 {
                     var claim = $"Backend {request.Method} {request.Path} returned HTTP {request.StatusCode} in {request.DurationMs:F1} ms.";
                     evidence.Add(new EvidenceItem(EvidenceKind.Correlated, claim,
-                        "aspnet.recent (time-window correlation)", request.TraceId ?? correlationId, request.TimestampUtc));
+                        backendCorrelation is null ? "aspnet.recent (time-window correlation)" : "aspnet.correlated (action marker)",
+                        request.TraceId ?? correlationId, request.TimestampUtc));
                     if (!string.IsNullOrWhiteSpace(request.ExceptionType))
                     {
                         evidence.Add(new EvidenceItem(EvidenceKind.Observed,
@@ -274,6 +293,9 @@ public sealed class DiagnosisService(
             {
                 unknowns.Add("Backend state could not be inspected through the configured backend probe.");
             }
+
+            if (backendCorrelation is not null)
+                _ = await backend.RequestAsync(backendPid, "end_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
         }
         else
         {
@@ -371,6 +393,22 @@ public sealed class DiagnosisService(
             catch (JsonException) { return []; }
         }
         return value as IReadOnlyList<BackendRequestObservation> ?? [];
+    }
+
+    private static BackendCorrelationObservation? ReadBackendCorrelation(object? value)
+    {
+        if (value is JsonElement element)
+        {
+            try
+            {
+                return element.Deserialize<BackendCorrelationObservation>(new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+            }
+            catch (JsonException) { return null; }
+        }
+        return value as BackendCorrelationObservation;
     }
 
     private static bool ContainsErrorSignal(string? text)

@@ -55,7 +55,11 @@ Default PII policy is mask. Policy version 1 rejects `PiiMode.Off`. Redaction co
 
 ## Screenshot policy
 
-Screenshots are disabled by default. When explicitly enabled by policy, screenshots must pass through a redaction pipeline before leaving the server. Password controls and controls classified as sensitive or PII-bearing are masked. A client request cannot disable mandatory masking. Custom-rendered text that is not exposed through UI Automation cannot be reliably classified, so production policies should keep screenshots disabled unless that residual risk is accepted.
+Screenshots are disabled by default. When explicitly enabled by policy, screenshots must pass through a redaction pipeline before leaving the server. Password controls, text-bearing UIA controls, and controls classified as sensitive or PII-bearing are masked. Capture fails closed if any visible sensitive UIA region cannot be bounded, and a client request cannot disable mandatory masking. Custom-rendered text that is not exposed through UI Automation cannot be reliably classified, so production policies should keep screenshots disabled unless that residual risk is accepted.
+
+## ASP.NET adapter
+
+The optional adapter uses a current-user-only named pipe and the strong `ENGINEERING_MCP_BACKEND_TOKEN` shared with the MCP host. It records bounded method, route-template, status, duration, trace, sequence, and correlation metadata plus redacted, truncated exception type/message/stack details. It never captures request or response bodies, query strings, headers, cookies, or raw URLs. Exact UI-action correlation is an authenticated, short-lived, single-active marker; concurrent diagnostic markers fail closed rather than mixing evidence.
 
 ## Dumps, traces, and memory
 

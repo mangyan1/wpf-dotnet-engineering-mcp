@@ -8,7 +8,9 @@
 - Adversarial/prompt-injection tests
 - Redaction tests
 
-The live HTTP integration suite additionally requires bearer rejection, Origin rejection, portable unique tool names, output schemas, parameter descriptions, titles, all MCP annotations, `isError=true` for a deterministic domain failure, and safe remediation text for policy/guard denials. Security tests cover versioned policy rejection, built-in sensitive-file denial, expanded synthetic PII classes, oversized framed-IPC rejection, policy readiness diagnostics, and child-process PATH sanitization.
+The live HTTP integration suite additionally requires bearer rejection, Origin rejection, portable unique tool names, output schemas, parameter descriptions, titles, all MCP annotations, `isError=true` for a deterministic domain failure, and safe remediation text for policy/guard denials. Security tests cover versioned policy rejection, built-in sensitive-file denial, expanded synthetic PII classes, timestamp/version/path false-positive regressions, oversized framed-IPC rejection, policy readiness diagnostics, and child-process PATH sanitization.
+
+The integration suite launches real local fixtures to verify masked PNG output, authenticated WPF probe restart, a live ASP.NET request correlated through the named-pipe adapter, and one-file XAML audit isolation. No production account or personal data is required.
 
 ## Installed-package and VS Code acceptance
 
@@ -22,7 +24,7 @@ Before promoting an MSI, exercise the complete install/uninstall/reinstall lifec
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
-  -MsiPath artifacts/release/EngineeringMcp-0.3.5-win-x64-Setup.msi `
+  -MsiPath artifacts/release/EngineeringMcp-0.3.6-win-x64-Setup.msi `
   -ExerciseReinstall
 ```
 
@@ -36,9 +38,9 @@ Release validation also runs the static contract script, NuGet vulnerable-packag
 
 Good/broken binding, disabled command, validation error, hardcoded color, DynamicResource, clipping, overlap, modal dialog, async operation, crashing command, PasswordBox, fake PII, fake JWT/API key and prompt-injection UI text.
 
-## Golden ASP.NET fixture must eventually contain
+## Golden ASP.NET fixture
 
-200/400/401/500, timeout, slow request, exception, trace correlation, fake secret and fake PII.
+The current live fixture verifies a successful request, health, bounded observation, authentication, and an exact action-correlation marker. Future fault coverage remains: 400/401/500, timeout, slow request, and exception observations containing synthetic secret/PII-shaped values.
 
 ## Hallucination test
 

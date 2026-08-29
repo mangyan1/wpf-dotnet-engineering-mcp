@@ -208,15 +208,15 @@ public sealed partial class SourceIntelligenceService(
         }
     }
 
-    public ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(string root, int maxResults = 500)
+    public ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(string path, int maxResults = 500)
     {
-        var rootResult = RequireDirectory(root);
-        if (!rootResult.Success || rootResult.Value is null) return ToolResult<IReadOnlyList<XamlFinding>>.Fail(rootResult.Error!.Code, rootResult.Error.Message);
+        var targets = ResolveXamlTargets(path);
+        if (!targets.Success || targets.Value is null) return ToolResult<IReadOnlyList<XamlFinding>>.Fail(targets.Error!.Code, targets.Error.Message);
         maxResults = Math.Clamp(maxResults, 1, 5_000);
         var findings = new List<XamlFinding>();
         try
         {
-            foreach (var file in EnumerateApprovedFiles(rootResult.Value, ["*.xaml"], MaxFilesToScan))
+            foreach (var file in targets.Value)
             {
                 if (findings.Count >= maxResults) break;
                 var text = ReadSmallFile(file); if (text is null) continue;
@@ -264,13 +264,13 @@ public sealed partial class SourceIntelligenceService(
     public ToolResult<IReadOnlyList<SourceLocation>> FindAutomationId(string root, string automationId, int maxResults = 50)
         => FindXamlAttribute(root, "AutomationId", automationId, "XamlAutomationId", maxResults);
 
-    public ToolResult<IReadOnlyList<SourceLocation>> FindBinding(string root, string bindingPath, int maxResults = 100)
+    public ToolResult<IReadOnlyList<SourceLocation>> FindBinding(string path, string bindingPath, int maxResults = 100)
     {
-        var rootResult = RequireDirectory(root);
-        if (!rootResult.Success || rootResult.Value is null) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(rootResult.Error!.Code, rootResult.Error.Message);
+        var targets = ResolveXamlTargets(path);
+        if (!targets.Success || targets.Value is null) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(targets.Error!.Code, targets.Error.Message);
         maxResults = Math.Clamp(maxResults, 1, 1_000);
         var results = new List<SourceLocation>();
-        foreach (var file in EnumerateApprovedFiles(rootResult.Value, ["*.xaml"], MaxFilesToScan))
+        foreach (var file in targets.Value)
         {
             if (results.Count >= maxResults) break;
             var text = ReadSmallFile(file); if (text is null || !text.Contains(bindingPath, StringComparison.Ordinal)) continue;
@@ -326,12 +326,12 @@ public sealed partial class SourceIntelligenceService(
         return normalizedCandidate.StartsWith(normalizedRoot, comparison);
     }
 
-    private ToolResult<IReadOnlyList<SourceLocation>> FindXamlAttribute(string root, string attributeLocalName, string value, string kind, int maxResults)
+    private ToolResult<IReadOnlyList<SourceLocation>> FindXamlAttribute(string path, string attributeLocalName, string value, string kind, int maxResults)
     {
-        var rootResult = RequireDirectory(root);
-        if (!rootResult.Success || rootResult.Value is null) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(rootResult.Error!.Code, rootResult.Error.Message);
+        var targets = ResolveXamlTargets(path);
+        if (!targets.Success || targets.Value is null) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(targets.Error!.Code, targets.Error.Message);
         var results = new List<SourceLocation>();
-        foreach (var file in EnumerateApprovedFiles(rootResult.Value, ["*.xaml"], MaxFilesToScan))
+        foreach (var file in targets.Value)
         {
             if (results.Count >= maxResults) break;
             var text = ReadSmallFile(file); if (text is null || !text.Contains(value, StringComparison.Ordinal)) continue;
@@ -344,6 +344,25 @@ public sealed partial class SourceIntelligenceService(
             }
         }
         return ToolResult<IReadOnlyList<SourceLocation>>.Ok(results);
+    }
+
+    private ToolResult<IReadOnlyList<string>> ResolveXamlTargets(string path)
+    {
+        var allowed = fileGuard.RequireReadable(path);
+        if (!allowed.Success || allowed.Value is null)
+            return ToolResult<IReadOnlyList<string>>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
+
+        if (File.Exists(allowed.Value))
+        {
+            if (!string.Equals(Path.GetExtension(allowed.Value), ".xaml", StringComparison.OrdinalIgnoreCase))
+                return ToolResult<IReadOnlyList<string>>.Fail("XAML_FILE_REQUIRED", "An approved .xaml file or directory is required.");
+            return ToolResult<IReadOnlyList<string>>.Ok([allowed.Value]);
+        }
+
+        if (Directory.Exists(allowed.Value))
+            return ToolResult<IReadOnlyList<string>>.Ok(EnumerateApprovedFiles(allowed.Value, ["*.xaml"], MaxFilesToScan).ToArray());
+
+        return ToolResult<IReadOnlyList<string>>.Fail("PATH_NOT_FOUND", "The approved XAML path does not exist.");
     }
 
     private ToolResult<string> RequireDirectory(string root)

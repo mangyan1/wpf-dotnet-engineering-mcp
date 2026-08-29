@@ -34,12 +34,15 @@ public sealed class ApexDrivePolicyProvisionerTests
             Assert.AreEqual(PermissionLevel.ApplicationDiagnostics, policy.PermissionCeiling);
             Assert.AreEqual("deny", policy.Network.Default);
             Assert.AreEqual(PiiMode.Mask, policy.Pii);
-            Assert.IsFalse(policy.Screenshots.Enabled);
+            Assert.IsTrue(policy.Screenshots.Enabled);
+            Assert.IsTrue(policy.Screenshots.MaskTextControls);
             Assert.IsFalse(policy.AllowDestructiveActions);
             Assert.IsFalse(policy.AllowPrivilegedDiagnostics);
-            Assert.HasCount(1, policy.Processes.Allow);
-            Assert.AreEqual("ApexDrive.Workstation.Shell.exe", policy.Processes.Allow[0].Name);
-            Assert.AreEqual(result.WorkstationExecutable, policy.Processes.Allow[0].Path);
+            Assert.HasCount(3, policy.Processes.Allow);
+            var workstationRule = policy.Processes.Allow.Single(rule => rule.Name == "ApexDrive.Workstation.Shell.exe");
+            Assert.AreEqual(result.WorkstationExecutable, workstationRule.Path);
+            Assert.IsTrue(policy.Processes.Allow.Any(rule => rule.Name == "ApexDrive.CustomerServer.Host.exe"));
+            Assert.IsTrue(policy.Processes.Allow.Any(rule => rule.Name == "PageSmoke.exe"));
             Assert.HasCount(1, policy.Filesystem.ReadRoots);
             Assert.AreEqual(Path.GetFullPath(temp), policy.Filesystem.ReadRoots[0]);
         }

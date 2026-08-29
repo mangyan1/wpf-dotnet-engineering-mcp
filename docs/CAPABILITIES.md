@@ -43,3 +43,5 @@ Omitting the profile list preserves the full surface for backward compatibility.
 The runtime `system_capabilities` result is authoritative. Optional adapters can remain unavailable even when their tool profile is visible.
 
 The `wpf.uia.read` capability includes metadata-only grid/tree/item summaries, selector audits, control/pattern inventories, richer wait/assert conditions, accessibility aggregates, and title-free window state. The `wpf.probe` capability includes dedicated binding, command, validation-summary, DataContext-type, and dispatcher tools. These tools deliberately omit application text and business values.
+
+`source.xaml` accepts either one approved `.xaml` file or an approved directory; file input never widens into a sibling scan. `aspnet.telemetry` requires an explicitly installed adapter and a shared strong backend token. Risk-gated click diagnosis opens a short-lived action marker before the UI action and requests only observations carrying that marker; older adapters fall back to an explicitly labelled time-window correlation.

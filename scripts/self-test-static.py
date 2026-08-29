@@ -137,7 +137,7 @@ check('AddListToolsFilter' in (ROOT / 'src/EngineeringMcp.Host/McpContractFilter
 pipe_sources = '\n'.join((ROOT / path).read_text(encoding='utf-8') for path in [
     'src/EngineeringMcp.Probe.Wpf/WpfProbeServer.cs',
     'src/EngineeringMcp.Wpf/WpfProbeClient.cs',
-    'tests/EngineeringMcp.AspNetCore.TestApp/BackendDiagnostics.cs',
+    'src/EngineeringMcp.Diagnostics/AspNetCoreAdapter.cs',
     'src/EngineeringMcp.Diagnostics/BackendProbeClient.cs'])
 check('BoundedJsonPipeProtocol' in pipe_sources and 'ReadLineAsync' not in pipe_sources,
       "Diagnostic IPC uses bounded framed JSON")

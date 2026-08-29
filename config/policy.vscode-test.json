@@ -10,6 +10,12 @@
         "path": null,
         "sha256": null,
         "publisher": null
+      },
+      {
+        "name": "EngineeringMcp.AspNetCore.TestApp.exe",
+        "path": null,
+        "sha256": null,
+        "publisher": null
       }
     ]
   },
@@ -42,7 +48,8 @@
     "enabled": true,
     "maskPasswordControls": true,
     "maskSensitiveNames": true,
-    "failClosedOnRedactionError": true
+    "failClosedOnRedactionError": true,
+    "maskTextControls": true
   },
   "allowDestructiveActions": false,
   "allowPrivilegedDiagnostics": false,

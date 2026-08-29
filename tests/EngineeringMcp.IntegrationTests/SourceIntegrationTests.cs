@@ -37,6 +37,37 @@ public sealed class SourceIntegrationTests
     }
 
     [TestMethod]
+    public void XamlAnalysis_AcceptsOneApprovedFileWithoutScanningSiblings()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "mcp-source-file-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var target = Path.Combine(root, "Target.xaml");
+            File.WriteAllText(target, """
+                <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                  <Button Background="#202020" Content="Target" />
+                </Grid>
+                """);
+            File.WriteAllText(Path.Combine(root, "Unrelated.xaml"), """
+                <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                  <Button Background="#303030" Content="Unrelated" />
+                </Grid>
+                """);
+            var policy = McpPolicy.LockedDownDefault with { Filesystem = new FileSystemPolicy([root], []) };
+            var provider = new FixedPolicyProvider(policy);
+            var service = new SourceIntelligenceService(new FileGuard(provider), provider, new RedactionService());
+
+            var audit = service.AnalyzeXaml(target, 50);
+
+            Assert.IsTrue(audit.Success, audit.Error?.Message);
+            Assert.IsNotEmpty(audit.Value!);
+            Assert.IsTrue(audit.Value!.All(finding => string.Equals(finding.File, target, StringComparison.OrdinalIgnoreCase)));
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [TestMethod]
     public void StackTraceMapping_StaysWithinRequestedSourceRoot()
     {
         var parent = Path.Combine(Path.GetTempPath(), "mcp-source-map-" + Guid.NewGuid().ToString("N"));

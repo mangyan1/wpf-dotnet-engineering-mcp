@@ -29,14 +29,31 @@ public static class WpfProbe
     {
         lock (Sync)
         {
-            if (_server is not null) return _server;
+            if (_server is not null) return new ProbeLease(_server);
             options ??= new WpfProbeOptions();
             var token = options.Token ?? Environment.GetEnvironmentVariable("ENGINEERING_MCP_PROBE_TOKEN");
             if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
                 throw new InvalidOperationException("WPF probe requires ENGINEERING_MCP_PROBE_TOKEN with at least 32 characters.");
             _server = new WpfProbeServer(options with { Token = token });
             _server.Start();
-            return _server;
+            return new ProbeLease(_server);
+        }
+    }
+
+    private sealed class ProbeLease(WpfProbeServer server) : IDisposable
+    {
+        private WpfProbeServer? _server = server;
+
+        public void Dispose()
+        {
+            var current = Interlocked.Exchange(ref _server, null);
+            if (current is null) return;
+            lock (Sync)
+            {
+                if (!ReferenceEquals(WpfProbe._server, current)) return;
+                WpfProbe._server = null;
+                current.Dispose();
+            }
         }
     }
 }
@@ -164,8 +181,8 @@ internal sealed class WpfProbeServer : IDisposable
         return request.Operation switch
         {
             "status" => new ProbeResponse(true, new { processId = Environment.ProcessId, pipe = PipeName, dispatcherAccess = Application.Current!.Dispatcher.CheckAccess() }),
-            "visualTree" => VisualTree(request),
-            "logicalTree" => LogicalTree(request),
+            "visual_tree" or "visualTree" => VisualTree(request),
+            "logical_tree" or "logicalTree" => LogicalTree(request),
             "datacontext" => DataContext(request),
             "binding" => Binding(request),
             "binding_errors" => BindingErrors(request),

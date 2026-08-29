@@ -25,7 +25,8 @@ public sealed record ScreenshotPolicy(
     bool Enabled = false,
     bool MaskPasswordControls = true,
     bool MaskSensitiveNames = true,
-    bool FailClosedOnRedactionError = true);
+    bool FailClosedOnRedactionError = true,
+    bool MaskTextControls = true);
 
 public sealed record UiActionPolicy(
     IReadOnlyList<string> DenyAutomationIds,

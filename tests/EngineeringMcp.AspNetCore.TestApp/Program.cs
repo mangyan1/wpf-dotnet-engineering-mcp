@@ -1,4 +1,4 @@
-using EngineeringMcp.AspNetCore.TestApp;
+using EngineeringMcp.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEngineeringMcpBackendDiagnostics();

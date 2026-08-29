@@ -29,6 +29,31 @@ public sealed class SecurityTests
     }
 
     [TestMethod]
+    public void Redactor_PreservesDiagnosticDatesVersionsAndTargetFrameworkPaths()
+    {
+        var service = new RedactionService();
+        const string input = "2026-08-29T14:32:11Z version 10.0.19041.0 bin/Debug/net10.0-windows10.0.19041.0";
+
+        var result = service.Redact(input, PiiMode.Mask);
+
+        Assert.AreEqual(input, result);
+        Assert.IsFalse(service.LooksSensitiveOrPii(input));
+    }
+
+    [TestMethod]
+    public void Redactor_StillMasksConventionalAndInternationalPhoneNumbers()
+    {
+        var service = new RedactionService();
+        const string input = "Office 403-555-0199; international +1 (403) 555-0188";
+
+        var result = service.Redact(input, PiiMode.Mask);
+
+        Assert.DoesNotContain("403-555-0199", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("555-0188", result, StringComparison.Ordinal);
+        Assert.IsTrue(service.LooksSensitiveOrPii(input));
+    }
+
+    [TestMethod]
     public void PolicyEngine_DefaultDeny_RejectsUnavailableCapability()
     {
         var engine = new PolicyEngine();

@@ -35,6 +35,14 @@ public static class ApexDrivePolicyProvisioner
         "Release",
         "net10.0-windows10.0.19041.0",
         "ApexDrive.Workstation.Shell.exe");
+    private static readonly string DebugCustomerServerRelativePath = Path.Combine(
+        "src", "CustomerServer", "Host", "ApexDrive.CustomerServer.Host",
+        "bin", "Debug", "net10.0", "ApexDrive.CustomerServer.Host.exe");
+    private static readonly string ReleaseCustomerServerRelativePath = Path.Combine(
+        "src", "CustomerServer", "Host", "ApexDrive.CustomerServer.Host",
+        "bin", "Release", "net10.0", "ApexDrive.CustomerServer.Host.exe");
+    private static readonly string PageSmokeFixtureRelativePath = Path.Combine(
+        "tools", "page-smoke", "bin", "Debug", "net10.0-windows10.0.19041.0", "PageSmoke.exe");
 
     private static readonly string[] DenyGlobs =
     [
@@ -106,6 +114,13 @@ public static class ApexDrivePolicyProvisioner
             : File.Exists(releaseShell)
                 ? releaseShell
                 : debugShell;
+        var debugCustomerServer = Path.Combine(root, DebugCustomerServerRelativePath);
+        var releaseCustomerServer = Path.Combine(root, ReleaseCustomerServerRelativePath);
+        var selectedCustomerServer = File.Exists(debugCustomerServer)
+            ? debugCustomerServer
+            : File.Exists(releaseCustomerServer)
+                ? releaseCustomerServer
+                : debugCustomerServer;
 
         var policy = new McpPolicy(
             PermissionLevel.ApplicationDiagnostics,
@@ -113,17 +128,24 @@ public static class ApexDrivePolicyProvisioner
             [
                 new AllowedProcessRule(
                     "ApexDrive.Workstation.Shell.exe",
-                    selectedShell)
+                    selectedShell),
+                new AllowedProcessRule(
+                    "ApexDrive.CustomerServer.Host.exe",
+                    selectedCustomerServer),
+                new AllowedProcessRule(
+                    "PageSmoke.exe",
+                    Path.Combine(root, PageSmokeFixtureRelativePath))
             ]),
             new FileSystemPolicy([root], DenyGlobs),
             new NetworkPolicy("deny", []),
             PiiMode.Mask,
             new AuditPolicy(Enabled: true, Directory: null, RetentionDays: 30),
             new ScreenshotPolicy(
-                Enabled: false,
+                Enabled: true,
                 MaskPasswordControls: true,
                 MaskSensitiveNames: true,
-                FailClosedOnRedactionError: true),
+                FailClosedOnRedactionError: true,
+                MaskTextControls: true),
             new UiActionPolicy(
                 DenyAutomationIds: ["ApiTokenPasswordBox"],
                 DestructiveAutomationIds: [],
@@ -166,7 +188,8 @@ public static class ApexDrivePolicyProvisioner
             if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
         }
 
-        var workstation = policy.Processes.Allow.Single().Path
+        var workstation = policy.Processes.Allow.Single(rule =>
+                string.Equals(rule.Name, "ApexDrive.Workstation.Shell.exe", StringComparison.OrdinalIgnoreCase)).Path
             ?? throw new InvalidDataException("The generated ApexDrive process rule has no executable path.");
         return new ApexDrivePolicyProvisioningResult(root, workstation, policyPath);
     }

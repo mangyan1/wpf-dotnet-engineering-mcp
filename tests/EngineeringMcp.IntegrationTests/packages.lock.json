@@ -465,6 +465,13 @@
           "ModelContextProtocol.AspNetCore": "[2.2.0, )"
         }
       },
+      "engineeringmcp.probe.wpf": {
+        "type": "Project",
+        "dependencies": {
+          "EngineeringMcp.Contracts": "[0.3.5, )",
+          "EngineeringMcp.Security": "[0.3.5, )"
+        }
+      },
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {

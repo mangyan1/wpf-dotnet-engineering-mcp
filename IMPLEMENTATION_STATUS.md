@@ -1,6 +1,8 @@
 # Implementation Status
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
+
+Current source version: 0.3.6 prerelease candidate. The signed 0.3.5 package evidence below remains the last completed installer lifecycle verification until a 0.3.6 candidate package is produced.
 
 ## Verification state
 
@@ -17,6 +19,14 @@ Verified on Windows on 2026-08-28 with .NET SDK 10.0.400:
 - Live tool-name contract: 0 invalid names, 0 dotted names, `wpf_attach` present, legacy `wpf.attach` absent.
 - Authentication negative checks: missing and invalid bearer tokens both returned HTTP 401.
 
+Additional source verification on 2026-08-29:
+
+- `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Debug`: 37 tests passed and the opt-in installed-package acceptance test skipped by design.
+- A real WPF fixture produced a valid masked PNG with UIA text/sensitive-region redactions, and capture remained fail-closed.
+- The authenticated WPF probe completed a request, disposed, restarted, and completed another request without a stale singleton or pipe timeout.
+- A live ASP.NET fixture recorded an HTTP request and returned it through the authenticated pipe with an exact diagnostic-action correlation marker.
+- One-file XAML audits were limited to the selected file, and redaction preserved ISO timestamps, dotted versions, and target-framework path fragments while still masking realistic phone numbers.
+
 | Area | Status | Notes |
 |---|---|---|
 | Governance/security docs | IMPLEMENTED | Charter, security, threat model, capabilities, tool contracts, ADR rules |
@@ -27,14 +37,14 @@ Verified on Windows on 2026-08-28 with .NET SDK 10.0.400:
 | Redaction/audit | IMPLEMENTED | secret/PII redaction and structured audit path |
 | WPF UIA/FlaUI | IMPLEMENTED | semantic read and interaction tool surface |
 | Advanced WPF metadata tools | IMPLEMENTED, VERIFIED | 21 read-only tools; synthetic leak checks prove no UI text, business values, raw identifiers, titles, validation messages, clipboard, or raw screenshot output |
-| Screenshot redaction | IMPLEMENTED, DEFAULT OFF | PII-aware UIA masking; policy opt-in due to custom-rendering/OCR residual risk |
-| WPF in-process probe | IMPLEMENTED | explicit named-pipe probe, no injection/arbitrary reflection API |
+| Screenshot redaction | IMPLEMENTED, RUNTIME VERIFIED, DEFAULT OFF | Password, text-bearing, and policy-sensitive UIA regions masked; policy opt-in due to custom-rendering/OCR residual risk |
+| WPF in-process probe | IMPLEMENTED, RESTART VERIFIED | Explicit authenticated named-pipe probe; bounded retry and actionable not-installed result; no injection/arbitrary reflection API |
 | WPF-UI adapter | IMPLEMENTED | resource/property/theme evidence and audits |
 | GUI/A11y | IMPLEMENTED | deterministic audit surfaces |
 | EventPipe diagnostics | IMPLEMENTED | two concurrent traces maximum; 64 MiB/30-second bounds; managed cleanup |
-| Source intelligence | IMPLEMENTED | Roslyn/XAML/source mapping layer |
-| Failure correlation | IMPLEMENTED | read-only observe/failure/workflow plus risk-gated click diagnosis |
-| ASP.NET adapter | IMPLEMENTED | optional backend probe/observability layer |
+| Source intelligence | IMPLEMENTED, VERIFIED | Roslyn/XAML/source mapping layer; XAML operations accept one approved file or directory |
+| Failure correlation | IMPLEMENTED, VERIFIED | Read-only observe/failure/workflow plus risk-gated click diagnosis with exact backend action markers and labelled time-window fallback |
+| ASP.NET adapter | IMPLEMENTED, PIPE/ACTION-CORRELATION VERIFIED | Reusable opt-in middleware and authenticated local probe; bounded route metadata only, no bodies, headers, cookies, or query strings |
 | ClrMD/dump analysis | IMPLEMENTED, PRIVILEGED | policy-gated sensitive diagnostic path |
 | UX heuristics | IMPLEMENTED | explicitly heuristic output |
 | VS Code integration | IMPLEMENTED | authenticated HTTP definition and environment-backed bearer token |

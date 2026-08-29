@@ -3,5 +3,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
     <ProjectReference Include="../../src/EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Diagnostics/EngineeringMcp.Diagnostics.csproj" />
   </ItemGroup>
 </Project>

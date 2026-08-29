@@ -81,7 +81,7 @@ public partial class MainWindow
         startInfo.ArgumentList.Add("--url");
         startInfo.ArgumentList.Add(McpRuntimeDefaults.ListenUrl);
 
-        var safeEnvironment = McpSelfTestService.CreateMinimalEnvironment(layout, _probeToken, _httpToken);
+        var safeEnvironment = McpSelfTestService.CreateMinimalEnvironment(layout, _probeToken, _httpToken, _backendToken);
         startInfo.Environment.Clear();
         foreach (var pair in safeEnvironment)
         {

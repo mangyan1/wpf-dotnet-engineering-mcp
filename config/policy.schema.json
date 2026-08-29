@@ -71,7 +71,8 @@
         "enabled": { "type": "boolean" },
         "maskPasswordControls": { "const": true },
         "maskSensitiveNames": { "type": "boolean" },
-        "failClosedOnRedactionError": { "const": true }
+        "failClosedOnRedactionError": { "const": true },
+        "maskTextControls": { "type": "boolean", "default": true }
       }
     },
     "allowDestructiveActions": { "type": "boolean" },

@@ -23,19 +23,7 @@ public partial class MainWindow
 
         try
         {
-            if (_backendProcess is null || _backendProcess.HasExited)
-            {
-                if (!File.Exists(_layout.AspNetFixtureExecutable))
-                {
-                    AppendLog("ASP.NET fixture executable is not built. Click Build solution or Run all dev tests first.");
-                    SetStatus("Build the solution before launching the full stack.");
-                    return;
-                }
-
-                _backendProcess?.Dispose();
-                _backendProcess = _runner.StartDetached(_layout.AspNetFixtureExecutable, [], _layout.Root);
-                AppendLog($"ASP.NET fixture started (PID {_backendProcess.Id}).");
-            }
+            if (EnsureBackendRunning() is null) return;
 
             SetStatus("WPF + ASP.NET fixtures running.");
         }
@@ -44,6 +32,29 @@ public partial class MainWindow
             AppendLog("Launch ASP.NET fixture failed: " + ex.Message);
             SetStatus("Full stack launch failed.");
         }
+    }
+
+    private Process? EnsureBackendRunning(ProjectLayout? runtimeLayout = null)
+    {
+        var layout = runtimeLayout ?? _layout;
+        if (_backendProcess is not null && !_backendProcess.HasExited)
+            return _backendProcess;
+
+        if (!File.Exists(layout.AspNetFixtureExecutable))
+        {
+            AppendLog("ASP.NET fixture executable is not built. Click Build solution or Run all dev tests first.");
+            SetStatus("Build the solution before launching the full stack.");
+            return null;
+        }
+
+        _backendProcess?.Dispose();
+        _backendProcess = _runner.StartDetached(
+            layout.AspNetFixtureExecutable,
+            [],
+            layout.Root,
+            new Dictionary<string, string?> { ["ENGINEERING_MCP_BACKEND_TOKEN"] = _backendToken });
+        AppendLog($"ASP.NET fixture started (PID {_backendProcess.Id}). Private adapter token remains in child environments only.");
+        return _backendProcess;
     }
 
     private Process? EnsureFixtureRunning(ProjectLayout? runtimeLayout = null)

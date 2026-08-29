@@ -9,7 +9,13 @@ public sealed class BackendProbeClient(ProcessGuard processGuard, RedactionServi
     private const int MaxRequestBytes = 32 * 1024;
     private const int MaxResponseBytes = 2 * 1024 * 1024;
 
-    public async Task<ToolResult<BackendProbeResponse>> RequestAsync(int processId, string operation, int limit = 100, CancellationToken cancellationToken = default)
+    public async Task<ToolResult<BackendProbeResponse>> RequestAsync(
+        int processId,
+        string operation,
+        int limit = 100,
+        CancellationToken cancellationToken = default,
+        string? correlationId = null,
+        long? afterSequence = null)
     {
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
@@ -26,7 +32,9 @@ public sealed class BackendProbeClient(ProcessGuard processGuard, RedactionServi
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(TimeSpan.FromSeconds(3));
             await pipe.ConnectAsync(timeout.Token).ConfigureAwait(false);
-            await BoundedJsonPipeProtocol.WriteAsync(pipe, new BackendProbeRequest(token, operation, Math.Clamp(limit, 1, 1_000)), MaxRequestBytes, timeout.Token).ConfigureAwait(false);
+            await BoundedJsonPipeProtocol.WriteAsync(pipe,
+                new BackendProbeRequest(token, operation, Math.Clamp(limit, 1, 1_000), correlationId, afterSequence),
+                MaxRequestBytes, timeout.Token).ConfigureAwait(false);
             var response = await BoundedJsonPipeProtocol.ReadAsync<BackendProbeResponse>(pipe, MaxResponseBytes, timeout.Token).ConfigureAwait(false);
             return response is null
                 ? ToolResult<BackendProbeResponse>.Fail("BACKEND_INVALID_RESPONSE", "Backend probe response could not be parsed.")

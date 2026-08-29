@@ -91,6 +91,14 @@ public partial class MainWindow
 
                 if (!await RunMcpSelfTestCoreAsync(token)) return false;
                 if (!await _mcpSelfTest.RunStdioCompatibilitySmokeAsync(runtimeLayout, _probeToken, AddStep, AppendLog, token)) return false;
+                var backend = EnsureBackendRunning(runtimeLayout);
+                if (backend is null)
+                {
+                    AddStep(new DevTestStep("ASP.NET fixture", "Launch", "FAIL", "Fixture could not be started."));
+                    return false;
+                }
+                AddStep(new DevTestStep("ASP.NET fixture", "Launch", "PASS", $"Fixture PID {backend.Id}; private adapter token shared only through child process environments."));
+                if (!await _mcpSelfTest.RunAspNetEndToEndAsync(backend.Id, _httpToken, AddStep, AppendLog, token)) return false;
                 return await RunWpfEndToEndCoreAsync(runtimeLayout, token);
             },
             cancellationToken);
@@ -276,10 +284,12 @@ public partial class MainWindow
     {
         var serverWasHealthy = await EnsureMcpServerHealthyAsync(cancellationToken);
         var fixtureWasRunning = IsRunning(_fixtureProcess);
+        var backendWasRunning = IsRunning(_backendProcess);
         var result = false;
         var restored = true;
 
         StopProcess(ref _fixtureProcess);
+        StopProcess(ref _backendProcess);
         FixtureStatusText.Text = "● Stopped";
         await StopMcpServerAsync();
 
@@ -290,6 +300,7 @@ public partial class MainWindow
         finally
         {
             StopProcess(ref _fixtureProcess);
+            StopProcess(ref _backendProcess);
             FixtureStatusText.Text = "● Stopped";
             await StopMcpServerAsync();
 
@@ -307,6 +318,8 @@ public partial class MainWindow
             }
 
             if (fixtureWasRunning && EnsureFixtureRunning() is null)
+                restored = false;
+            if (backendWasRunning && EnsureBackendRunning() is null)
                 restored = false;
         }
 

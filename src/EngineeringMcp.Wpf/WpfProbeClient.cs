@@ -21,40 +21,60 @@ public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService r
             return ToolResult<ProbeResponse>.Fail("PROBE_TOKEN_UNAVAILABLE", "ENGINEERING_MCP_PROBE_TOKEN is not configured in the MCP host.");
 
         var pipeName = $"EngineeringMcp.WpfProbe.{processId}";
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        using var overallTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        overallTimeout.CancelAfter(TimeSpan.FromSeconds(12));
 
         try
         {
-            await using var pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            NamedPipeClientStream? pipe = null;
+            for (var attempt = 1; attempt <= 3 && pipe is null; attempt++)
+            {
+                var candidate = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                try
+                {
+                    using var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(overallTimeout.Token);
+                    connectTimeout.CancelAfter(TimeSpan.FromSeconds(3));
+                    await candidate.ConnectAsync(connectTimeout.Token).ConfigureAwait(false);
+                    pipe = candidate;
+                }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && attempt < 3)
+                {
+                    await candidate.DisposeAsync().ConfigureAwait(false);
+                    await Task.Delay(100 * attempt, overallTimeout.Token).ConfigureAwait(false);
+                }
+                catch (IOException) when (attempt < 3)
+                {
+                    await candidate.DisposeAsync().ConfigureAwait(false);
+                    await Task.Delay(100 * attempt, overallTimeout.Token).ConfigureAwait(false);
+                }
+            }
 
-            // Named-pipe cancellation can be inconsistent once an I/O operation is in flight on Windows.
-            // WaitAsync provides a hard upper bound for every stage, and disposing the pipe on exit aborts
-            // any remaining native I/O rather than allowing an MCP tool call to hang for the OS pipe timeout.
-            await pipe.ConnectAsync(timeout.Token)
-                .WaitAsync(TimeSpan.FromSeconds(5), timeout.Token)
-                .ConfigureAwait(false);
+            if (pipe is null)
+                return ToolResult<ProbeResponse>.Fail("PROBE_NOT_INSTALLED", "No authenticated WPF probe pipe was found for the target process. The target must explicitly start EngineeringMcp.Probe.Wpf.", true);
 
-            var authenticated = request with { Token = token };
-            await BoundedJsonPipeProtocol.WriteAsync(pipe, authenticated, MaxRequestBytes, timeout.Token)
-                .AsTask()
-                .WaitAsync(TimeSpan.FromSeconds(5), timeout.Token)
-                .ConfigureAwait(false);
-            var response = await BoundedJsonPipeProtocol.ReadAsync<ProbeResponse>(pipe, MaxResponseBytes, timeout.Token)
-                .AsTask()
-                .WaitAsync(TimeSpan.FromSeconds(5), timeout.Token)
-                .ConfigureAwait(false);
-            return response is null
-                ? ToolResult<ProbeResponse>.Fail("PROBE_INVALID_RESPONSE", "Probe response could not be parsed.")
-                : ToolResult<ProbeResponse>.Ok(response);
+            await using (pipe)
+            {
+                var authenticated = request with { Token = token };
+                await BoundedJsonPipeProtocol.WriteAsync(pipe, authenticated, MaxRequestBytes, overallTimeout.Token)
+                    .AsTask()
+                    .WaitAsync(TimeSpan.FromSeconds(8), overallTimeout.Token)
+                    .ConfigureAwait(false);
+                var response = await BoundedJsonPipeProtocol.ReadAsync<ProbeResponse>(pipe, MaxResponseBytes, overallTimeout.Token)
+                    .AsTask()
+                    .WaitAsync(TimeSpan.FromSeconds(8), overallTimeout.Token)
+                    .ConfigureAwait(false);
+                return response is null
+                    ? ToolResult<ProbeResponse>.Fail("PROBE_INVALID_RESPONSE", "Probe response could not be parsed.")
+                    : ToolResult<ProbeResponse>.Ok(response);
+            }
         }
         catch (TimeoutException)
         {
-            return ToolResult<ProbeResponse>.Fail("PROBE_TIMEOUT", "The authorized in-process WPF probe did not complete the pipe exchange within 5 seconds.", true);
+            return ToolResult<ProbeResponse>.Fail("PROBE_TIMEOUT", "The authorized in-process WPF probe did not complete the pipe exchange within 12 seconds. Check whether the target installed the probe and whether its dispatcher is responsive.", true);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return ToolResult<ProbeResponse>.Fail("PROBE_TIMEOUT", "The authorized in-process WPF probe did not complete the pipe exchange within 5 seconds.", true);
+            return ToolResult<ProbeResponse>.Fail("PROBE_NOT_INSTALLED", "No authenticated WPF probe pipe became available for the target process. The target must explicitly start EngineeringMcp.Probe.Wpf.", true);
         }
         catch (OperationCanceledException)
         {

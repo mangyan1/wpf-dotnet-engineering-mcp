@@ -41,7 +41,8 @@
     "enabled": false,
     "maskPasswordControls": true,
     "maskSensitiveNames": true,
-    "failClosedOnRedactionError": true
+    "failClosedOnRedactionError": true,
+    "maskTextControls": true
   },
   "allowDestructiveActions": false,
   "allowPrivilegedDiagnostics": false,

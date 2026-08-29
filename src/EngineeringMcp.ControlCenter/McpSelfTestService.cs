@@ -215,6 +215,31 @@ internal sealed class McpSelfTestService
         return new McpSelfTestReport(true, tools.Count, client.NegotiatedProtocolVersion, steps);
     }
 
+    public async Task<bool> RunAspNetEndToEndAsync(
+        int backendProcessId,
+        string httpToken,
+        Action<DevTestStep> onStep,
+        Action<string> onLog,
+        CancellationToken cancellationToken)
+    {
+        var steps = new List<DevTestStep>();
+        void Record(DevTestStep step)
+        {
+            steps.Add(step);
+            onStep(step);
+        }
+
+        await using var client = await CreateHttpClientAsync(httpToken, cancellationToken).ConfigureAwait(false);
+        if (!await CallAndRecordAsync(client, "ASP.NET telemetry", "aspnet_health",
+                new Dictionary<string, object?> { ["processId"] = backendProcessId },
+                Record, onLog, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        return await CallAndRecordAsync(client, "ASP.NET telemetry", "aspnet_recent_requests",
+            new Dictionary<string, object?> { ["processId"] = backendProcessId, ["limit"] = 10 },
+            Record, onLog, cancellationToken).ConfigureAwait(false);
+    }
+
     private static async Task<McpClient> CreateHttpClientAsync(string httpToken, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(httpToken);
@@ -263,11 +288,14 @@ internal sealed class McpSelfTestService
     internal static Dictionary<string, string?> CreateMinimalEnvironment(
         ProjectLayout layout,
         string probeToken,
-        string? httpToken = null)
+        string? httpToken = null,
+        string? backendToken = null)
     {
         var environment = StdioClientTransportOptions.GetDefaultEnvironmentVariables();
         environment["ENGINEERING_MCP_POLICY"] = layout.Policy;
         environment["ENGINEERING_MCP_PROBE_TOKEN"] = probeToken;
+        if (!string.IsNullOrWhiteSpace(backendToken))
+            environment["ENGINEERING_MCP_BACKEND_TOKEN"] = backendToken;
         if (!string.IsNullOrWhiteSpace(httpToken))
             environment[McpRuntimeDefaults.HttpTokenEnvironmentVariable] = httpToken;
 

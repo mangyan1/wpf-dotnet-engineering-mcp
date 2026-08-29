@@ -24,6 +24,7 @@ public partial class MainWindow : FluentWindow
     private readonly McpSelfTestService _mcpSelfTest = new();
     private readonly ObservableCollection<DevTestStep> _devSteps = [];
     private readonly string _probeToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+    private readonly string _backendToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private ProjectLayout _layout;
     private string _httpToken = string.Empty;
     private Process? _fixtureProcess;

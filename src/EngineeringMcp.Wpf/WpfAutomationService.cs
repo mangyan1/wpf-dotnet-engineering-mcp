@@ -388,22 +388,28 @@ public sealed class WpfAutomationService(
             using var bitmap = target.Capture();
             var targetRect = target.Properties.BoundingRectangle.ValueOrDefault;
             var redactions = 0;
-            if (ShouldMask(target))
-            {
-                using var graphics = Graphics.FromImage(bitmap);
-                graphics.FillRectangle(Brushes.Black, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
-                redactions++;
-            }
-
-            foreach (var candidate in target.FindAllDescendants())
+            var descendants = target.FindAllDescendants();
+            using var graphics = Graphics.FromImage(bitmap);
+            foreach (var candidate in descendants.Prepend(target))
             {
                 if (!ShouldMask(candidate)) continue;
+                if (ReferenceEquals(candidate, target))
+                {
+                    graphics.FillRectangle(Brushes.Black, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+                    redactions++;
+                    break;
+                }
+
                 var r = candidate.Properties.BoundingRectangle.ValueOrDefault;
+                if ((r.Width <= 0 || r.Height <= 0) && !candidate.Properties.IsOffscreen.ValueOrDefault)
+                    return ToolResult<SanitizedScreenshot>.Fail(
+                        "SCREENSHOT_REDACTION_FAILED",
+                        "Screenshot was withheld because a visible sensitive UI region had no usable bounds.");
+
                 var relative = Rectangle.Intersect(
-                    new Rectangle(r.X - targetRect.X, r.Y - targetRect.Y, r.Width, r.Height),
+                    new Rectangle(r.X - targetRect.X - 2, r.Y - targetRect.Y - 2, r.Width + 4, r.Height + 4),
                     new Rectangle(0, 0, bitmap.Width, bitmap.Height));
                 if (relative.Width <= 0 || relative.Height <= 0) continue;
-                using var graphics = Graphics.FromImage(bitmap);
                 graphics.FillRectangle(Brushes.Black, relative);
                 redactions++;
             }
@@ -418,7 +424,7 @@ public sealed class WpfAutomationService(
                 bitmap.Width,
                 bitmap.Height,
                 redactions,
-                "uia-sensitive-region-mask"));
+                "uia-text-and-sensitive-region-mask-v2"));
         }
         catch (Exception ex)
         {
@@ -562,6 +568,13 @@ public sealed class WpfAutomationService(
     {
         if (policyProvider.Current.Screenshots.MaskPasswordControls && element.Properties.IsPassword.ValueOrDefault)
             return true;
+        if (policyProvider.Current.Screenshots.MaskTextControls)
+        {
+            var controlType = element.Properties.ControlType.ValueOrDefault;
+            if (controlType == ControlType.Text || controlType == ControlType.Edit ||
+                controlType == ControlType.Document || controlType == ControlType.DataItem)
+                return true;
+        }
         if (!policyProvider.Current.Screenshots.MaskSensitiveNames) return false;
         var name = element.Properties.Name.ValueOrDefault ?? string.Empty;
         var id = element.Properties.AutomationId.ValueOrDefault ?? string.Empty;

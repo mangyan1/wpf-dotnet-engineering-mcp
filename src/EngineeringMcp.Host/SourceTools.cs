@@ -83,17 +83,17 @@ public static class SourceTools
             return result;
         });
 
-    [McpServerTool(Name = "source_analyze_xaml", UseStructuredContent = true), Description("Audits approved XAML for measurable issues including hard-coded colors, sensitive-looking attributes, and missing automation metadata.")]
+    [McpServerTool(Name = "source_analyze_xaml", UseStructuredContent = true), Description("Audits one approved XAML file or all XAML beneath an approved directory for measurable issues including hard-coded colors, sensitive-looking attributes, and missing automation metadata.")]
     public static ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(
-        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Approved .xaml file path or directory beneath a source root explicitly allowed by policy.")] string root,
         SourceIntelligenceService source,
         ToolAuthorization auth,
         [Description("Maximum number of findings to return; the server applies a hard upper bound.")] int maxResults = 200)
         => ToolRun.Sync(auth, ToolPolicyCatalog.Get("source_analyze_xaml").ToPolicy(), root, () => source.AnalyzeXaml(root, maxResults));
 
-    [McpServerTool(Name = "wpfui_audit_resources", UseStructuredContent = true), Description("Static WPF/WPF-UI resource guard: reports measurable hard-coded brush/color usage in approved XAML. It does not invent a project-specific token catalogue.")]
+    [McpServerTool(Name = "wpfui_audit_resources", UseStructuredContent = true), Description("Static WPF/WPF-UI resource guard for one approved XAML file or directory: reports measurable hard-coded brush/color usage. It does not invent a project-specific token catalogue.")]
     public static ToolResult<IReadOnlyList<XamlFinding>> AuditWpfUiResources(
-        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Approved .xaml file path or directory beneath a source root explicitly allowed by policy.")] string root,
         SourceIntelligenceService source,
         ToolAuthorization auth,
         [Description("Maximum number of findings to return; the server applies a hard upper bound.")] int maxResults = 200)
@@ -110,7 +110,7 @@ public static class SourceTools
 
     [McpServerTool(Name = "source_find_automation_id", UseStructuredContent = true), Description("Maps an AutomationId to approved XAML source locations.")]
     public static ToolResult<IReadOnlyList<SourceLocation>> FindAutomationId(
-        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Approved .xaml file path or directory beneath a source root explicitly allowed by policy.")] string root,
         [Description("Exact WPF AutomationId previously observed on a UI element.")] string automationId,
         SourceIntelligenceService source,
         ToolAuthorization auth,
@@ -119,7 +119,7 @@ public static class SourceTools
 
     [McpServerTool(Name = "source_find_binding", UseStructuredContent = true), Description("Finds exact WPF Binding Path evidence in approved XAML without guessing from visually similar names.")]
     public static ToolResult<IReadOnlyList<SourceLocation>> FindBinding(
-        [Description("Path beneath a source root explicitly allowed by policy.")] string root,
+        [Description("Approved .xaml file path or directory beneath a source root explicitly allowed by policy.")] string root,
         [Description("Exact WPF Binding Path to locate in approved XAML.")] string bindingPath,
         SourceIntelligenceService source,
         ToolAuthorization auth,

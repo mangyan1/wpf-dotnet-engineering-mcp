@@ -11,6 +11,8 @@
     <PackageReference Include="MSTest.TestFramework" />
     <PackageReference Include="MSTest.TestAdapter" />
     <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Probe.Wpf/EngineeringMcp.Probe.Wpf.csproj" />
+    <ProjectReference Include="../EngineeringMcp.Wpf.TestApp/EngineeringMcp.Wpf.TestApp.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/EngineeringMcp.ControlCenter/GearTrainLayout.cs" Link="GearTrainLayout.cs" />
