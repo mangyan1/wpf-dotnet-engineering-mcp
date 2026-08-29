@@ -70,7 +70,7 @@ public static class WpfProbeDiagnosticTools
         string? property = null)
         => ToolRun.Async(
             auth,
-            new ToolPolicy(tool, PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "wpf.probe"),
+            ToolPolicyCatalog.Get(tool).ToPolicy(),
             processId.ToString(),
             () => probe.RequestAsync(processId,
                 new ProbeRequest(string.Empty, operation, AutomationId: automationId, Name: name, Property: property),

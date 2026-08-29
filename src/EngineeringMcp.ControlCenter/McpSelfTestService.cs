@@ -25,6 +25,7 @@ internal sealed class McpSelfTestService
         "system_capabilities",
         "system_permissions",
         "system_policy_diagnostics",
+        "system_tool_preflight",
         "wpf_list_processes",
         "wpf_attach",
         "wpf_snapshot",
@@ -82,6 +83,11 @@ internal sealed class McpSelfTestService
             if (!await CallAndRecordAsync(client, "Core", tool, null, Record, onLog, cancellationToken).ConfigureAwait(false))
                 return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
         }
+
+        if (!await CallAndRecordAsync(client, "Core", "system_tool_preflight",
+                new Dictionary<string, object?> { ["toolName"] = "wpf_click" },
+                Record, onLog, cancellationToken).ConfigureAwait(false))
+            return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
 
         return new McpSelfTestReport(true, tools.Count, client.NegotiatedProtocolVersion, steps);
     }

@@ -126,9 +126,10 @@ tool_count = len(re.findall(r'\[McpServerTool\(Name\s*=\s*"', tool_sources))
 structured_count = len(re.findall(r'\[McpServerTool\(Name\s*=\s*"[^\"]+"\s*,\s*UseStructuredContent\s*=\s*true', tool_sources))
 check(tool_count > 0 and structured_count == tool_count,
       "Every MCP tool opts into structured content", f"{structured_count}/{tool_count}")
-check(tool_count == 75 and 'system_policy_diagnostics' in tool_sources and
+check(tool_count == 76 and 'system_policy_diagnostics' in tool_sources and
+      'system_tool_preflight' in tool_sources and
       'wpf_grid_summary' in tool_sources and 'wpf_validation_summary' in tool_sources,
-      "75-tool surface includes safe advanced WPF diagnostics", str(tool_count))
+      "76-tool surface includes authoritative preflight and safe advanced WPF diagnostics", str(tool_count))
 check('AddListToolsFilter' in (ROOT / 'src/EngineeringMcp.Host/McpContractFilters.cs').read_text(encoding='utf-8') and
       'AddCallToolFilter' in (ROOT / 'src/EngineeringMcp.Host/McpContractFilters.cs').read_text(encoding='utf-8'),
       "Central list/call contract filters are installed")

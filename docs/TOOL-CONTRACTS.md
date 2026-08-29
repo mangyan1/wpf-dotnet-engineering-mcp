@@ -48,6 +48,10 @@ Returns capability manifest. Permission 0, READ.
 
 Returns active permission ceiling and policy mode without revealing secrets. Permission 0, READ.
 
+### `system_tool_preflight`
+
+Accepts one exact public tool name and returns the authoritative publication and authorization state for the active policy and runtime capability registry. Permission 0, READ. Agents must call it before reporting that a tool is policy-disabled. `ALLOW` covers policy and runtime capability only; real invocations still enforce target, input, selector, adapter, screenshot, audit, and dynamic destructive-action checks.
+
 ## Public tool prefixes
 
 Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use underscore prefixes: `wpf_`, `wpfui_`, `a11y_`, `gui_`, `ux_`, `dotnet_`, `source_`, `aspnet_`, `diagnose_`, and `system_`. Family tools retain an explicit `operation` discriminator (`wpf_probe`, `wpfui_inspect`) for advanced and backward-compatible access. Dedicated tools are added only for high-value workflows where a narrow schema materially improves discoverability or enforces a stricter metadata-only result contract.

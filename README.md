@@ -1,6 +1,6 @@
 # .NET/WPF Engineering MCP
 
-Security-first local Model Context Protocol tooling for authorized WPF and .NET engineering work on Windows. Version 0.3.5 publishes 75 structured tools for UI Automation, bounded in-process WPF diagnostics, .NET runtime observation, approved source analysis, ASP.NET observability, and evidence-based cross-layer diagnosis.
+Security-first local Model Context Protocol tooling for authorized WPF and .NET engineering work on Windows. The current source publishes 76 structured tools for UI Automation, bounded in-process WPF diagnostics, .NET runtime observation, approved source analysis, ASP.NET observability, and evidence-based cross-layer diagnosis.
 
 The server is not a general shell, unrestricted debugger, credential extractor, remote administration agent, or arbitrary process inspector.
 
@@ -13,12 +13,12 @@ The server is not a general shell, unrestricted debugger, credential extractor, 
 | Source analysis | 11 | Approved-root inventory/read operations, syntactic and semantic C# references, XAML analysis, and source correlation. |
 | .NET diagnostics | 10 | Bounded runtime, counter, GC, thread, module, exception, trace, and privileged dump workflows. |
 | WPF probe diagnostics | 6 | Binding, command, validation, DataContext type, and dispatcher metadata from an explicitly installed probe. |
-| System and policy | 5 | Version, health, capability, permission, and safe policy-readiness reporting. |
+| System and policy | 6 | Version, health, capability, permission, policy readiness, and exact per-tool authorization preflight. |
 | UI analysis | 3 | Evidence-based accessibility and geometry audits plus explicitly heuristic UX observations. |
 | ASP.NET observation | 3 | Sanitized health, request, and exception observations from an authenticated local adapter. |
 | WPF/WPF-UI probe | 2 | Bounded probe operations and WPF-UI design-system evidence. |
 | Cross-layer diagnosis | 2 | Correlate WPF, runtime, backend, and approved-source evidence without claiming causation. |
-| **Total** | **75** | All published names use the portable `lowercase_with_underscores` MCP contract and structured output. |
+| **Total** | **76** | All published names use the portable `lowercase_with_underscores` MCP contract and structured output. |
 
 ## Privacy and safety boundary
 
@@ -30,7 +30,7 @@ The server is not a general shell, unrestricted debugger, credential extractor, 
 - Source output, exception observations, and other untrusted content are bounded and redacted before MCP output.
 - Arbitrary shell commands, SQL, network targets, elevation, and unrestricted filesystem access are not exposed.
 - Child processes receive a sanitized local-only `PATH`; relative and UNC/network tool paths are removed.
-- `system_policy_diagnostics` explains denials and safe remediation without returning policy paths, process paths, source roots, tokens, or secrets.
+- `system_policy_diagnostics` explains broad policy readiness, while `system_tool_preflight` authoritatively checks one exact tool before an agent claims it is policy-disabled. Neither returns policy paths, process paths, source roots, tokens, or secrets.
 
 See `docs/SECURITY.md` for the controlling security model and `docs/TOOL-CONTRACTS.md` for exact tool behavior.
 
@@ -99,7 +99,7 @@ dotnet test DotNetEngineeringMcp.sln --configuration Release --no-build
 python scripts/self-test-static.py
 ```
 
-Validate the installed MSI, VS Code registration, uninstall/reinstall persistence, and the installed 75-tool surface with:
+Validate the installed MSI, VS Code registration, uninstall/reinstall persistence, and the installed 76-tool surface with:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
@@ -112,7 +112,7 @@ Tests use synthetic fixtures. Full interactive WPF fixture coverage remains an o
 
 ## Project status
 
-The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-28, the Windows Release build completed with zero warnings and errors; security, adversarial, integration, authenticated HTTP, MSBuild semantic-reference, static, packaged-install, and persistence checks passed for the 75-tool surface.
+The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-28, the Windows Release build completed with zero warnings and errors; security, adversarial, integration, authenticated HTTP, MSBuild semantic-reference, and static checks passed for the 76-tool source surface. The next packaged build must pass the updated installed-package and persistence gate.
 
 See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
 

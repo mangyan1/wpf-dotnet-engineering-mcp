@@ -64,6 +64,41 @@ public sealed class SecurityTests
     }
 
     [TestMethod]
+    public void ToolPolicyCatalog_WpfClickReportsInteractionPolicyAndProfile()
+    {
+        var definition = ToolPolicyCatalog.Get("wpf_click");
+        var policy = McpPolicy.LockedDownDefault with
+        {
+            PermissionCeiling = PermissionLevel.ApplicationDiagnostics,
+            EnabledToolProfiles = ["core", "wpf-read", "wpf-interact"]
+        };
+
+        Assert.AreEqual("wpf-interact", definition.Profile);
+        Assert.AreEqual(PermissionLevel.UiInteraction, definition.RequiredPermission);
+        Assert.AreEqual("wpf.uia.interact", definition.CapabilityId);
+        Assert.IsTrue(definition.TargetRiskIsDynamic);
+        Assert.IsTrue(ToolPolicyCatalog.Publication("wpf_click", policy).Published);
+        Assert.IsTrue(new PolicyEngine().Authorize(definition.ToPolicy(), policy, capabilityAvailable: true).Allowed);
+    }
+
+    [TestMethod]
+    public void ToolPolicyCatalog_ProfileDenialIsExplicitAndActionable()
+    {
+        var policy = McpPolicy.LockedDownDefault with
+        {
+            PermissionCeiling = PermissionLevel.ApplicationDiagnostics,
+            EnabledToolProfiles = ["core", "wpf-read"]
+        };
+
+        var decision = ToolPolicyCatalog.Publication("wpf_click", policy);
+
+        Assert.IsFalse(decision.Published);
+        Assert.AreEqual("PROFILE_DISABLED", decision.Code);
+        StringAssert.Contains(decision.Reason, "wpf-interact");
+        StringAssert.Contains(decision.Remediation, "restart");
+    }
+
+    [TestMethod]
     public void PolicyDiagnostics_ExplainsLockedDownDefaultWithoutExposingPaths()
     {
         var report = PolicyDiagnostics.Analyze(McpPolicy.LockedDownDefault, "locked-down-default");

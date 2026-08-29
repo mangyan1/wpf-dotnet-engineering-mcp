@@ -1,6 +1,6 @@
 # Capability Registry
 
-The agent must query `system_capabilities` rather than assume a feature exists.
+The agent must query `system_capabilities` rather than assume a feature exists. Before claiming that a specific tool is policy-disabled, it must query `system_tool_preflight` with that exact tool name and use the returned code as authoritative.
 
 A capability absent from the manifest is unavailable.
 
@@ -37,6 +37,8 @@ Policy version 1 may restrict the published and callable tool surface with `enab
 - `source`: approved source/XAML and semantic reference tools.
 
 Omitting the profile list preserves the full surface for backward compatibility. `enabledTools` and `disabledTools` provide an additional exact-name allow/deny layer. Tool visibility is convenience only; authorization still enforces permission, process, capability, filesystem, and risk policy at invocation time.
+
+`system_tool_preflight` combines exact tool publication, enabled profile/tool policy, permission ceiling, baseline risk requirements, and current runtime capability availability. An `ALLOW` result means the agent must not describe the tool as policy-disabled. It does not predict selector validity or bypass target-specific process, filesystem, adapter, screenshot, audit, or destructive-action checks; those remain authoritative when the real tool is invoked.
 
 The runtime `system_capabilities` result is authoritative. Optional adapters can remain unavailable even when their tool profile is visible.
 

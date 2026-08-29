@@ -99,7 +99,7 @@ public static class WpfTools
         var selector = Selector(automationId, name, controlType, reference);
         // The pre-mutation inspect is authorized under the public wpf_click tool name so that a
         // policy allowlisting wpf_click does not silently deny the whole operation.
-        var readPolicy = ToolPolicies.Read("wpf_click", "wpf.uia.read");
+        var readPolicy = new ToolPolicy("wpf_click", PermissionLevel.UiRead, RiskClass.Read, "wpf.uia.read");
         var read = auth.Authorize(readPolicy, processId.ToString());
         if (!read.Success) return ToolResult<object>.Fail(read.Error!.Code, read.Error.Message, read.Error.Retryable, read.Error.Remediation);
         var element = wpf.Query(processId, selector);

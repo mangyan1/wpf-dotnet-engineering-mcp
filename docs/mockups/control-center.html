@@ -1035,7 +1035,9 @@ deny:
     ['system_version','Server version and transport info','system','read'],
     ['system_health','Server self-health check','system','read'],
     ['system_capabilities','List capabilities and permissions','system','read'],
-    ['system_permissions','Show effective policy for the caller','system','read']
+    ['system_permissions','Show effective policy for the caller','system','read'],
+    ['system_policy_diagnostics','Explain policy denials and remediation','system','read'],
+    ['system_tool_preflight','Check exact tool publication and authorization','system','read']
   ];
   const tbody = document.getElementById('tooltable');
   const td = (cls, text) => { const c = document.createElement('td'); c.className = cls; c.textContent = text; return c; };

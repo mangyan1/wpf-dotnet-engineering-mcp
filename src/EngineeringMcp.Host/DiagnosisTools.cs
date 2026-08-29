@@ -25,7 +25,7 @@ public static class DiagnosisTools
         [Description("Previously returned opaque element reference used to re-select the same element.")] string? reference = null)
     {
         var selector = new UiSelector(Reference: reference, AutomationId: automationId, Name: name, ControlType: controlType);
-        return ToolRun.Async(auth, new ToolPolicy("diagnose", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "diagnose.correlation"), processId.ToString(), async () =>
+        return ToolRun.Async(auth, ToolPolicyCatalog.Get("diagnose").ToPolicy(), processId.ToString(), async () =>
         {
             progress.Report(new ProgressNotificationValue { Progress = 0, Total = 100, Message = "Collecting current WPF and diagnostic evidence." });
             var result = await diagnosis.DiagnoseObserveAsync(processId, selector, backendProcessId, sourceRoot, cancellationToken).ConfigureAwait(false);
@@ -53,7 +53,7 @@ public static class DiagnosisTools
         var selector = new UiSelector(Reference: reference, AutomationId: automationId, Name: name, ControlType: controlType);
         // The pre-mutation inspect is authorized under the public diagnose_click tool name so that a
         // policy allowlisting diagnose_click does not silently deny the whole operation.
-        var readPolicy = ToolPolicies.Read("diagnose_click", "wpf.uia.read");
+        var readPolicy = new ToolPolicy("diagnose_click", PermissionLevel.UiRead, RiskClass.Read, "wpf.uia.read");
         var readAllowed = auth.Authorize(readPolicy, processId.ToString());
         if (!readAllowed.Success) return ToolResult<DiagnosisReport>.Fail(readAllowed.Error!.Code, readAllowed.Error.Message);
         var inspected = wpf.Query(processId, selector);
@@ -62,7 +62,7 @@ public static class DiagnosisTools
         var risk = classifier.Classify(inspected.Value);
         if (!risk.Success) return ToolResult<DiagnosisReport>.Fail(risk.Error!.Code, risk.Error.Message);
 
-        var policy = new ToolPolicy("diagnose_click", PermissionLevel.ApplicationDiagnostics, risk.Value, "diagnose.correlation");
+        var policy = ToolPolicyCatalog.Get("diagnose_click").ToPolicy(risk.Value);
         return await ToolRun.Async(auth, policy, processId.ToString(),
             () => diagnosis.DiagnoseClickAsync(processId, selector, backendProcessId, sourceRoot, observationWindowMs, cancellationToken));
     }

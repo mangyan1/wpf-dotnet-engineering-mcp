@@ -115,9 +115,9 @@ public sealed partial class McpHttpIntegrationTests
                     .Select(tool => tool.GetProperty("name").GetString())
                     .Where(name => name is not null)
                     .ToArray();
-                Assert.HasCount(75, names);
+                Assert.HasCount(76, names);
                 CollectionAssert.IsSubsetOf(
-                    new[] { "system_health", "system_policy_diagnostics", "dotnet_runtime_info", "dotnet_capture_dump" },
+                    new[] { "system_health", "system_policy_diagnostics", "system_tool_preflight", "dotnet_runtime_info", "dotnet_capture_dump" },
                     names!);
             }
 
@@ -129,14 +129,22 @@ public sealed partial class McpHttpIntegrationTests
                     result.GetProperty("structuredContent").GetProperty("policySource").GetString());
             }
 
-            using (var runtimeResponse = await CallToolAsync(client, endpoint, 4, "dotnet_runtime_info", new { processId = hostProcessId }))
+            using (var preflightResponse = await CallToolAsync(client, endpoint, 4, "system_tool_preflight", new { toolName = "dotnet_runtime_info" }))
+            {
+                var preflight = preflightResponse.RootElement.GetProperty("result").GetProperty("structuredContent");
+                Assert.IsTrue(preflight.GetProperty("published").GetBoolean());
+                Assert.IsTrue(preflight.GetProperty("allowedByPolicy").GetBoolean());
+                Assert.AreEqual("ALLOW", preflight.GetProperty("code").GetString());
+            }
+
+            using (var runtimeResponse = await CallToolAsync(client, endpoint, 5, "dotnet_runtime_info", new { processId = hostProcessId }))
             {
                 var result = runtimeResponse.RootElement.GetProperty("result");
                 Assert.IsFalse(result.TryGetProperty("isError", out var isError) && isError.GetBoolean());
                 Assert.IsTrue(result.GetProperty("structuredContent").GetProperty("success").GetBoolean());
             }
 
-            using (var deniedResponse = await CallToolAsync(client, endpoint, 5, "dotnet_capture_dump", new { processId = hostProcessId }))
+            using (var deniedResponse = await CallToolAsync(client, endpoint, 6, "dotnet_capture_dump", new { processId = hostProcessId }))
             {
                 var result = deniedResponse.RootElement.GetProperty("result");
                 Assert.IsTrue(result.GetProperty("isError").GetBoolean());

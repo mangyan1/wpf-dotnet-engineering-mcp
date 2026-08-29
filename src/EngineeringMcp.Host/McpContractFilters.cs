@@ -141,17 +141,7 @@ internal static class ToolContractCatalog
     };
 
     public static bool IsEnabled(string name, McpPolicy policy)
-    {
-        if (policy.DisabledTools?.Contains(name, StringComparer.Ordinal) == true)
-            return false;
-        if (policy.EnabledTools is { Count: > 0 } && !policy.EnabledTools.Contains(name, StringComparer.Ordinal))
-            return false;
-        if (policy.EnabledToolProfiles is not { Count: > 0 })
-            return true;
-
-        var profile = Profile(name);
-        return policy.EnabledToolProfiles.Contains(profile, StringComparer.OrdinalIgnoreCase);
-    }
+        => ToolPolicyCatalog.Publication(name, policy).Published;
 
     public static string Title(string name)
         => string.Join(' ', name.Split('_', StringSplitOptions.RemoveEmptyEntries)
@@ -168,14 +158,5 @@ internal static class ToolContractCatalog
             IdempotentHint = readOnly || IdempotentMutations.Contains(name),
             OpenWorldHint = false
         };
-    }
-
-    private static string Profile(string name)
-    {
-        if (name.StartsWith("system_", StringComparison.Ordinal)) return "core";
-        if (name.StartsWith("source_", StringComparison.Ordinal) || name == "wpfui_audit_resources") return "source";
-        if (name.StartsWith("dotnet_", StringComparison.Ordinal) || name.StartsWith("aspnet_", StringComparison.Ordinal) || name.StartsWith("diagnose_", StringComparison.Ordinal)) return "diagnostics";
-        if (MutatingTools.Contains(name)) return "wpf-interact";
-        return "wpf-read";
     }
 }

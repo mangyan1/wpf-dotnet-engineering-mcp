@@ -67,7 +67,7 @@ public static class DotNetTools
     [McpServerTool(Name = "dotnet_trace_start", UseStructuredContent = true), Description("Starts a bounded local EventPipe trace. Raw .nettrace bytes stay local and are never returned through MCP.")]
     public static ToolResult<TraceHandle> TraceStart([Description("Operating-system process identifier of an allowlisted target process.")] int processId, DotNetDiagnosticsService diagnostics, ToolAuthorization auth)
         => ToolRun.Sync(auth,
-            new ToolPolicy("dotnet_trace_start", PermissionLevel.ApplicationDiagnostics, RiskClass.StatefulMutation, "dotnet.eventpipe"),
+            ToolPolicyCatalog.Get("dotnet_trace_start").ToPolicy(),
             processId.ToString(), () => diagnostics.StartTrace(processId));
 
     [McpServerTool(Name = "dotnet_trace_stop", UseStructuredContent = true), Description("Stops a trace created by an earlier call. The returned handle never exposes the local trace path.")]

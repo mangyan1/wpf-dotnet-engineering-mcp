@@ -21,7 +21,7 @@ explicit configuration action is completed.
 
 The user-profile registration is intentionally cross-workspace. The security policy separately decides which processes and source roots the MCP may inspect.
 
-The Integration page includes **Policy Readiness**. It reports only safe summary counts and remediation guidance; it does not expose process paths, source roots, tokens, or secrets. VS Code can request the same safe report through `system_policy_diagnostics`. Individual policy and guard failures include a machine-readable `error.remediation` field.
+The Integration page includes **Policy Readiness**. It reports only safe summary counts and remediation guidance; it does not expose process paths, source roots, tokens, or secrets. VS Code can request the same safe report through `system_policy_diagnostics`. Before claiming that one tool is policy-disabled, an agent must call `system_tool_preflight` with that exact tool name. Individual policy and guard failures include a machine-readable `error.remediation` field.
 
 ## Installed VS Code entry
 
@@ -64,10 +64,10 @@ If VS Code lists the server but tools are unavailable:
 5. Use the Logs tab for the server output.
 6. If the log shows HTTP 401, fully exit and restart VS Code so it inherits `ENGINEERING_MCP_HTTP_TOKEN`.
 7. If diagnostic or WPF tools return a policy error, use **Configure ApexDrive** and select the repository root.
-8. Call `system_policy_diagnostics` or read **Integration > Policy Readiness** for the exact safe corrective action.
+8. Call `system_policy_diagnostics` for broad readiness and `system_tool_preflight` for the disputed tool, or read **Integration > Policy Readiness** for the exact safe corrective action.
 
 Engineering MCP child processes use a minimal environment. Relative and UNC/network entries are removed from inherited `PATH` values before the host, tests, or maintenance commands start. This prevents stale network tool paths from leaking into WSL or diagnostic subprocesses while retaining local absolute tool paths.
 
-The 75-tool surface includes metadata-only WPF grid/tree/item summaries, selector diagnostics, richer waits/assertions, and probe-backed binding/command/validation diagnostics. Advanced tools never return grid cell text, item labels, ViewModel values, validation messages, raw AutomationIds, window titles, clipboard content, or unredacted artifacts.
+The 76-tool surface includes authoritative per-tool preflight, metadata-only WPF grid/tree/item summaries, selector diagnostics, richer waits/assertions, and probe-backed binding/command/validation diagnostics. Advanced tools never return grid cell text, item labels, ViewModel values, validation messages, raw AutomationIds, window titles, clipboard content, or unredacted artifacts.
 
 Do not copy workspace-relative stdio configuration into ApexDrive. The shared HTTP endpoint is deliberately independent of the active workspace.

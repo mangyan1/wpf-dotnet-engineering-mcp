@@ -32,6 +32,6 @@ public static class BackendTools
         => Request("aspnet_exceptions", processId, "exceptions", limit, backend, auth, cancellationToken);
 
     private static Task<ToolResult<BackendProbeResponse>> Request(string tool, int processId, string op, int limit, BackendProbeClient backend, ToolAuthorization auth, CancellationToken cancellationToken)
-        => ToolRun.Async(auth, new ToolPolicy(tool, PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "aspnet.telemetry"), processId.ToString(),
+        => ToolRun.Async(auth, ToolPolicyCatalog.Get(tool).ToPolicy(), processId.ToString(),
             () => backend.RequestAsync(processId, op, limit, cancellationToken));
 }

@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using EngineeringMcp.Contracts;
+using EngineeringMcp.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EngineeringMcp.IntegrationTests;
@@ -129,7 +130,12 @@ public sealed partial class McpHttpIntegrationTests
             Assert.IsTrue(names.Contains("diagnose", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("source_find_references_semantic", StringComparer.Ordinal));
             Assert.IsTrue(names.Contains("system_policy_diagnostics", StringComparer.Ordinal));
-            Assert.HasCount(75, names);
+            Assert.IsTrue(names.Contains("system_tool_preflight", StringComparer.Ordinal));
+            Assert.HasCount(76, names);
+            CollectionAssert.AreEquivalent(
+                ToolPolicyCatalog.All.Select(definition => definition.ToolName).OrderBy(name => name, StringComparer.Ordinal).ToArray(),
+                names.OrderBy(name => name, StringComparer.Ordinal).ToArray(),
+                "Every published MCP tool must have one authoritative preflight policy definition.");
             foreach (var required in new[]
                      {
                          "wpf_grid_summary", "wpf_selector_audit", "wpf_binding_errors",
@@ -154,10 +160,44 @@ public sealed partial class McpHttpIntegrationTests
                 }
             }
 
-            using var failedCall = await client.PostAsync(endpoint, JsonContent(new
+            using (var preflightCall = await client.PostAsync(endpoint, JsonContent(new
             {
                 jsonrpc = "2.0",
                 id = 3,
+                method = "tools/call",
+                @params = new { name = "system_tool_preflight", arguments = new { toolName = "wpf_click" } }
+            })))
+            {
+                preflightCall.EnsureSuccessStatusCode();
+                using var preflightPayload = await ReadMcpJsonAsync(preflightCall);
+                var preflight = preflightPayload.RootElement.GetProperty("result").GetProperty("structuredContent");
+                Assert.IsTrue(preflight.GetProperty("known").GetBoolean());
+                Assert.IsTrue(preflight.GetProperty("published").GetBoolean());
+                Assert.IsTrue(preflight.GetProperty("allowedByPolicy").GetBoolean());
+                Assert.AreEqual("ALLOW", preflight.GetProperty("code").GetString());
+                StringAssert.Contains(preflight.GetProperty("agentDirective").GetString(), "Do not report it as policy-disabled");
+            }
+
+            using (var deniedPreflightCall = await client.PostAsync(endpoint, JsonContent(new
+            {
+                jsonrpc = "2.0",
+                id = 4,
+                method = "tools/call",
+                @params = new { name = "system_tool_preflight", arguments = new { toolName = "dotnet_capture_dump" } }
+            })))
+            {
+                deniedPreflightCall.EnsureSuccessStatusCode();
+                using var deniedPreflightPayload = await ReadMcpJsonAsync(deniedPreflightCall);
+                var preflight = deniedPreflightPayload.RootElement.GetProperty("result").GetProperty("structuredContent");
+                Assert.IsTrue(preflight.GetProperty("published").GetBoolean());
+                Assert.IsFalse(preflight.GetProperty("allowedByPolicy").GetBoolean());
+                Assert.AreEqual("PERMISSION_DENIED", preflight.GetProperty("code").GetString());
+            }
+
+            using var failedCall = await client.PostAsync(endpoint, JsonContent(new
+            {
+                jsonrpc = "2.0",
+                id = 5,
                 method = "tools/call",
                 @params = new { name = "wpf_attach", arguments = new { processId = -1 } }
             }));

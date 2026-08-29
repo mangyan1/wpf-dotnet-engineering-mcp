@@ -28,7 +28,7 @@ public static class ProbeTools
         if (string.Equals(op, "resource", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(resourceKey))
             return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_RESOURCE_KEY_REQUIRED", "The 'resource' operation requires the 'resourceKey' parameter."));
 
-        return ToolRun.Async(auth, new ToolPolicy("wpf_probe", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "wpf.probe"), processId.ToString(),
+        return ToolRun.Async(auth, ToolPolicyCatalog.Get("wpf_probe").ToPolicy(), processId.ToString(),
             () => probe.RequestAsync(processId, new ProbeRequest(string.Empty, op, AutomationId: automationId, Name: name, Property: property, ResourceKey: resourceKey), cancellationToken));
     }
 
@@ -58,7 +58,7 @@ public static class WpfUiTools
         [Description("Allowlisted WPF-UI effective property name; required by the property operation.")] string? property = null,
         [Description("Exact WPF resource key; required by the resource operation.")] string? resourceKey = null)
     {
-        return ToolRun.Async(auth, new ToolPolicy("wpfui_inspect", PermissionLevel.ApplicationDiagnostics, RiskClass.Read, "wpfui.resources"), processId.ToString(),
+        return ToolRun.Async(auth, ToolPolicyCatalog.Get("wpfui_inspect").ToPolicy(), processId.ToString(),
             () => operation.Trim().ToLowerInvariant().Replace('-', '_') switch
             {
                 "resource" when !string.IsNullOrWhiteSpace(automationId) && !string.IsNullOrWhiteSpace(resourceKey)
