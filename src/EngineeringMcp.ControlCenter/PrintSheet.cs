@@ -27,8 +27,6 @@ internal static class PrintSheet
     private const double GearTrainVerticalOffset = -18;
     private const double SecondaryPageGearTrainVerticalOffset = 82;
 
-    private sealed record GearSpec(double R, int Teeth, double X, double Y, double Seconds, bool Ccw, bool Centerlines);
-
     public static FrameworkElement Build()
     {
         // margin/alignment-positioned sheet furniture...
@@ -100,16 +98,8 @@ internal static class PrintSheet
         anchored.Children.Add(cross2);
 
         // clock gear train, top-center (mirrors the mockup's buildGearTrain)
-        GearSpec[] specs =
-        [
-            new(86, 16, 23, 173, 54, false, true),
-            new(56, 11, 174, 173, 37, true, false),
-            new(35, 7, 274, 173, 24, false, true),
-            new(20, 4, 274, 118, 13.5, true, false),
-            new(26, 6, 238, 243, 20, false, false),
-        ];
         var gears = new List<(FrameworkElement Wheel, GearSpec Spec, double C)>();
-        foreach (var s in specs)
+        foreach (var s in GearTrainLayout.Specs)
         {
             var (wheel, c) = GearWheel(s);
             gears.Add((wheel, s, c));
@@ -231,12 +221,12 @@ internal static class PrintSheet
         // strokes every frame and they shimmer/crawl against the rims.
         // ponytail: A/B-verified sharper than per-frame vector re-rasterization (midPct 7.9 vs 9.9)
         body.CacheMode = new BitmapCache(2.0);
-        var rotate = new RotateTransform { CenterX = c, CenterY = c };
+        var rotate = new RotateTransform(s.PhaseDegrees, c, c);
         body.RenderTransform = rotate;
         rotate.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation
         {
-            From = 0,
-            To = s.Ccw ? -360 : 360,
+            From = s.PhaseDegrees,
+            To = s.PhaseDegrees + (s.Ccw ? -360 : 360),
             Duration = TimeSpan.FromSeconds(s.Seconds),
             RepeatBehavior = RepeatBehavior.Forever
         });

@@ -12,4 +12,7 @@
     <PackageReference Include="MSTest.TestAdapter" />
     <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/EngineeringMcp.ControlCenter/GearTrainLayout.cs" Link="GearTrainLayout.cs" />
+  </ItemGroup>
 </Project>
