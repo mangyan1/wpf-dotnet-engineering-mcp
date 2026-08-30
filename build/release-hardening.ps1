@@ -4,8 +4,11 @@ param(
     [string]$Configuration = 'Release',
     [string]$OutputDirectory = 'artifacts/release',
     [string]$CertificateThumbprint = $env:ENGINEERING_MCP_SIGNING_THUMBPRINT,
+    [string]$SourceRevision = $env:ENGINEERING_MCP_SOURCE_REVISION,
+    [string]$ExpectedVersion,
     [switch]$SelfSign,
-    [switch]$RequireSigning
+    [switch]$RequireSigning,
+    [switch]$RequireCleanSource
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,20 +37,43 @@ function Find-SignTool {
     return $candidate.FullName
 }
 
-if ([IO.Directory]::Exists($resolvedOutput)) {
-    [IO.Directory]::Delete($resolvedOutput, $true)
-}
-[IO.Directory]::CreateDirectory($resolvedOutput) | Out-Null
-
 $buildProperties = [xml][IO.File]::ReadAllText((Join-Path $repositoryRoot 'Directory.Build.props'))
 $version = [string]($buildProperties.Project.PropertyGroup.Version | Select-Object -First 1)
 if ([string]::IsNullOrWhiteSpace($version)) { throw 'Directory.Build.props does not define Version.' }
+if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion) -and $version -ne $ExpectedVersion) {
+    throw "Release version '$version' does not match expected version '$ExpectedVersion'."
+}
 $versionMatch = [regex]::Match($version, '^(?<core>\d+\.\d+\.\d+)(?:-[0-9A-Za-z.-]+)?$')
 if (-not $versionMatch.Success) {
     throw "Directory.Build.props Version '$version' is not a supported semantic version."
 }
 $installerVersion = $versionMatch.Groups['core'].Value
 $releaseChannel = if ($version.IndexOf('-', [StringComparison]::Ordinal) -ge 0) { 'preview' } else { 'stable' }
+
+$headRevision = (& git -C $repositoryRoot rev-parse HEAD 2>$null)
+$hasGitRevision = $LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($headRevision)
+if ($hasGitRevision) { $headRevision = $headRevision.Trim().ToLowerInvariant() }
+
+if ([string]::IsNullOrWhiteSpace($SourceRevision)) {
+    if (-not $hasGitRevision) { throw 'Unable to resolve the source revision. Provide SourceRevision explicitly.' }
+    $SourceRevision = $headRevision
+}
+if ($SourceRevision -notmatch '^[A-Fa-f0-9]{40}$') {
+    throw 'SourceRevision must be the full 40-character Git commit hash.'
+}
+$SourceRevision = $SourceRevision.ToLowerInvariant()
+if ($RequireCleanSource) {
+    if (-not $hasGitRevision) { throw 'RequireCleanSource requires a Git checkout.' }
+    if ($SourceRevision -ne $headRevision) { throw 'SourceRevision does not match the checked-out Git commit.' }
+    $trackedChanges = @(& git -C $repositoryRoot status --porcelain --untracked-files=all)
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to verify source cleanliness.' }
+    if ($trackedChanges.Count -ne 0) { throw 'Release source contains uncommitted tracked changes.' }
+}
+
+if ([IO.Directory]::Exists($resolvedOutput)) {
+    [IO.Directory]::Delete($resolvedOutput, $true)
+}
+[IO.Directory]::CreateDirectory($resolvedOutput) | Out-Null
 
 $packageName = "EngineeringMcp-$version-$RuntimeIdentifier"
 $packageOutput = Join-Path $resolvedOutput $packageName
@@ -72,6 +98,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Control Center publish failed.' }
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/policy.packaged.json') -Destination $configOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'config/policy.schema.json') -Destination $configOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/SECURITY.md') -Destination $docsOutput
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/CODE-SIGNING-POLICY.md') -Destination $docsOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/VSCODE.md') -Destination $docsOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs/WPF-WORKSPACES.md') -Destination $docsOutput
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination (Join-Path $docsOutput 'README.md')
@@ -112,6 +139,7 @@ $manifest = [ordered]@{
     schemaVersion = 1
     product = 'Engineering MCP'
     version = $version
+    sourceRevision = $SourceRevision
     runtimeIdentifier = $RuntimeIdentifier
     selfContained = $true
     entryPoint = 'EngineeringMcp.ControlCenter.exe'
@@ -158,7 +186,7 @@ $spdxPackages = @(
         filesAnalyzed = $false
         licenseConcluded = 'Apache-2.0'
         licenseDeclared = 'Apache-2.0'
-        copyrightText = 'Copyright 2026 White-Lotus'
+        copyrightText = 'Copyright 2026 mangyan1'
     }
 )
 $relationships = @()

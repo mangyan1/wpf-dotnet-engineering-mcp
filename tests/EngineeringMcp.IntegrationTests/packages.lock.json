@@ -220,8 +220,7 @@
         "resolved": "4.83.1",
         "contentHash": "I3k4J4Hj4KbLEFanjeUzzDOVecukETaTgEkJ7h2pP/Yazs6SLp6TVUTo/Eo+ptPXMwvc+iX7rBFtMSUrA7R+Mg==",
         "dependencies": {
-          "Microsoft.Identity.Client": "4.83.1",
-          "System.Security.Cryptography.ProtectedData": "4.5.0"
+          "Microsoft.Identity.Client": "4.83.1"
         }
       },
       "Microsoft.IdentityModel.Abstractions": {
@@ -288,11 +287,6 @@
         "resolved": "1.0.52",
         "contentHash": "oNv2JtYXhpdJrX63nibx1JT3uCESOBQ1LAk7Dtz/sr0+laW0KRM6eKp4CZ3MHDR2siIkKsY8MmUkeP5DKkQQ5w=="
       },
-      "Microsoft.Win32.SystemEvents": {
-        "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "WXGazuzGf3eX24z1qgiGwP2df3t2T28QeZvMjlRqdjNuewQyLfbOb6rEXmk6Xs++gOQClmw90pkjPd9j/hNWDw=="
-      },
       "ModelContextProtocol.Core": {
         "type": "Transitive",
         "resolved": "2.2.0",
@@ -317,11 +311,6 @@
           "Microsoft.Extensions.Logging.Abstractions": "10.0.3",
           "System.Memory.Data": "10.0.3"
         }
-      },
-      "System.CodeDom": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "WTlRjL6KWIMr/pAaq3rYqh0TJlzpouaQ/W1eelssHgtlwHAH25jXTkUphTYx9HaIIf7XA6qs/0+YhtLEQRkJ+Q=="
       },
       "System.Composition": {
         "type": "Transitive",
@@ -371,35 +360,10 @@
           "System.Composition.Runtime": "10.0.1"
         }
       },
-      "System.Configuration.ConfigurationManager": {
-        "type": "Transitive",
-        "resolved": "8.0.1",
-        "contentHash": "gPYFPDyohW2gXNhdQRSjtmeS6FymL2crg4Sral1wtvEJ7DUqFCDWDVbbLobASbzxfic8U1hQEdC7hmg9LHncMw==",
-        "dependencies": {
-          "System.Diagnostics.EventLog": "8.0.1",
-          "System.Security.Cryptography.ProtectedData": "8.0.0"
-        }
-      },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "8.0.1",
-        "contentHash": "n1ZP7NM2Gkn/MgD8+eOT5MulMj6wfeQMNS2Pizvq5GHCZfjlFMXV2irQlQmJhwA2VABC57M0auudO89Iu2uRLg=="
-      },
-      "System.Diagnostics.PerformanceCounter": {
-        "type": "Transitive",
-        "resolved": "8.0.1",
-        "contentHash": "9RfEDiEjlUADeThs8IPdDVTXSnPRSqjfgTQJALpmGFPKC0k2mbdufOXnb/9JZ4I0TkmxOfy3VTJxrHOJSs8cXg==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "8.0.1"
-        }
-      },
       "System.Management": {
         "type": "Transitive",
         "resolved": "8.0.0",
-        "contentHash": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA==",
-        "dependencies": {
-          "System.CodeDom": "8.0.0"
-        }
+        "contentHash": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA=="
       },
       "System.Memory.Data": {
         "type": "Transitive",
@@ -411,32 +375,14 @@
         "resolved": "4.7.0",
         "contentHash": "VybpaOQQhqE6siHppMktjfGBw1GCwvCqiufqmP8F1nj7fTUNtW35LOEt3UZTEsECfo+ELAl/9o9nJx3U91i7vA=="
       },
-      "System.Security.Cryptography.ProtectedData": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "+TUFINV2q2ifyXauQXRwy4CiBhqvDEDZeVJU7qfxya4aRYOKzVBpN+4acx25VcPB9ywUN6C0n8drWl110PhZEg=="
-      },
-      "System.Security.Permissions": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "v/BBylw7XevuAsHXoX9dDUUfmBIcUf7Lkz8K3ZXIKz3YRKpw8YftpSir4n4e/jDTKFoaK37AsC3xnk+GNFI1Ow==",
-        "dependencies": {
-          "System.Windows.Extensions": "8.0.0"
-        }
-      },
-      "System.Windows.Extensions": {
-        "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "Obg3a90MkOw9mYKxrardLpY2u0axDMrSmy4JCdq2cYbelM2cUwmUir5Bomvd1yxmPL9h5LVHU1tuKBZpUjfASg=="
-      },
       "engineeringmcp.contracts": {
         "type": "Project"
       },
       "engineeringmcp.diagnostics": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )",
-          "EngineeringMcp.Security": "[0.3.5, )",
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Security": "[0.3.7-preview.6, )",
           "Microsoft.Diagnostics.NETCore.Client": "[0.2.661903, )",
           "Microsoft.Diagnostics.Runtime": "[4.0.732401, )",
           "Microsoft.Diagnostics.Tracing.TraceEvent": "[3.2.6, )"
@@ -445,22 +391,22 @@
       "engineeringmcp.failurecorrelation": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )",
-          "EngineeringMcp.Diagnostics": "[0.3.5, )",
-          "EngineeringMcp.Security": "[0.3.5, )",
-          "EngineeringMcp.Source": "[0.3.5, )",
-          "EngineeringMcp.Wpf": "[0.3.5, )"
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Diagnostics": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Security": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Source": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Wpf": "[0.3.7-preview.6, )"
         }
       },
       "engineeringmcp.host": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )",
-          "EngineeringMcp.Diagnostics": "[0.3.5, )",
-          "EngineeringMcp.FailureCorrelation": "[0.3.5, )",
-          "EngineeringMcp.Security": "[0.3.5, )",
-          "EngineeringMcp.Source": "[0.3.5, )",
-          "EngineeringMcp.Wpf": "[0.3.5, )",
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Diagnostics": "[0.3.7-preview.6, )",
+          "EngineeringMcp.FailureCorrelation": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Security": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Source": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Wpf": "[0.3.7-preview.6, )",
           "ModelContextProtocol": "[2.2.0, )",
           "ModelContextProtocol.AspNetCore": "[2.2.0, )"
         }
@@ -468,21 +414,21 @@
       "engineeringmcp.probe.wpf": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )",
-          "EngineeringMcp.Security": "[0.3.5, )"
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Security": "[0.3.7-preview.6, )"
         }
       },
       "engineeringmcp.security": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )"
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )"
         }
       },
       "engineeringmcp.source": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )",
-          "EngineeringMcp.Security": "[0.3.5, )",
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Security": "[0.3.7-preview.6, )",
           "Microsoft.Build.Locator": "[1.11.2, )",
           "Microsoft.CodeAnalysis.CSharp.Workspaces": "[5.9.0, )",
           "Microsoft.CodeAnalysis.Workspaces.MSBuild": "[5.9.0, )"
@@ -491,11 +437,10 @@
       "engineeringmcp.wpf": {
         "type": "Project",
         "dependencies": {
-          "EngineeringMcp.Contracts": "[0.3.5, )",
-          "EngineeringMcp.Security": "[0.3.5, )",
+          "EngineeringMcp.Contracts": "[0.3.7-preview.6, )",
+          "EngineeringMcp.Security": "[0.3.7-preview.6, )",
           "FlaUI.Core": "[5.0.0, )",
-          "FlaUI.UIA3": "[5.0.0, )",
-          "System.Drawing.Common": "[10.0.11, )"
+          "FlaUI.UIA3": "[5.0.0, )"
         }
       },
       "FlaUI.Core": {
@@ -504,10 +449,7 @@
         "resolved": "5.0.0",
         "contentHash": "VWWYqwjsYkii2BrUsz5+bpXEp27NherKhLt19hTxHwJP4KrfyZoeo1FdBov4ZTh655wZAKDGIjR7NJLDesuzeg==",
         "dependencies": {
-          "System.Diagnostics.PerformanceCounter": "8.0.1",
-          "System.Drawing.Common": "8.0.10",
-          "System.Management": "8.0.0",
-          "System.Security.Permissions": "8.0.0"
+          "System.Management": "8.0.0"
         }
       },
       "FlaUI.UIA3": {
@@ -607,15 +549,13 @@
         "dependencies": {
           "ModelContextProtocol": "[2.2.0]"
         }
-      },
-      "System.Drawing.Common": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.11, )",
-        "resolved": "10.0.11",
-        "contentHash": "Schxw0FzXMAwa+If/oVxqjrmmiyUbw9KUAeqJOPnjsdAzkmUZXSZWNRLHZye2boFYlbMRkeBY6dba5hs8Mu4OQ==",
-        "dependencies": {
-          "Microsoft.Win32.SystemEvents": "10.0.11"
-        }
+      }
+    },
+    "net10.0-windows10.0.19041/win-x64": {
+      "System.Management": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA=="
       }
     }
   }

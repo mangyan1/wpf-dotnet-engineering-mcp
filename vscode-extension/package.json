@@ -4,7 +4,7 @@
   "description": "Registers the shared local .NET/WPF Engineering MCP Streamable HTTP service with VS Code.",
   "version": "0.2.0",
   "publisher": "local-development",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.99.0"
   },

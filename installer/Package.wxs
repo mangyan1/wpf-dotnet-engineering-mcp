@@ -3,7 +3,7 @@
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package
     Name="Engineering MCP"
-    Manufacturer="White-Lotus"
+    Manufacturer="mangyan1"
     Version="$(var.ProductVersion)"
     UpgradeCode="{67B99C2D-A79E-4C3A-B7EB-C76E36641135}"
     Scope="perUser"

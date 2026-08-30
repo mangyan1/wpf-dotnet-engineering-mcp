@@ -7,9 +7,9 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
     <Deterministic>true</Deterministic>
-    <Version>0.3.7-preview.3</Version>
-    <Authors>White-Lotus</Authors>
-    <Copyright>Copyright 2026 White-Lotus</Copyright>
+    <Version>0.3.7-preview.6</Version>
+    <Authors>mangyan1</Authors>
+    <Copyright>Copyright 2026 mangyan1</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <LangVersion>latest</LangVersion>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>

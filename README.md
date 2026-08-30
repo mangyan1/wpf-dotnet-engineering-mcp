@@ -1,8 +1,39 @@
-# .NET/WPF Engineering MCP
+# WPF & .NET Engineering MCP Server
 
-Security-first local Model Context Protocol tooling for authorized WPF and .NET engineering work on Windows. The current source publishes 76 structured tools for UI Automation, bounded in-process WPF diagnostics, .NET runtime observation, approved source analysis, ASP.NET observability, and evidence-based cross-layer diagnosis.
+[![CI](https://github.com/mangyan1/wpf-dotnet-engineering-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mangyan1/wpf-dotnet-engineering-mcp/actions/workflows/ci.yml)
+
+Security-first local Model Context Protocol (MCP) server for authorized WPF UI automation, .NET diagnostics, ASP.NET observability, and VS Code engineering workflows on Windows. The current source publishes 76 structured tools for UI Automation, bounded in-process WPF diagnostics, .NET runtime observation, approved source analysis, ASP.NET observability, and evidence-based cross-layer diagnosis.
 
 The server is not a general shell, unrestricted debugger, credential extractor, remote administration agent, or arbitrary process inspector.
+
+**Current public preview:** [`v0.3.7-preview.6`](https://github.com/mangyan1/wpf-dotnet-engineering-mcp/releases/tag/v0.3.7-preview.6) · [Security policy](docs/SECURITY.md) · [Code-signing policy](docs/CODE-SIGNING-POLICY.md) · [Contributing](CONTRIBUTING.md)
+
+## Control Center
+
+[![Engineering MCP Control Center Home page with an animated gear train](docs/assets/control-center-home.gif)](https://github.com/mangyan1/wpf-dotnet-engineering-mcp/releases/tag/v0.3.7-preview.6)
+
+The Windows Control Center keeps the shared local MCP runtime, validation, editor integration, tools, logs, and security controls in one place. This looping preview uses the packaged generic policy and contains no project or user data.
+
+## Why this repository is verifiable
+
+- Source, build scripts, release notes, dependency lock files, and security policies are public and versioned together.
+- GitHub CI restores locked dependencies, builds on Windows with the pinned .NET SDK, runs all automated tests, and executes the static, product-neutrality, and sanitized secret gates.
+- The MCP HTTP endpoint is loopback-only, authenticated, non-cacheable, and bounded. Network access from tools is denied unless an explicit policy authorizes it.
+- The application contains no telemetry, analytics, crash reporting, or remote logging. It does not upload source, screenshots, diagnostics, or application data automatically.
+- Release packages contain an SPDX SBOM, dependency inventory, SHA-256 manifest, security documentation, and code-signing disclosure.
+- Preview binaries are Authenticode-signed and timestamped with a development certificate. This detects post-signing modification but is **not** a publicly trusted Windows publisher identity. Trusted SignPath signing remains pending approval.
+
+Trust is based on inspectable controls and repeatable evidence, not the signature alone. Security-sensitive users should verify the checksum and build the matching public tag before authorizing an application.
+
+## Requirements and bundled dependencies
+
+| Use | Requirements |
+| --- | --- |
+| Installed MSI or portable ZIP | Windows x64. The application is self-contained and includes its .NET runtime; no separate .NET installation, Node.js, Python, WiX, or VS Code extension is required. VS Code is optional and needed only when using its MCP client. |
+| Build and test from source | Windows x64, the .NET SDK selected by `global.json` (currently 10.0.400 with latest-patch roll-forward), PowerShell, Python 3 for the static gate, and Bash for the sanitized secret scan. Git for Windows supplies Bash on a typical Windows development machine. |
+| Build a signed installer | The source-build requirements plus Windows SDK SignTool and an approved signing certificate. WiX is restored as a locked NuGet/MSBuild SDK dependency. |
+
+NuGet versions are centralized in `Directory.Packages.props`, and every project has a committed lock file. Dependabot opens weekly update pull requests for NuGet, the optional VS Code extension manifest, and GitHub Actions. Minor and patch updates are grouped; major updates remain separate for deliberate review. Pull requests must pass locked restore, the NuGet advisory gate, dependency review, build, tests, static checks, and the sanitized secret scan before merge.
 
 ## What it provides
 
@@ -52,6 +83,25 @@ Source XAML tools accept either one approved `.xaml` file or an approved directo
 
 Optional: run `Install-ControlCenter-Shortcut.cmd` once to create a Desktop shortcut. See `docs/DEV-CONTROL-CENTER.md`.
 
+## Download and verify a release
+
+When a binary release is published, download the MSI or portable ZIP and `SHA256SUMS.txt` from the [GitHub Releases page](https://github.com/mangyan1/wpf-dotnet-engineering-mcp/releases). Keep release binaries out of the source tree.
+
+Verify the MSI checksum in PowerShell and compare it with the matching line in `SHA256SUMS.txt`:
+
+```powershell
+Get-FileHash -Algorithm SHA256 .\EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi
+```
+
+Inspect its Authenticode signature and timestamp:
+
+```powershell
+Get-AuthenticodeSignature .\EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi |
+    Select-Object Status, StatusMessage, SignerCertificate, TimeStamperCertificate
+```
+
+On machines that do not trust the included development certificate, Windows will not report a publicly trusted publisher even though the signature and timestamp are present. Do not bypass that distinction. See the [code-signing policy](docs/CODE-SIGNING-POLICY.md) for the current and planned trust models.
+
 ## VS Code
 
 **Connect to VS Code** installs a user-profile HTTP MCP entry, making the service available across workspaces without opening this repository. `.vscode/mcp.json` is retained as a repository-local development example.
@@ -66,12 +116,12 @@ Build the self-contained Windows package, portable ZIP, and per-user MSI with:
 powershell -ExecutionPolicy Bypass -File build/release-hardening.ps1
 ```
 
-Version 0.3.7-preview.3 produces:
+Version 0.3.7-preview.6 produces:
 
-- `artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64.zip`
-- `artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi`
+- `artifacts/release/EngineeringMcp-0.3.7-preview.6-win-x64.zip`
+- `artifacts/release/EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi`
 
-Preview labels remain in the portable ZIP/MSI filenames and application manifest. The MSI uses the numeric Windows Installer product version (`0.3.7`) because MSI product versions do not accept semantic-version suffixes; `app-manifest.json` identifies the `preview` channel and full `0.3.7-preview.3` version.
+Preview labels remain in the portable ZIP/MSI filenames and application manifest. The MSI uses the numeric Windows Installer product version (`0.3.7`) because MSI product versions do not accept semantic-version suffixes; `app-manifest.json` identifies the `preview` channel, full `0.3.7-preview.6` version, and exact source commit.
 
 The package contains the Control Center, private MCP host, locked-down default policy, documentation (including this README), SPDX 2.3 SBOM, dependency inventory, SHA-256 checksums, and the .NET runtime. The portable package runs without installing .NET or opening the source repository.
 
@@ -90,12 +140,19 @@ Official releases require a trusted code-signing certificate. Set `ENGINEERING_M
 For internal development testing:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File build/release-hardening.ps1 -SelfSign -RequireSigning
+powershell -ExecutionPolicy Bypass -File build/release-hardening.ps1 `
+  -SelfSign `
+  -RequireSigning `
+  -RequireCleanSource `
+  -ExpectedVersion 0.3.7-preview.6 `
+  -SourceRevision (git rev-parse HEAD)
 ```
 
 This creates or reuses a non-exportable `Engineering MCP Development` certificate in `Cert:\CurrentUser\My`, signs the Engineering MCP binaries with SHA-256 and an RFC 3161 timestamp, and includes the public `.cer` in the package documentation. It does not add the certificate to Trusted Root. Other machines must explicitly trust that certificate; a development signature does not establish public publisher identity or Microsoft Defender SmartScreen reputation.
 
 Unsigned output must not be promoted as an official release.
+
+See [`docs/CODE-SIGNING-POLICY.md`](docs/CODE-SIGNING-POLICY.md) for release provenance, approval roles, privacy commitments, and the planned SignPath Foundation trust path.
 
 ## Build and test
 
@@ -109,7 +166,7 @@ Validate the installed MSI, VS Code registration, uninstall/reinstall persistenc
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
-  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi `
+  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi `
   -ExerciseReinstall `
   -Configuration Release
 ```
@@ -118,7 +175,7 @@ Tests use synthetic fixtures. The automated suite exercises a real WPF process f
 
 ## Project status
 
-The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. On 2026-08-29, the `0.3.7-preview.3` Release suite added bounded universal WPF workspace discovery and durable exact-path policy provisioning to the existing real-process screenshot masking, restartable authenticated WPF probing, live ASP.NET action correlation, exact-file XAML auditing, provider-chrome selector classification, and PII-redaction coverage. See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
+The projects target .NET 10 and pin the official `ModelContextProtocol` package to 2.2.0. The `0.3.7-preview.6` public pre-release carries bounded universal WPF workspace discovery and durable exact-path policy provisioning alongside real-process screenshot masking, restartable authenticated WPF probing, live ASP.NET action correlation, exact-file XAML auditing, provider-chrome selector classification, PII-redaction coverage, protected release governance, and the validated Microsoft.Build.Framework 17.14.28 dependency update. See `IMPLEMENTATION_STATUS.md` for exact completion state and `docs/ROADMAP.md` for phase gates.
 
 ## Source-of-truth order
 
@@ -135,6 +192,6 @@ If implementation conflicts with security policy, the implementation is defectiv
 
 ## License
 
-Copyright 2026 White-Lotus.
+Copyright 2026 mangyan1.
 
 Engineering MCP is open-source software licensed under the [Apache License, Version 2.0](LICENSE). You may use, modify, and redistribute it, including commercially, subject to the license terms. Preserve the license and attribution notices when redistributing the software. Third-party components remain under their respective licenses.
