@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 
-Current source version: 0.3.7-preview.3. This preview carries universal bounded WPF workspace discovery and authorization, inert centralized-property import discovery, verified manual executable fallback, target-only DPI-aware screenshot capture, conservative text masking, provider-chrome audit corrections, Apache-2.0 licensing, and the associated regression coverage.
+Current source version: 0.3.7-preview.6. This public pre-release carries universal bounded WPF workspace discovery and authorization, inert centralized-property import discovery, verified manual executable fallback, target-only DPI-aware screenshot capture, conservative text masking, provider-chrome audit corrections, Apache-2.0 licensing, protected release governance, the Microsoft.Build.Framework 17.14.28 dependency update, and the associated regression coverage.
 
 ## Verification state
 
@@ -23,13 +23,15 @@ Additional source verification on 2026-08-29:
 
 - `dotnet test DotNetEngineeringMcp.sln --no-restore --configuration Release`: 46 normal tests passed and the opt-in installed-package acceptance test skipped by design.
 - Ten universal workspace-policy tests passed for multiple modern WPF apps, classic WPF metadata, safe centralized imports, external-import rejection, verified manual executable fallback, non-WPF exclusion, unbuilt-project failure, invalid-root rejection, and stable path-specific policy files.
+- WPF integration fixtures resolve the active test configuration, removing the former clean-checkout dependency on a stale Debug executable during Release validation.
 - A real WPF fixture produced a valid masked PNG with UIA text/sensitive-region redactions, and capture remained fail-closed.
 - The authenticated WPF probe completed a request, disposed, restarted, and completed another request without a stale singleton or pipe timeout.
 - A live ASP.NET fixture recorded an HTTP request and returned it through the authenticated pipe with an exact diagnostic-action correlation marker.
 - One-file XAML audits were limited to the selected file, and redaction preserved ISO timestamps, dotted versions, and target-framework path fragments while still masking realistic phone numbers.
-- Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.3-win-x64.zip` and `EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.3` on the `preview` channel and packages the Apache-2.0 license, White-Lotus notice, and universal WPF workspace guide.
-- The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.3`.
-- All 51 static contract/security checks passed, including product-neutrality and inert centralized-property/manual-executable authorization gates.
+- Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.6-win-x64.zip` and `EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.6` on the `preview` channel, binds the package to the exact source commit, and packages the Apache-2.0 license, mangyan1 notice, universal WPF workspace guide, and code-signing policy.
+- The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.6`.
+- All 57 static contract/security checks passed, including product-neutrality, inert centralized-property/manual-executable authorization, packaged code-signing policy, dependency-manifest coverage, pinned read-only CI, dependency-update, and ownership gates.
+- Public GitHub CI uses locked application and installer dependency restore, the pinned .NET SDK, commit-pinned official actions, a NuGet advisory gate, pull-request dependency review, read-only token permissions, no release secrets, and no artifact upload.
 - A real application integration fixture returned backend adapter status `ready` with one bounded request observation and a selector audit of 43/43 stable actionable selectors with zero missing or duplicate IDs; the fixture remains external to the universal MCP product.
 
 | Area | Status | Notes |

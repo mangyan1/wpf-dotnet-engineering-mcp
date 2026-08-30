@@ -1,0 +1,12 @@
+# Security-sensitive release and policy surfaces require maintainer review.
+/.github/ @mangyan1
+/build/ @mangyan1
+/installer/ @mangyan1
+/config/ @mangyan1
+/Directory.Build.props @mangyan1
+/Directory.Packages.props @mangyan1
+/global.json @mangyan1
+**/packages.lock.json @mangyan1
+/vscode-extension/package.json @mangyan1
+/docs/SECURITY.md @mangyan1
+/docs/CODE-SIGNING-POLICY.md @mangyan1

@@ -24,7 +24,7 @@ Before promoting an MSI, exercise the complete install/uninstall/reinstall lifec
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
-  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.3-win-x64-Setup.msi `
+  -MsiPath artifacts/release/EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi `
   -ExerciseReinstall
 ```
 

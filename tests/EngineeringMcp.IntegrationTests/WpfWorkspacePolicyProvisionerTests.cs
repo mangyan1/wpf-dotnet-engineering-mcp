@@ -309,16 +309,5 @@ public sealed class WpfWorkspacePolicyProvisionerTests
     }
 
     private static string FindFixtureExecutable()
-    {
-        const string projectName = "EngineeringMcp.Wpf.TestApp";
-        var root = TestRepositoryLocator.FindRoot();
-        foreach (var configuration in new[] { "Release", "Debug" })
-        {
-            var candidate = Path.Combine(root, "tests", projectName, "bin", configuration,
-                "net10.0-windows10.0.19041.0", projectName + ".exe");
-            if (File.Exists(candidate)) return candidate;
-        }
-
-        throw new FileNotFoundException("The WPF integration fixture must be built before this test runs.");
-    }
+        => WpfTestFixtureLocator.FindExecutable();
 }
