@@ -4,15 +4,15 @@
     "net10.0": {
       "Microsoft.Diagnostics.NETCore.Client": {
         "type": "Direct",
-        "requested": "[0.2.661903, )",
-        "resolved": "0.2.661903",
-        "contentHash": "3ISv5jXar4dHBt/7Rz3YdnR3VpnC94BhSdSvuq8ZuKgCOcVuTdmgRnq0hUzJyL/z8Ge4VekFjhui2aufUXPdvg=="
+        "requested": "[0.2.745401, )",
+        "resolved": "0.2.745401",
+        "contentHash": "M+XXKCFl5JZxcaopsXQgL3ItTQW3ZNlM9MR8YY9wX2/VvjVBDBfShzmiKmFq3Pl7WmA+l1jzE2OoB714gItLxA=="
       },
       "Microsoft.Diagnostics.Runtime": {
         "type": "Direct",
-        "requested": "[4.0.732401, )",
-        "resolved": "4.0.732401",
-        "contentHash": "Yk+yfnIeIT1YW13hchLwkq5QgaflV5zGlaC32lqrz/Ovx21fVrcuOTgirxC22yGZ2J8wfFb65vFSMkGDK1ymgA==",
+        "requested": "[4.1.745802, )",
+        "resolved": "4.1.745802",
+        "contentHash": "2rAGwsWz6eX8T9wXzkfBZH8sKOlq+YKLd7HaEIHn9iK/TL0mNn43ial6Li5VmLl8pzC2OATNPhI3q3ZS9mw9vg==",
         "dependencies": {
           "Azure.Identity": "1.21.0",
           "Microsoft.Diagnostics.NETCore.Client": "0.2.661903"
@@ -106,13 +106,6 @@
         "dependencies": {
           "EngineeringMcp.Contracts": "[0.3.7-preview.6, )"
         }
-      }
-    },
-    "net10.0/win-x64": {
-      "System.Security.Cryptography.ProtectedData": {
-        "type": "Transitive",
-        "resolved": "4.5.0",
-        "contentHash": "wLBKzFnDCxP12VL9ANydSYhk59fC4cvOr9ypYQLPnAj48NQIhqnjdD2yhP8yEKyBJEjERWS9DisKL7rX5eU25Q=="
       }
     }
   }
