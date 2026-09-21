@@ -58,8 +58,10 @@ public static class SourceTools
             pageSize = Math.Clamp(pageSize, 1, 200);
             var requested = Math.Min(2_000, offset + pageSize + 1);
             var found = source.FindReferences(root, identifier, requested);
-            if (!found.Success || found.Value is null)
-                return ToolResult<PagedResult<SourceLocation>>.Fail(found.Error!.Code, found.Error.Message, found.Error.Retryable);
+            if (!found.Success)
+                return ToolResult<PagedResult<SourceLocation>>.From(found);
+            if (found.Value is null)
+                return ToolRun.Unhandled<PagedResult<SourceLocation>>();
             var items = found.Value.Skip(offset).Take(pageSize).ToArray();
             var hasMore = found.Value.Count > offset + items.Length;
             return ToolResult<PagedResult<SourceLocation>>.Ok(new PagedResult<SourceLocation>(
@@ -81,7 +83,7 @@ public static class SourceTools
             var result = await source.FindSemanticReferencesAsync(root, symbolName, maxResults, cancellationToken).ConfigureAwait(false);
             progress.Report(new ProgressNotificationValue { Progress = 100, Total = 100, Message = "Semantic reference search completed." });
             return result;
-        });
+        }, cancellationToken);
 
     [McpServerTool(Name = "source_analyze_xaml", UseStructuredContent = true), Description("Audits one approved XAML file or all XAML beneath an approved directory for measurable issues including hard-coded colors, sensitive-looking attributes, and missing automation metadata.")]
     public static ToolResult<IReadOnlyList<XamlFinding>> AnalyzeXaml(
@@ -100,8 +102,10 @@ public static class SourceTools
         => ToolRun.Sync(auth, ToolPolicyCatalog.Get("wpfui_audit_resources").ToPolicy(), root, () =>
         {
             var analyzed = source.AnalyzeXaml(root, Math.Clamp(maxResults * 4, 1, 5_000));
-            if (!analyzed.Success || analyzed.Value is null)
-                return ToolResult<IReadOnlyList<XamlFinding>>.Fail(analyzed.Error!.Code, analyzed.Error.Message, analyzed.Error.Retryable);
+            if (!analyzed.Success)
+                return ToolResult<IReadOnlyList<XamlFinding>>.From(analyzed);
+            if (analyzed.Value is null)
+                return ToolRun.Unhandled<IReadOnlyList<XamlFinding>>();
             return ToolResult<IReadOnlyList<XamlFinding>>.Ok(analyzed.Value
                 .Where(x => string.Equals(x.Rule, "WPF001_HARDCODED_COLOR", StringComparison.Ordinal))
                 .Take(Math.Clamp(maxResults, 1, 1_000))

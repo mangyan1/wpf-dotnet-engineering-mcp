@@ -80,7 +80,7 @@ check('UseUrls(launch.ListenUrl)' in program and 'IPAddress.IsLoopback' in progr
       "HTTP service is loopback guarded")
 check('UseCors' not in program and 'AddCors' not in program,
       "HTTP service does not enable CORS")
-check('MaxRequestBodySize = 1_048_576' in program and 'SemaphoreSlim(8, 8)' in program,
+check('MaxRequestBodySize = McpRuntimeDefaults.MaxHttpBodyBytes' in program and 'SemaphoreSlim(8, 8)' in program,
       "HTTP request size and concurrency are bounded")
 check('http://127.0.0.1:8765' in runtime and 'McpPath = "/mcp"' in runtime,
       "Runtime endpoint centralized")

@@ -62,6 +62,16 @@ public sealed record ToolResult<T>(
     public static ToolResult<T> Ok(T value) => new(true, value);
     public static ToolResult<T> Fail(string code, string message, bool retryable = false, string? remediation = null)
         => new(false, default, new ToolFailure(code, message, retryable, remediation));
+
+    /// <summary>
+    /// Forwards a failed result across result types without dropping guidance: code, message,
+    /// retryable, and remediation all survive. Conversion sites must not silently discard
+    /// remediation, because agents use it to recover from a denial or transient failure.
+    /// </summary>
+    public static ToolResult<T> From<TOther>(ToolResult<TOther> other)
+        => other.Error is null
+            ? throw new InvalidOperationException("ToolResult.From requires a failed source result.")
+            : new(false, default, other.Error);
 }
 
 public sealed record EvidenceItem(

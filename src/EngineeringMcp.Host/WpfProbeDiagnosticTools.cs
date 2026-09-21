@@ -16,9 +16,7 @@ public static class WpfProbeDiagnosticTools
         WpfProbeClient probe, ToolAuthorization auth, CancellationToken cancellationToken,
         [Description("AutomationId used locally to select the target element.")] string? automationId = null,
         [Description("WPF x:Name used locally when AutomationId is unavailable.")] string? name = null)
-        => string.IsNullOrWhiteSpace(property)
-            ? Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_PROPERTY_REQUIRED", "Binding metadata requires an allowlisted dependency-property name."))
-            : Run("wpf_binding_info", "binding", processId, probe, auth, cancellationToken, automationId, name, property);
+        => Run("wpf_binding_info", "binding", processId, probe, auth, cancellationToken, automationId, name, property, requireProperty: true);
 
     [McpServerTool(Name = "wpf_binding_errors", UseStructuredContent = true), Description("Returns bounded binding-error metadata: element code identity, dependency property, binding path, and status. Runtime bound values are never returned.")]
     public static Task<ToolResult<ProbeResponse>> BindingErrors(
@@ -67,12 +65,21 @@ public static class WpfProbeDiagnosticTools
         CancellationToken cancellationToken,
         string? automationId = null,
         string? name = null,
-        string? property = null)
+        string? property = null,
+        bool requireProperty = false)
         => ToolRun.Async(
             auth,
             ToolPolicyCatalog.Get(tool).ToPolicy(),
             processId.ToString(),
-            () => probe.RequestAsync(processId,
-                new ProbeRequest(string.Empty, operation, AutomationId: automationId, Name: name, Property: property),
-                cancellationToken));
+            () =>
+            {
+                // Argument validation runs inside the ToolRun boundary (after authorize) so the
+                // denial is audited like every other denial.
+                if (requireProperty && string.IsNullOrWhiteSpace(property))
+                    return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_PROPERTY_REQUIRED", "Binding metadata requires an allowlisted dependency-property name."));
+                return probe.RequestAsync(processId,
+                    new ProbeRequest(string.Empty, operation, AutomationId: automationId, Name: name, Property: property),
+                    cancellationToken);
+            },
+            cancellationToken);
 }

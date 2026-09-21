@@ -20,6 +20,12 @@ public static class McpRuntimeDefaults
     public const string VsCodeMcpEndpoint = McpEndpoint + "?" + VsCodeClientQueryFlag;
     public const string HealthEndpoint = ListenUrl + HealthPath;
 
+    /// <summary>Minimum accepted length for the HTTP bearer, probe, and backend secret tokens.</summary>
+    public const int MinimumTokenLength = 32;
+
+    /// <summary>Upper bound for a single HTTP request body on the local MCP endpoint.</summary>
+    public const long MaxHttpBodyBytes = 1_048_576;
+
     public static string WithVsCodeClientMarker(string endpoint)
         => endpoint + (endpoint.Contains('?') ? "&" : "?") + VsCodeClientQueryFlag;
 }

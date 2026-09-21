@@ -21,15 +21,19 @@ public static class ProbeTools
         [Description("Allowlisted WPF dependency-property name; required by the binding and property operations.")] string? property = null,
         [Description("Exact WPF resource key; required by the resource operation.")] string? resourceKey = null)
     {
-        if (!TryMapOperation(operation, out var op, out var error))
-            return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_OPERATION_UNKNOWN", error!));
-        if ((string.Equals(op, "binding", StringComparison.Ordinal) || string.Equals(op, "property", StringComparison.Ordinal)) && string.IsNullOrWhiteSpace(property))
-            return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_PROPERTY_REQUIRED", $"The '{op}' operation requires the 'property' parameter."));
-        if (string.Equals(op, "resource", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(resourceKey))
-            return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_RESOURCE_KEY_REQUIRED", "The 'resource' operation requires the 'resourceKey' parameter."));
+        return ToolRun.Async(auth, ToolPolicyCatalog.Get("wpf_probe").ToPolicy(), processId.ToString(), () =>
+        {
+            // Argument validation runs inside the ToolRun boundary (after authorize) so the denial
+            // is audited like every other denial.
+            if (!TryMapOperation(operation, out var op, out var error))
+                return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_OPERATION_UNKNOWN", error!));
+            if ((string.Equals(op, "binding", StringComparison.Ordinal) || string.Equals(op, "property", StringComparison.Ordinal)) && string.IsNullOrWhiteSpace(property))
+                return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_PROPERTY_REQUIRED", $"The '{op}' operation requires the 'property' parameter."));
+            if (string.Equals(op, "resource", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(resourceKey))
+                return Task.FromResult(ToolResult<ProbeResponse>.Fail("PROBE_RESOURCE_KEY_REQUIRED", "The 'resource' operation requires the 'resourceKey' parameter."));
 
-        return ToolRun.Async(auth, ToolPolicyCatalog.Get("wpf_probe").ToPolicy(), processId.ToString(),
-            () => probe.RequestAsync(processId, new ProbeRequest(string.Empty, op, AutomationId: automationId, Name: name, Property: property, ResourceKey: resourceKey), cancellationToken));
+            return probe.RequestAsync(processId, new ProbeRequest(string.Empty, op, AutomationId: automationId, Name: name, Property: property, ResourceKey: resourceKey), cancellationToken);
+        }, cancellationToken);
     }
 
     private static bool TryMapOperation(string operation, out string op, out string? error)
@@ -68,6 +72,6 @@ public static class WpfUiTools
                 "theme_evidence" => service.GetThemeEvidenceAsync(processId, cancellationToken),
                 "resource" or "property" => Task.FromResult(ToolResult<object>.Fail("WPFUI_ARGUMENT_REQUIRED", "The resource and property operations require both 'automationId' and the referenced key/property.")),
                 _ => Task.FromResult(ToolResult<object>.Fail("WPFUI_OPERATION_UNKNOWN", "Unknown inspection operation. Allowed: resource, property, theme_evidence."))
-            });
+            }, cancellationToken);
     }
 }

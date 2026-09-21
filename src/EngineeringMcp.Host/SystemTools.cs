@@ -6,6 +6,10 @@ using ModelContextProtocol.Server;
 namespace EngineeringMcp.Host;
 
 [McpServerToolType]
+// Deliberately bypasses ToolRun: these are preflight/policy introspection tools that answer
+// questions ABOUT the authorization surface itself. They are metadata-only, never touch a target
+// application, and are not audited by design — routing them through ToolRun would record audit
+// events for pure introspection and add no authorization value.
 public static class SystemTools
 {
     [McpServerTool(Name = "system_version", UseStructuredContent = true), Description("Returns MCP server version and runtime metadata. Does not inspect a target application.")]

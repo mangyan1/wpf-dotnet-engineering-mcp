@@ -1,5 +1,6 @@
 using EngineeringMcp.Security;
 using EngineeringMcp.Contracts;
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -39,7 +40,7 @@ public sealed class ToolAuthorization(
         // merely because the audit destination is unavailable or full.
         if (!auditWritten && policyProvider.Current.Audit.Enabled)
         {
-            Volatile.Write(ref _auditHealthy, 0);
+            TripAuditGate(policy.ToolName);
             return ToolResult<string>.Fail(
                 "AUDIT_UNAVAILABLE",
                 "Operation was denied because the required audit record could not be persisted.",
@@ -58,7 +59,15 @@ public sealed class ToolAuthorization(
             policy.RequiredPermission, policy.Risk, "EXECUTE", success ? resultCode : $"FAILED:{resultCode}", correlationId, durationMs,
             session.ClientId, _policyFingerprint, Interlocked.Increment(ref _auditSequence)));
         if (!written && policyProvider.Current.Audit.Enabled)
-            Volatile.Write(ref _auditHealthy, 0);
+            TripAuditGate(policy.ToolName);
+    }
+
+    private void TripAuditGate(string toolName)
+    {
+        Volatile.Write(ref _auditHealthy, 0);
+        ToolRun.Logger?.LogWarning(
+            "Audit write failed for tool {ToolName}; the audit gate now denies further operations until restart.",
+            toolName);
     }
 
     private bool TryWrite(AuditEvent evt)
