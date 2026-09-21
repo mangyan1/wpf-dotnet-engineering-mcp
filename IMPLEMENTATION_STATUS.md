@@ -66,7 +66,7 @@ Additional source verification on 2026-08-29:
 Additional source verification on 2026-09-21 with .NET SDK 10.0.400:
 
 - Locked restore with `--runtime win-x64` passed with no NuGet audit findings; Release build passed with 0 warnings and 0 errors.
-- `dotnet test` Release: 84 tests passed and the opt-in installed-package acceptance test skipped by design; the suite now includes 40 adversarial/unit tests covering `DiagnosisService` decision logic, policy denials, audit-sink fail-closed latching, file-guard escapes, bounded framed IPC, and redaction.
+- `dotnet test` Release: 86 tests passed and the opt-in installed-package acceptance test skipped by design; the suite now includes 42 adversarial/unit tests covering `DiagnosisService` decision logic, audit hash-chain re-walk verification, policy denials, audit-sink fail-closed latching, file-guard escapes, bounded framed IPC, and redaction.
 - All 57 static contract checks passed; the public CI now builds the MSI in a dedicated job, uploads test results (TRX) only on failed runs, and runs a SHA-pinned CodeQL scan.
 
 ## Developer Control Center verification target

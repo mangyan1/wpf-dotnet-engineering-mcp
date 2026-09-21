@@ -1,6 +1,6 @@
 # Adversarial Tests
 
-Hostile-input tests for the policy engine, tool gate, authorization, file guard, diagnostic IPC, and redaction seams, plus unit tests for the failure-correlation service. All dependencies are exercised through the same interfaces the host wires in `Program.cs` (`IWpfAutomationService`, `IWpfProbeClient`, `IBackendProbeClient`, `IDotNetDiagnosticsService`), so no test launches a real WPF process or host.
+Hostile-input tests for the policy engine, tool gate, authorization, file guard, diagnostic IPC, and redaction seams, plus unit tests for the failure-correlation service and the audit hash chain. All dependencies are exercised through the same interfaces the host wires in `Program.cs` (`IWpfAutomationService`, `IWpfProbeClient`, `IBackendProbeClient`, `IDotNetDiagnosticsService`), so no test launches a real WPF process or host.
 
 Run with `dotnet test tests/EngineeringMcp.AdversarialTests --configuration Release --no-build` from the repository root. Targets `net10.0-windows10.0.19041.0` (the reparse-point test needs NTFS junctions; it reports `Inconclusive` when the filesystem refuses them).
 
@@ -8,6 +8,13 @@ Run with `dotnet test tests/EngineeringMcp.AdversarialTests --configuration Rele
 
 - PromptInjectionText_RemainsData_AndSecretsAreRedacted
 - MultipleSecretShapes_DoNotSurviveRedaction
+
+## AuditChainTests.cs
+
+Verifies the `JsonLinesAuditSink` record-hash chain by re-walking written files with only the documented genesis constant — the detection property that docs/ADR/0001 relies on.
+
+- RecordHashChain_IsVerifiableByRewalkingTheFile
+- TamperedRecord_DivergesFromRecomputedChain
 
 ## DiagnosisServiceTests.cs
 
