@@ -23,14 +23,14 @@ public sealed class UiAuditService(WpfAutomationService wpf)
 
     public ToolResult<IReadOnlyList<UiAuditFinding>> AccessibilityAudit(int processId)
     {
-        var snapshot = wpf.Snapshot(processId, maxElements: 2_000, maxDepth: 32);
+        var snapshot = WpfSafeInspectionService.RootSnapshot(wpf, processId);
         if (!snapshot.Success || snapshot.Value is null)
             return ToolResult<IReadOnlyList<UiAuditFinding>>.Fail(snapshot.Error!.Code, snapshot.Error.Message);
 
         var findings = new List<UiAuditFinding>();
         foreach (var e in snapshot.Value.Elements)
         {
-            var actionable = e.ControlType is "Button" or "Edit" or "CheckBox" or "RadioButton" or "ComboBox" or "ListItem" or "MenuItem" or "Hyperlink" or "TabItem";
+            var actionable = SafeUiAnalysis.ActionableTypes.Contains(e.ControlType);
             if (actionable && !IsProviderChrome(e) && string.IsNullOrWhiteSpace(e.Name) && string.IsNullOrWhiteSpace(e.AutomationId))
                 findings.Add(new("high", "accessibility-name", e.Reference, "Interactive element has neither accessible Name nor AutomationId.", e.ControlType));
             if (actionable && !IsProviderChrome(e) && !e.IsKeyboardFocusable && e.IsEnabled && !e.IsOffscreen)
@@ -41,7 +41,7 @@ public sealed class UiAuditService(WpfAutomationService wpf)
 
     public ToolResult<IReadOnlyList<UiAuditFinding>> GuiAudit(int processId)
     {
-        var snapshot = wpf.Snapshot(processId, maxElements: 2_000, maxDepth: 32);
+        var snapshot = WpfSafeInspectionService.RootSnapshot(wpf, processId);
         if (!snapshot.Success || snapshot.Value is null)
             return ToolResult<IReadOnlyList<UiAuditFinding>>.Fail(snapshot.Error!.Code, snapshot.Error.Message);
 
@@ -63,7 +63,7 @@ public sealed class UiAuditService(WpfAutomationService wpf)
 
     public ToolResult<IReadOnlyList<UiAuditFinding>> UxHeuristicReview(int processId)
     {
-        var snapshot = wpf.Snapshot(processId, maxElements: 2_000, maxDepth: 32);
+        var snapshot = WpfSafeInspectionService.RootSnapshot(wpf, processId);
         if (!snapshot.Success || snapshot.Value is null)
             return ToolResult<IReadOnlyList<UiAuditFinding>>.Fail(snapshot.Error!.Code, snapshot.Error.Message);
 

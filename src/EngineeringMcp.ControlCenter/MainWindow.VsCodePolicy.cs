@@ -62,7 +62,19 @@ public partial class MainWindow
         var servers = document["servers"] as JsonObject ?? new JsonObject();
         document["servers"] = servers;
 
-        var server = new JsonObject
+        servers[McpRuntimeDefaults.ServerName] = BuildVsCodeServerEntry();
+
+        File.WriteAllText(
+            configPath,
+            document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine);
+
+        return configPath;
+    }
+
+    // One canonical VS Code server entry: the config writer and the clipboard copy must
+    // never drift apart.
+    private static JsonObject BuildVsCodeServerEntry()
+        => new()
         {
             ["type"] = "http",
             ["url"] = McpRuntimeDefaults.VsCodeMcpEndpoint,
@@ -72,15 +84,6 @@ public partial class MainWindow
                 [McpRuntimeDefaults.ClientNameHeader] = McpRuntimeDefaults.VsCodeClientName
             }
         };
-
-        servers[McpRuntimeDefaults.ServerName] = server;
-
-        File.WriteAllText(
-            configPath,
-            document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine);
-
-        return configPath;
-    }
 
     private static string GetVsCodeUserMcpConfigPath()
     {
@@ -100,45 +103,57 @@ public partial class MainWindow
         return Path.Combine(stableUser, "mcp.json");
     }
 
-    private static bool IsVsCodeUserMcpInstalled()
+    // The 3-second topology timer and RefreshStatus both hit these reads; cache by
+    // last-write time so an unchanged mcp.json is neither re-read nor re-parsed on
+    // the UI thread every tick.
+    private (string Path, DateTime WriteUtc)? _vsCodeConfigStamp;
+    private (bool Installed, bool MarkerInstalled) _vsCodeConfigState;
+
+    private (bool Installed, bool MarkerInstalled) ReadVsCodeConfigState()
     {
         try
         {
             var configPath = GetVsCodeUserMcpConfigPath();
-            if (!File.Exists(configPath)) return false;
+            var info = new FileInfo(configPath);
+            if (!info.Exists)
+            {
+                _vsCodeConfigStamp = null;
+                return (false, false);
+            }
+
+            var stamp = (configPath, info.LastWriteTimeUtc);
+            if (_vsCodeConfigStamp == stamp)
+                return _vsCodeConfigState;
+
             var document = JsonNode.Parse(File.ReadAllText(configPath)) as JsonObject;
             var server = document?["servers"]?[McpRuntimeDefaults.ServerName] as JsonObject;
             var url = server?["url"]?.GetValue<string>();
-            return string.Equals(server?["type"]?.GetValue<string>(), "http", StringComparison.OrdinalIgnoreCase)
+            var headers = server?["headers"] as JsonObject;
+            var installed =
+                string.Equals(server?["type"]?.GetValue<string>(), "http", StringComparison.OrdinalIgnoreCase)
                 && (string.Equals(url, McpRuntimeDefaults.McpEndpoint, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(url, McpRuntimeDefaults.VsCodeMcpEndpoint, StringComparison.OrdinalIgnoreCase));
+            var marker =
+                string.Equals(url, McpRuntimeDefaults.VsCodeMcpEndpoint, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    headers?[McpRuntimeDefaults.ClientNameHeader]?.GetValue<string>(),
+                    McpRuntimeDefaults.VsCodeClientName,
+                    StringComparison.OrdinalIgnoreCase);
+
+            _vsCodeConfigStamp = stamp;
+            _vsCodeConfigState = (installed, marker);
+            return _vsCodeConfigState;
         }
         catch
         {
-            return false;
+            _vsCodeConfigStamp = null;
+            return (false, false);
         }
     }
 
-    private static bool HasVsCodeClientMarkerInstalled()
-    {
-        try
-        {
-            var configPath = GetVsCodeUserMcpConfigPath();
-            if (!File.Exists(configPath)) return false;
-            var document = JsonNode.Parse(File.ReadAllText(configPath)) as JsonObject;
-            var server = document?["servers"]?[McpRuntimeDefaults.ServerName] as JsonObject;
-            var headers = server?["headers"] as JsonObject;
-            return string.Equals(server?["url"]?.GetValue<string>(), McpRuntimeDefaults.VsCodeMcpEndpoint, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                headers?[McpRuntimeDefaults.ClientNameHeader]?.GetValue<string>(),
-                McpRuntimeDefaults.VsCodeClientName,
-                StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    private bool IsVsCodeUserMcpInstalled() => ReadVsCodeConfigState().Installed;
+
+    private bool HasVsCodeClientMarkerInstalled() => ReadVsCodeConfigState().MarkerInstalled;
 
     private void OpenVsCode_Click(object sender, RoutedEventArgs e)
     {
@@ -266,6 +281,11 @@ public partial class MainWindow
     private void OpenPolicy_Click(object sender, RoutedEventArgs e) => OpenFile(_layout.Policy);
     private void OpenSecurity_Click(object sender, RoutedEventArgs e) => OpenFile(_layout.SecurityDoc);
 
+    // RefreshStatus runs after many operations; re-analyzing an unchanged policy file
+    // on the UI thread is wasted disk I/O, so the report is cached by last-write time.
+    private (string Path, DateTime WriteUtc)? _policyAnalysisStamp;
+    private PolicyDiagnosticReport? _policyAnalysisReport;
+
     private void RefreshPolicyDiagnostics()
     {
         if (PolicyDiagnosticsText is null)
@@ -280,8 +300,16 @@ public partial class MainWindow
 
         try
         {
-            var provider = new FilePolicyProvider(_layout.Policy);
-            var report = PolicyDiagnostics.Analyze(provider.Current, provider.Source);
+            var info = new FileInfo(_layout.Policy);
+            var stamp = (_layout.Policy, info.LastWriteTimeUtc);
+            if (_policyAnalysisStamp != stamp)
+            {
+                var provider = new FilePolicyProvider(_layout.Policy);
+                _policyAnalysisReport = PolicyDiagnostics.Analyze(provider.Current, provider.Source);
+                _policyAnalysisStamp = stamp;
+            }
+
+            var report = _policyAnalysisReport!;
             if (report.Findings.Count == 0)
             {
                 PolicyDiagnosticsText.Text =
@@ -299,6 +327,7 @@ public partial class MainWindow
         }
         catch (Exception ex) when (ex is InvalidDataException or JsonException or IOException or UnauthorizedAccessException)
         {
+            _policyAnalysisStamp = null;
             PolicyDiagnosticsText.Text = "Policy validation failed. Select a valid policy and restart the MCP server.";
             SecurityStatusText.Text = "● Policy invalid";
             SecurityStatusText.ToolTip = ex.GetType().Name;

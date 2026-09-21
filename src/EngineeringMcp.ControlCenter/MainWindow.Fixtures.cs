@@ -147,10 +147,4 @@ public partial class MainWindow
             current.Dispose();
         }
     }
-
-    private static bool IsRunning(Process? process)
-    {
-        try { return process is not null && !process.HasExited; }
-        catch { return false; }
-    }
 }

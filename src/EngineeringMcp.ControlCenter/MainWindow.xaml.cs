@@ -1,10 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
 using System.Reflection;
+using System.Security;
 using System.Security.Cryptography;
-using System.Text.Json;
 using System.Windows;
 using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
@@ -27,10 +26,10 @@ public partial class MainWindow : FluentWindow
     private readonly string _backendToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
     private ProjectLayout _layout;
     private string _httpToken = string.Empty;
+    private McpHealthClient _mcpHealth = null!;
     private Process? _fixtureProcess;
     private Process? _backendProcess;
     private Process? _mcpServerProcess;
-    private static readonly HttpClient RuntimeHttp = new() { Timeout = TimeSpan.FromSeconds(2) };
     private CancellationTokenSource? _activeDevTestCts;
     private bool _busy;
     private bool _systemThemeWatchEnabled;
@@ -45,6 +44,10 @@ public partial class MainWindow : FluentWindow
     {
         InitializeComponent();
         InitializeBuildIdentity();
+        // Per-window health client: the token is bound at construction so two windows
+        // never share or clobber one static Authorization header.
+        _httpToken = GetOrCreateHttpToken();
+        _mcpHealth = new McpHealthClient(_httpToken);
         DevTestGrid.ItemsSource = _devSteps;
         LatestList.ItemsSource = _devSteps;
         LogStream.ItemsSource = _logEntries;
@@ -73,8 +76,6 @@ public partial class MainWindow : FluentWindow
         try
         {
             _layout = ProjectLayout.Discover();
-            _httpToken = GetOrCreateHttpToken();
-            RuntimeHttp.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _httpToken);
             RootPathText.Text = _layout.Root;
             PolicyPathText.Text = _layout.Policy;
             LoadPolicyPreview();
@@ -246,9 +247,9 @@ public partial class MainWindow : FluentWindow
         RepositoryStatusText.Text = runtimeOk
             ? $"● {_layout.ModeLabel} ready"
             : "● Missing files";
-        McpStatusText.Text = _mcpServerProcess is not null && !_mcpServerProcess.HasExited
-            ? "● Running · HTTP"
-            : McpStatusText.Text.StartsWith("● PASS", StringComparison.Ordinal) ? McpStatusText.Text : "● Stopped";
+        McpStatusText.Text = DescribeMcpStatus(
+            IsProcessRunning(_mcpServerProcess),
+            McpStatusText.Text);
         VsCodeStatusText.Text = vscodeOk ? "● Ready" : "● Offline";
         SecurityStatusText.Text = securityOk ? "● Armed" : "● Policy missing";
         RefreshPolicyDiagnostics();
@@ -260,17 +261,38 @@ public partial class MainWindow : FluentWindow
             : "Not connected yet. Connect once so VS Code points to the shared local MCP service in every workspace.";
     }
 
+    // Routine status/topology refreshes must not stomp a self-test "● PASS · N tools"
+    // readout while the server is merely between health probes.
+    private static string DescribeMcpStatus(bool running, string current)
+        => running ? "● Running · HTTP"
+        : current.StartsWith("● PASS", StringComparison.Ordinal) ? current : "● Stopped";
+
     private static string GetOrCreateHttpToken()
     {
         var name = McpRuntimeDefaults.HttpTokenEnvironmentVariable;
         var token = Environment.GetEnvironmentVariable(name);
-        if (string.IsNullOrWhiteSpace(token))
-            token = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
-
         if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
         {
-            token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-            Environment.SetEnvironmentVariable(name, token, EnvironmentVariableTarget.User);
+            // A short non-empty token from any source is regenerated, so a foreign or
+            // truncated process-env value is never trusted.
+            try
+            {
+                if (string.IsNullOrWhiteSpace(token))
+                    token = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+                if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
+                {
+                    token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+                    Environment.SetEnvironmentVariable(name, token, EnvironmentVariableTarget.User);
+                }
+            }
+            catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException)
+            {
+                // Restricted profiles cannot touch the User hive; keep the freshly
+                // generated (or newly generated) token for this process only so
+                // startup degrades gracefully instead of failing.
+                if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
+                    token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            }
         }
 
         Environment.SetEnvironmentVariable(name, token, EnvironmentVariableTarget.Process);
@@ -369,8 +391,10 @@ public partial class MainWindow : FluentWindow
     {
         if (_systemThemeWatchEnabled)
             SystemThemeWatcher.UnWatch(this);
+        _clockTimer?.Stop();
         _topologyTimer?.Stop();
         _activeDevTestCts?.Cancel();
+        _mcpHealth.Dispose();
         StopProcess(ref _mcpServerProcess);
         StopProcess(ref _fixtureProcess);
         StopProcess(ref _backendProcess);

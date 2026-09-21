@@ -86,40 +86,45 @@ public sealed class WpfSafeInspectionService(WpfAutomationService automation)
         string condition,
         Func<UiElementSnapshot?, bool> predicate)
     {
-        timeoutMs = Math.Clamp(timeoutMs, 50, 60_000);
-        var deadline = Environment.TickCount64 + timeoutMs;
-        while (Environment.TickCount64 <= deadline)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var current = automation.Query(processId, selector);
-            if (current.Success && current.Value is not null)
+        var observed = WpfAutomationService.PollUntil<ToolResult<UiConditionResult>>(
+            timeoutMs,
+            cancellationToken,
+            () =>
             {
-                if (predicate(current.Value))
-                    return ToolResult<UiConditionResult>.Ok(new(true, condition, SafeUiAnalysis.ElementState(current.Value), "condition-observed"));
-            }
-            else if (IsNotFound(current.Error))
-            {
-                if (predicate(null))
-                    return ToolResult<UiConditionResult>.Ok(new(true, condition, null, "element-absent"));
-            }
-            else
-            {
+                var current = automation.Query(processId, selector);
+                if (current.Success && current.Value is not null)
+                {
+                    return predicate(current.Value)
+                        ? ToolResult<UiConditionResult>.Ok(new(true, condition, SafeUiAnalysis.ElementState(current.Value), "condition-observed"))
+                        : null;
+                }
+
+                if (IsNotFound(current.Error))
+                {
+                    return predicate(null)
+                        ? ToolResult<UiConditionResult>.Ok(new(true, condition, null, "element-absent"))
+                        : null;
+                }
+
                 return Failure<UiConditionResult>(current.Error!);
-            }
+            });
 
-            if (cancellationToken.WaitHandle.WaitOne(100)) cancellationToken.ThrowIfCancellationRequested();
-        }
-
-        return ToolResult<UiConditionResult>.Fail("WAIT_TIMEOUT", $"Timed out waiting for the metadata-only '{condition}' condition.");
+        return observed ?? ToolResult<UiConditionResult>.Fail(
+            "WAIT_TIMEOUT",
+            $"Timed out waiting for the metadata-only '{condition}' condition.");
     }
 
     private ToolResult<T> AnalyzeRoot<T>(int processId, Func<UiSnapshot, T> analyze)
     {
-        var snapshot = automation.Snapshot(processId, maxElements: 2_000, maxDepth: 32);
+        var snapshot = RootSnapshot(automation, processId);
         return !snapshot.Success || snapshot.Value is null
             ? Failure<T>(snapshot.Error!)
             : ToolResult<T>.Ok(analyze(snapshot.Value));
     }
+
+    // One bounded root-snapshot fetch shared with UiAuditService.
+    internal static ToolResult<UiSnapshot> RootSnapshot(WpfAutomationService automation, int processId)
+        => automation.Snapshot(processId, maxElements: 2_000, maxDepth: 32);
 
     private ToolResult<T> AnalyzeSelection<T>(int processId, UiSelector selector, Func<UiSnapshot, T> analyze)
     {

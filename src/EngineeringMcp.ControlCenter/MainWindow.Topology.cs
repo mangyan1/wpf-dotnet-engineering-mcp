@@ -32,7 +32,7 @@ public partial class MainWindow
         _topologyRefreshInProgress = true;
         try
         {
-            UpdateTopologyVisual(await GetMcpHealthAsync(CancellationToken.None));
+            UpdateTopologyVisual(await _mcpHealth.GetHealthAsync(CancellationToken.None));
         }
         finally
         {
@@ -45,8 +45,9 @@ public partial class MainWindow
         if (_layout is null || TopologyServerNode is null) return;
 
         var serverLive = health is not null;
-        var vsCodeConfigured = IsVsCodeUserMcpInstalled();
-        var vsCodeMarkerInstalled = HasVsCodeClientMarkerInstalled();
+        var vsCodeConfigState = ReadVsCodeConfigState();
+        var vsCodeConfigured = vsCodeConfigState.Installed;
+        var vsCodeMarkerInstalled = vsCodeConfigState.MarkerInstalled;
         var vsCodeLive = serverLive && health!.VsCodeActive;
         var fixtureLive = IsProcessRunning(_fixtureProcess);
         var policyReady = File.Exists(_layout.Policy) && File.Exists(_layout.SecurityDoc);
@@ -82,7 +83,7 @@ public partial class MainWindow
         TopologyFixtureLabel.Text = fixtureLive ? "WPF · LIVE" : "WPF · IDLE";
         TopologyPolicyLabel.Text = policyReady ? "POLICY · ARMED" : "POLICY · MISSING";
 
-        McpStatusText.Text = serverLive ? "● Running · HTTP" : "● Stopped";
+        McpStatusText.Text = DescribeMcpStatus(serverLive, McpStatusText.Text);
         VsCodeStatusText.Text = vsCodeLive
             ? "● Live"
             : !vsCodeConfigured ? "● Offline"

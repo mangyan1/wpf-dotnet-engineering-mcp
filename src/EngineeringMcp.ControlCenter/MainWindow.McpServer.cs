@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
-using System.Text.Json;
 using System.Windows;
 using EngineeringMcp.Contracts;
 using Wpf.Ui.Controls;
@@ -89,28 +87,11 @@ public partial class MainWindow
                 startInfo.Environment[pair.Key] = pair.Value;
         }
 
-        var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data)) AppendLog("MCP host: " + e.Data);
-        };
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data)) AppendLog("MCP host: " + e.Data);
-        };
-        process.Exited += (_, _) =>
-        {
-            if (!ReferenceEquals(_mcpServerProcess, process)) return;
-            Dispatcher.BeginInvoke(() => McpStatusText.Text = "● Stopped");
-            AppendLog("MCP server process exited.");
-        };
-
-        if (!process.Start())
-            throw new InvalidOperationException("Windows did not start the MCP host process.");
-
-        _mcpServerProcess = process;
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        var process = _runner.StartMonitored(
+            startInfo,
+            line => AppendLog("MCP host: " + line),
+            OnMcpServerProcessExited,
+            onCreated: p => _mcpServerProcess = p);
         AppendLog($"MCP server process started (PID {process.Id}); waiting for {McpRuntimeDefaults.HealthEndpoint}.");
 
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
@@ -177,56 +158,23 @@ public partial class MainWindow
         }
     }
 
-    private static async Task<bool> EnsureMcpServerHealthyAsync(CancellationToken cancellationToken)
-        => await GetMcpHealthAsync(cancellationToken) is not null;
+    private async Task<bool> EnsureMcpServerHealthyAsync(CancellationToken cancellationToken)
+        => await _mcpHealth.GetHealthAsync(cancellationToken) is not null;
 
-    private static async Task<int?> GetHealthyMcpProcessIdAsync(CancellationToken cancellationToken)
-        => (await GetMcpHealthAsync(cancellationToken))?.ProcessId;
+    private async Task<int?> GetHealthyMcpProcessIdAsync(CancellationToken cancellationToken)
+        => (await _mcpHealth.GetHealthAsync(cancellationToken))?.ProcessId;
 
-    private static async Task<McpHealthSnapshot?> GetMcpHealthAsync(CancellationToken cancellationToken)
+    private void OnMcpServerProcessExited(object? sender, EventArgs e)
     {
-        try
-        {
-            using var response = await RuntimeHttp.GetAsync(McpRuntimeDefaults.HealthEndpoint, cancellationToken);
-            if (!response.IsSuccessStatusCode) return null;
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            var root = document.RootElement;
-            if (!root.TryGetProperty("status", out var status) || !string.Equals(status.GetString(), "ok", StringComparison.Ordinal) ||
-                !root.TryGetProperty("server", out var server) || !string.Equals(server.GetString(), McpRuntimeDefaults.ServerName, StringComparison.Ordinal) ||
-                !root.TryGetProperty("processId", out var processId) || !processId.TryGetInt32(out var pid))
-                return null;
-
-            var vsCodeActive = root.TryGetProperty("vsCodeActive", out var active) && active.ValueKind == JsonValueKind.True;
-            DateTimeOffset? lastVsCodeActivityUtc = null;
-            if (root.TryGetProperty("lastVsCodeActivityUtc", out var lastActivity) &&
-                lastActivity.ValueKind == JsonValueKind.String &&
-                lastActivity.TryGetDateTimeOffset(out var timestamp))
-            {
-                lastVsCodeActivityUtc = timestamp;
-            }
-
-            return new McpHealthSnapshot(pid, vsCodeActive, lastVsCodeActivityUtc);
-        }
-        catch (HttpRequestException)
-        {
-            return null;
-        }
-        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
+        if (sender is not Process process || !ReferenceEquals(_mcpServerProcess, process)) return;
+        Dispatcher.BeginInvoke(() => McpStatusText.Text = "● Stopped");
+        AppendLog("MCP server process exited.");
     }
 
     private async Task RefreshRuntimeStatusAsync()
     {
         if (!EnsureReady()) return;
-        var health = await GetMcpHealthAsync(CancellationToken.None);
+        var health = await _mcpHealth.GetHealthAsync(CancellationToken.None);
         UpdateTopologyVisual(health);
         if (health is not null)
         {
@@ -234,8 +182,6 @@ public partial class MainWindow
             SetStatus("MCP server is available at " + McpRuntimeDefaults.McpEndpoint);
         }
     }
-
-    private sealed record McpHealthSnapshot(int ProcessId, bool VsCodeActive, DateTimeOffset? LastVsCodeActivityUtc);
 
     private void ShowMcpLogs_Click(object sender, RoutedEventArgs e)
     {

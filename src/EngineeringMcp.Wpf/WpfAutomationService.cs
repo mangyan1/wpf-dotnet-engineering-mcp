@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -7,6 +8,7 @@ using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
 using FlaUI.UIA3;
 
@@ -19,16 +21,29 @@ public sealed class WpfAutomationService(
 {
     private sealed class AttachedSession : IDisposable
     {
+        // Generous ceiling: every enumerated element registers a COM wrapper until the
+        // session is disposed. Past the bound the oldest reference is evicted FIFO so
+        // recently registered references keep working; evicted ids surface through the
+        // existing ELEMENT_REFERENCE_NOT_FOUND path instead of growing unbounded
+        // across a long-lived attachment.
+        private const int MaxTrackedReferences = 10_000;
+
         public required int ProcessId { get; init; }
         public required Application Application { get; init; }
         public required UIA3Automation Automation { get; init; }
         public ConcurrentDictionary<string, AutomationElement> References { get; } = new(StringComparer.Ordinal);
+        private readonly ConcurrentQueue<string> _referenceOrder = new();
         public long NextReference;
 
         public string Register(AutomationElement element)
         {
             var id = $"uia:{ProcessId}:{Interlocked.Increment(ref NextReference)}";
             References[id] = element;
+            _referenceOrder.Enqueue(id);
+            // Ids are unique per registration, so key-only removal cannot evict a
+            // re-registered id; a queue entry already evicted or cleared just misses.
+            while (References.Count >= MaxTrackedReferences && _referenceOrder.TryDequeue(out var oldest))
+                References.TryRemove(oldest, out _);
             return id;
         }
 
@@ -191,27 +206,27 @@ public sealed class WpfAutomationService(
 
     public ToolResult<UiElementSnapshot> Wait(int processId, UiSelector selector, int timeoutMs = 5_000, bool requireEnabled = false, bool requireVisible = false, CancellationToken cancellationToken = default)
     {
-        timeoutMs = Math.Clamp(timeoutMs, 50, 60_000);
-        var deadline = Environment.TickCount64 + timeoutMs;
         ToolFailure? lastFailure = null;
-        while (Environment.TickCount64 <= deadline)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var current = Query(processId, selector);
-            if (current.Success && current.Value is not null)
+        var current = PollUntil<ToolResult<UiElementSnapshot>>(
+            timeoutMs,
+            cancellationToken,
+            () =>
             {
-                var stateSatisfied = (!requireEnabled || current.Value.IsEnabled) && (!requireVisible || !current.Value.IsOffscreen);
-                if (stateSatisfied) return current;
-                lastFailure = new ToolFailure("WAIT_STATE_NOT_READY", "Element exists but has not reached the requested state yet.", true);
-            }
-            else
-            {
-                lastFailure = current.Error;
-            }
-            if (cancellationToken.WaitHandle.WaitOne(100)) cancellationToken.ThrowIfCancellationRequested();
-        }
+                var observed = Query(processId, selector);
+                if (observed.Success && observed.Value is not null)
+                {
+                    var stateSatisfied = (!requireEnabled || observed.Value.IsEnabled) && (!requireVisible || !observed.Value.IsOffscreen);
+                    if (stateSatisfied) return observed;
+                    lastFailure = new ToolFailure("WAIT_STATE_NOT_READY", "Element exists but has not reached the requested state yet.", true);
+                }
+                else
+                {
+                    lastFailure = observed.Error;
+                }
+                return null;
+            });
 
-        return ToolResult<UiElementSnapshot>.Fail(
+        return current ?? ToolResult<UiElementSnapshot>.Fail(
             "WAIT_TIMEOUT",
             lastFailure is null ? "Timed out waiting for the UI element." : $"Timed out waiting for the UI element. Last observation: {lastFailure.Code}.",
             false);
@@ -664,16 +679,45 @@ public sealed class WpfAutomationService(
                 : ToolResult<AutomationElement>.Ok(root);
         }
 
+        // Matches compares ControlType case-insensitively; a value UIA cannot parse as
+        // a control type can never match any element, so fail without enumerating.
+        ControlType? controlType = null;
+        if (!string.IsNullOrWhiteSpace(selector.ControlType))
+        {
+            if (!Enum.TryParse<ControlType>(selector.ControlType, ignoreCase: true, out var parsed))
+                return ToolResult<AutomationElement>.Fail("ELEMENT_NOT_FOUND", "No UI element matched the semantic selector.");
+            controlType = parsed;
+        }
+
+        // Push the selector into UIA so COM filters the descendant walk instead of
+        // materializing every descendant of every window. UIA property conditions
+        // compare strings non-ordinally, so Matches stays as the post-filter to keep
+        // resolution semantics identical; the condition is only a pre-filter.
+        var condition = BuildCondition(session.Automation.ConditionFactory, selector, controlType);
         foreach (var window in windows)
         {
-            var candidates = window.FindAllDescendants();
-            foreach (var element in candidates.Prepend(window))
+            if (Matches(window, selector)) return ToolResult<AutomationElement>.Ok(window);
+            foreach (var element in window.FindAllDescendants(condition))
             {
                 if (Matches(element, selector)) return ToolResult<AutomationElement>.Ok(element);
             }
         }
 
         return ToolResult<AutomationElement>.Fail("ELEMENT_NOT_FOUND", "No UI element matched the semantic selector.");
+    }
+
+    private static ConditionBase BuildCondition(ConditionFactory factory, UiSelector selector, ControlType? controlType)
+    {
+        var conditions = new List<ConditionBase>(4);
+        if (!string.IsNullOrWhiteSpace(selector.AutomationId))
+            conditions.Add(factory.ByAutomationId(selector.AutomationId));
+        if (!string.IsNullOrWhiteSpace(selector.Name))
+            conditions.Add(factory.ByName(selector.Name));
+        if (!string.IsNullOrWhiteSpace(selector.ClassName))
+            conditions.Add(factory.ByClassName(selector.ClassName));
+        if (controlType is not null)
+            conditions.Add(factory.ByControlType(controlType.Value));
+        return conditions.Count == 1 ? conditions[0] : new AndCondition(conditions.ToArray());
     }
 
     private static bool Matches(AutomationElement element, UiSelector selector)
@@ -691,6 +735,15 @@ public sealed class WpfAutomationService(
 
     private ToolResult<AttachedSession> RequireSession(int processId)
     {
+        // Drop a session whose target process exited: its UIA COM wrappers would
+        // otherwise accumulate until an explicit Detach that never comes. The process
+        // guard below then fails with the existing PROCESS_NOT_FOUND vocabulary.
+        if (_sessions.TryGetValue(processId, out var stale) && !IsTargetAlive(processId) &&
+            _sessions.TryRemove(KeyValuePair.Create(processId, stale)))
+        {
+            stale.Dispose();
+        }
+
         var allowed = processGuard.RequireAllowed(processId);
         if (!allowed.Success)
             return ToolResult<AttachedSession>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
@@ -702,6 +755,42 @@ public sealed class WpfAutomationService(
         return _sessions.TryGetValue(processId, out session)
             ? ToolResult<AttachedSession>.Ok(session)
             : ToolResult<AttachedSession>.Fail("WPF_ATTACH_FAILED", "Attach completed without creating a usable session.");
+    }
+
+    private static bool IsTargetAlive(int processId)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            return !process.HasExited;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            // Unknown pid or a process that exited mid-check counts as dead.
+            return false;
+        }
+        catch (Win32Exception)
+        {
+            // HasExited throws on access-denied for protected processes; report alive
+            // so the process guard makes the fail-closed decision instead.
+            return true;
+        }
+    }
+
+    // Shared selector-wait mechanics for this service and WpfSafeInspectionService:
+    // clamped timeout, absolute deadline, and a cancellation-aware 100 ms cadence.
+    // The attempt returns the result to surface, or null to keep polling to the deadline.
+    internal static T? PollUntil<T>(int timeoutMs, CancellationToken cancellationToken, Func<T?> attempt) where T : class
+    {
+        timeoutMs = Math.Clamp(timeoutMs, 50, 60_000);
+        var deadline = Environment.TickCount64 + timeoutMs;
+        while (Environment.TickCount64 <= deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (attempt() is { } result) return result;
+            if (cancellationToken.WaitHandle.WaitOne(100)) cancellationToken.ThrowIfCancellationRequested();
+        }
+        return null;
     }
 
     private UiElementSnapshot ToSnapshot(AutomationElement element, string reference, string? parentReference, int depth)

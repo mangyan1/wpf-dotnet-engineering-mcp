@@ -18,23 +18,6 @@ internal sealed record McpSelfTestReport(
 internal sealed class McpSelfTestService
 {
     private static readonly Regex ValidToolName = new("^[a-z0-9_-]+$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly string[] RequiredCoreTools =
-    [
-        "system_version",
-        "system_health",
-        "system_capabilities",
-        "system_permissions",
-        "system_policy_diagnostics",
-        "system_tool_preflight",
-        "wpf_list_processes",
-        "wpf_attach",
-        "wpf_snapshot",
-        "wpf_find",
-        "wpf_type",
-        "wpf_assert",
-        "wpf_screenshot",
-        "wpf_probe"
-    ];
 
     public Task<McpClient> OpenHttpSessionAsync(string httpToken, CancellationToken cancellationToken = default)
         => CreateHttpClientAsync(httpToken, cancellationToken);
@@ -46,47 +29,43 @@ internal sealed class McpSelfTestService
         CancellationToken cancellationToken)
     {
         var steps = new List<DevTestStep>();
-        void Record(DevTestStep step)
-        {
-            steps.Add(step);
-            onStep(step);
-        }
+        var record = CreateStepRecorder(steps, onStep);
 
         await using var client = await CreateHttpClientAsync(httpToken, cancellationToken).ConfigureAwait(false);
-        Record(new DevTestStep("Transport", "Connect Streamable HTTP", "PASS",
+        record(new DevTestStep("Transport", "Connect Streamable HTTP", "PASS",
             $"Connected to {McpRuntimeDefaults.McpEndpoint}; negotiated protocol: {client.NegotiatedProtocolVersion ?? "legacy/unspecified"}."));
 
         var tools = await client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         var invalidNames = tools.Select(tool => tool.Name).Where(name => !ValidToolName.IsMatch(name)).OrderBy(name => name, StringComparer.Ordinal).ToArray();
         if (invalidNames.Length > 0)
         {
-            Record(new DevTestStep("Protocol", "Tool name contract", "FAIL",
+            record(new DevTestStep("Protocol", "Tool name contract", "FAIL",
                 "Invalid MCP tool names: " + string.Join(", ", invalidNames)));
             return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
         }
 
-        Record(new DevTestStep("Protocol", "Tool name contract", "PASS",
+        record(new DevTestStep("Protocol", "Tool name contract", "PASS",
             $"All {tools.Count} tool names satisfy ^[a-z0-9_-]+$."));
 
         var toolNames = tools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
-        var missing = RequiredCoreTools.Where(name => !toolNames.Contains(name)).ToArray();
+        var missing = MainWindow.RequiredCoreTools.Where(name => !toolNames.Contains(name)).ToArray();
         if (missing.Length > 0)
         {
-            Record(new DevTestStep("Protocol", "Tool discovery", "FAIL", "Missing: " + string.Join(", ", missing)));
+            record(new DevTestStep("Protocol", "Tool discovery", "FAIL", "Missing: " + string.Join(", ", missing)));
             return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
         }
 
-        Record(new DevTestStep("Protocol", "Tool discovery", "PASS", $"{tools.Count} tools discovered; required core surface present."));
+        record(new DevTestStep("Protocol", "Tool discovery", "PASS", $"{tools.Count} tools discovered; required core surface present."));
 
         foreach (var tool in new[] { "system_version", "system_health", "system_capabilities", "system_permissions", "system_policy_diagnostics" })
         {
-            if (!await CallAndRecordAsync(client, "Core", tool, null, Record, onLog, cancellationToken).ConfigureAwait(false))
+            if (!await CallAndRecordAsync(client, "Core", tool, null, record, onLog, cancellationToken).ConfigureAwait(false))
                 return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
         }
 
         if (!await CallAndRecordAsync(client, "Core", "system_tool_preflight",
                 new Dictionary<string, object?> { ["toolName"] = "wpf_click" },
-                Record, onLog, cancellationToken).ConfigureAwait(false))
+                record, onLog, cancellationToken).ConfigureAwait(false))
             return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
 
         return new McpSelfTestReport(true, tools.Count, client.NegotiatedProtocolVersion, steps);
@@ -138,15 +117,11 @@ internal sealed class McpSelfTestService
         CancellationToken cancellationToken)
     {
         var steps = new List<DevTestStep>();
-        void Record(DevTestStep step)
-        {
-            steps.Add(step);
-            onStep(step);
-        }
+        var record = CreateStepRecorder(steps, onStep);
 
         await using var client = await CreateHttpClientAsync(httpToken, cancellationToken).ConfigureAwait(false);
         var tools = await client.ListToolsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-        Record(new DevTestStep("Transport", "HTTP MCP + discover", "PASS", $"Connected to shared service; {tools.Count} tools available."));
+        record(new DevTestStep("Transport", "HTTP MCP + discover", "PASS", $"Connected to shared service; {tools.Count} tools available."));
 
         var tests = new (string Area, string Tool, Dictionary<string, object?>? Args)[]
         {
@@ -208,7 +183,7 @@ internal sealed class McpSelfTestService
 
         foreach (var test in tests)
         {
-            if (!await CallAndRecordAsync(client, test.Area, test.Tool, test.Args, Record, onLog, cancellationToken).ConfigureAwait(false))
+            if (!await CallAndRecordAsync(client, test.Area, test.Tool, test.Args, record, onLog, cancellationToken).ConfigureAwait(false))
                 return new McpSelfTestReport(false, tools.Count, client.NegotiatedProtocolVersion, steps);
         }
 
@@ -223,22 +198,25 @@ internal sealed class McpSelfTestService
         CancellationToken cancellationToken)
     {
         var steps = new List<DevTestStep>();
-        void Record(DevTestStep step)
-        {
-            steps.Add(step);
-            onStep(step);
-        }
+        var record = CreateStepRecorder(steps, onStep);
 
         await using var client = await CreateHttpClientAsync(httpToken, cancellationToken).ConfigureAwait(false);
         if (!await CallAndRecordAsync(client, "ASP.NET telemetry", "aspnet_health",
                 new Dictionary<string, object?> { ["processId"] = backendProcessId },
-                Record, onLog, cancellationToken).ConfigureAwait(false))
+                record, onLog, cancellationToken).ConfigureAwait(false))
             return false;
 
         return await CallAndRecordAsync(client, "ASP.NET telemetry", "aspnet_recent_requests",
             new Dictionary<string, object?> { ["processId"] = backendProcessId, ["limit"] = 10 },
-            Record, onLog, cancellationToken).ConfigureAwait(false);
+            record, onLog, cancellationToken).ConfigureAwait(false);
     }
+
+    private static Action<DevTestStep> CreateStepRecorder(List<DevTestStep> steps, Action<DevTestStep> onStep)
+        => step =>
+        {
+            steps.Add(step);
+            onStep(step);
+        };
 
     private static async Task<McpClient> CreateHttpClientAsync(string httpToken, CancellationToken cancellationToken)
     {
