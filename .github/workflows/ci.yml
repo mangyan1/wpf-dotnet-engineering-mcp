@@ -48,8 +48,11 @@ jobs:
       - name: Build release configuration
         run: dotnet build DotNetEngineeringMcp.sln --configuration Release --no-restore
 
+      - name: Validate VS Code extension syntax
+        run: node --check vscode-extension/extension.js
+
       - name: Run automated tests
-        run: dotnet test DotNetEngineeringMcp.sln --configuration Release --no-build --no-restore --logger "console;verbosity=minimal"
+        run: dotnet test DotNetEngineeringMcp.sln --configuration Release --no-build --no-restore --logger "console;verbosity=minimal" --logger "trx"
 
       - name: Run static security and contract gates
         run: python scripts/self-test-static.py
@@ -57,3 +60,46 @@ jobs:
       - name: Run sanitized secret scan
         shell: bash
         run: bash scripts/verify-no-secrets.sh
+
+      - name: Upload test results for failed runs
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: test-results-${{ github.run_id }}
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+          retention-days: 7
+
+  msi:
+    name: Windows MSI installer build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Restore locked dependencies
+        run: dotnet restore DotNetEngineeringMcp.sln --runtime win-x64 --locked-mode
+
+      - name: Restore locked installer dependencies
+        run: dotnet restore installer/EngineeringMcp.Installer.wixproj --locked-mode
+
+      # The local pattern is build/release-hardening.ps1; in CI it runs unsigned so the MSI,
+      # payload authoring, and WiX compile are exercised without promotion signing. The script's
+      # internal dotnet publish/build steps restore implicitly and unlocked (pre-existing
+      # behavior); the locked restores above pre-populate the cache so resolution stays pinned
+      # by the committed lock files.
+      - name: Build MSI installer package
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File build/release-hardening.ps1 -Configuration Release

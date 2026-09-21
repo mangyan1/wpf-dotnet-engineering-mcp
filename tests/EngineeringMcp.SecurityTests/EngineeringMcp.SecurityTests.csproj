@@ -7,4 +7,7 @@
     <PackageReference Include="MSTest.TestAdapter" />
     <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../EngineeringMcp.IntegrationTests/TestFixedPolicyProvider.cs" Link="TestFixedPolicyProvider.cs" />
+  </ItemGroup>
 </Project>

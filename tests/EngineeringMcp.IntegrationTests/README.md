@@ -1,3 +1,61 @@
 # Integration Tests
 
-Reserved by the architecture. **Not implemented yet.** Follow `docs/ROADMAP.md` and do not advertise this capability until its phase gate passes.
+End-to-end tests that launch real local fixtures: an HTTP MCP host over loopback, a WPF probe server over its authenticated named pipe, an ASP.NET test application, and workspace policy provisioning against real project trees. Windows-only (`net10.0-windows10.0.19041.0`); fixtures are located through `TestRepositoryLocator` / `TestArtifactLocator` / `WpfTestFixtureLocator`, never hard-coded paths.
+
+Run with `dotnet test tests/EngineeringMcp.IntegrationTests --configuration Release --no-build` from the repository root.
+
+## HTTP host and MCP contract
+
+- McpHttpIntegrationTests.LiveHttpHost_RequiresBearerAndPublishesPortableToolNames
+- McpCompatibilityTests.PublishedToolNames_AreCodexCompatible
+
+## WPF probe, screenshot, and UIA safety
+
+- WpfProbeIntegrationTests.Probe_StatusCompletesOverAuthenticatedPipeAndCanRestartCleanly
+- WpfScreenshotIntegrationTests.Screenshot_ReturnsPngOnlyAfterTextAndSensitiveRegionsAreMasked
+- AdvancedWpfSafetyTests.SafeUiAnalysis_NeverReturnsElementTextOrRawAutomationIds
+- AdvancedWpfSafetyTests.SafeUiAnalysis_ReturnsOnlyBoundedAggregateMetadata
+- AdvancedWpfSafetyTests.SelectorAudit_ExcludesNativeSystemMenuProviderChrome
+
+## Diagnostics pipeline
+
+- AspNetCoreAdapterTests.Adapter_AuthenticatesAndReturnsLiveActionCorrelatedRequestMetadata
+- AspNetCoreAdapterTests.Middleware_CorrelatesOnlyRequestsInsideExplicitActionMarker
+- AspNetCoreAdapterTests.ActionCorrelation_RejectsConcurrentMarkerAndExpiresByExplicitEnd
+
+## Source intelligence
+
+- SourceIntegrationTests.XamlAnalysis_FindsHardcodedColorAndAutomationId
+- SourceIntegrationTests.XamlAnalysis_AcceptsOneApprovedFileWithoutScanningSiblings
+- SourceIntegrationTests.StackTraceMapping_StaysWithinRequestedSourceRoot
+- SourceIntegrationTests.SemanticReferences_LoadApprovedSolutionAndResolveSymbolIdentity
+
+## Workspace policy provisioning
+
+- WpfWorkspacePolicyProvisionerTests.Provision_DiscoversMultipleWpfApplicationsAndCreatesValidatedPolicy
+- WpfWorkspacePolicyProvisionerTests.DiscoverApplications_IgnoresNonWpfAndLibraryProjects
+- WpfWorkspacePolicyProvisionerTests.DiscoverApplications_RequiresBuiltWpfExecutable
+- WpfWorkspacePolicyProvisionerTests.DiscoverApplications_SupportsClassicWpfProjectMetadata
+- WpfWorkspacePolicyProvisionerTests.IsWorkspaceRoot_RejectsDirectoryWithoutDotNetProjects
+- WpfWorkspacePolicyProvisionerTests.GetDefaultPolicyPath_IsStableAndWorkspaceSpecific
+- WpfWorkspacePolicyProvisionerTests.DiscoverApplications_ReadsNearestDirectoryBuildPropsWithoutExecutingMsBuild
+- WpfWorkspacePolicyProvisionerTests.DiscoverApplications_IgnoresImportThatLeavesWorkspace
+- WpfWorkspacePolicyProvisionerTests.ProvisionExecutable_AuthorizesVerifiedWpfApplicationInsideWorkspace
+- WpfWorkspacePolicyProvisionerTests.ProvisionExecutable_RejectsNonWpfAndOutOfWorkspaceExecutables
+
+## Control Center build isolation
+
+- TestArtifactLocatorTests.FindExecutable_UsesIsolatedArtifactLayoutWhenConfigured
+- TestRepositoryLocatorTests.FindRoot_UsesExplicitRepositoryOutsideArtifactTree
+- TestRepositoryLocatorTests.FindRoot_RejectsInvalidExplicitRepository
+
+## Other
+
+- GearTrainLayoutTests.MeshedGears_HaveTangentPitchCirclesSynchronizedRatesAndComplementaryPhases
+- PrintDecorationThemeTests.GearDecoration_IsNotRestrictedToPrintTheme
+
+## Installed-package acceptance (opt-in)
+
+- InstalledPackageVsCodeAcceptanceTests.InstalledPackage_VsCodeAcceptance_UsesDurableConfigurationAndRepresentativeTools
+
+Skipped (inconclusive) unless `scripts/test-installed-vscode.ps1` supplies `ENGINEERING_MCP_ACCEPTANCE_INSTALL_ROOT`, `ENGINEERING_MCP_ACCEPTANCE_POLICY`, and `ENGINEERING_MCP_ACCEPTANCE_VSCODE_CONFIG`; see `docs/TESTING.md`.

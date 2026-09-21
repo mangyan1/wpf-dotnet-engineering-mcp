@@ -13,7 +13,7 @@ namespace EngineeringMcp.Diagnostics;
 public sealed class DotNetDiagnosticsService(
     ProcessGuard processGuard,
     FilePolicyProvider policyProvider,
-    RedactionService redactor)
+    RedactionService redactor) : IDotNetDiagnosticsService
 {
     private const int MaxActiveTraces = 2;
     private const long MaxTraceBytes = 64L * 1024 * 1024;

@@ -1,10 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup>
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/EngineeringMcp.Host/EngineeringMcp.Host.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.FailureCorrelation/EngineeringMcp.FailureCorrelation.csproj" />
     <ProjectReference Include="../../src/EngineeringMcp.Security/EngineeringMcp.Security.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Wpf/EngineeringMcp.Wpf.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Source/EngineeringMcp.Source.csproj" />
+    <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="MSTest.TestFramework" />
     <PackageReference Include="MSTest.TestAdapter" />
-    <ProjectReference Include="../../src/EngineeringMcp.Contracts/EngineeringMcp.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../EngineeringMcp.IntegrationTests/TestFixedPolicyProvider.cs" Link="TestFixedPolicyProvider.cs" />
   </ItemGroup>
 </Project>

@@ -10,7 +10,10 @@ const TOKEN_ENVIRONMENT_VARIABLE = 'ENGINEERING_MCP_HTTP_TOKEN';
 async function activate(context) {
   const output = vscode.window.createOutputChannel('.NET/WPF Engineering MCP');
   context.subscriptions.push(output);
-  output.appendLine(`Activating .NET/WPF Engineering MCP on VS Code ${vscode.version} (${process.platform}).`);
+  // The advertised MCP server version follows the installed extension manifest so it can
+  // never drift from the packaged extension version.
+  const extensionVersion = context.extension?.packageJSON?.version ?? 'unknown';
+  output.appendLine(`Activating .NET/WPF Engineering MCP ${extensionVersion} on VS Code ${vscode.version} (${process.platform}).`);
 
   if (process.platform !== 'win32') {
     output.appendLine('WPF runtime automation requires Windows. MCP registration is disabled on this platform.');
@@ -43,7 +46,7 @@ async function activate(context) {
         '.NET/WPF Engineering MCP',
         vscode.Uri.parse(ENDPOINT),
         { Authorization: `Bearer ${token}` },
-        '0.3.2'
+        extensionVersion
       )];
     },
     resolveMcpServerDefinition: async server => server

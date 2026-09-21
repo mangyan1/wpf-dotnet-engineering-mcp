@@ -21,7 +21,7 @@ Authorization creates a validated policy under:
 
 The policy:
 
-- allows only discovered executable names at their exact built paths;
+- allows only discovered executable names at their exact built paths, each pinned by the SHA-256 computed at provision time — rebuilding the application changes its hash, so authorize the workspace again after a rebuild;
 - allows source reads only under the selected workspace root;
 - denies secrets, production settings, keys, dumps, databases, and Git internals;
 - keeps network access denied;
@@ -30,7 +30,7 @@ The policy:
 - blocks destructive and privileged actions;
 - enables the core, WPF read/interact, diagnostics, and source profiles.
 
-The path hash prevents two workspaces with the same directory name from overwriting one another. Policies live outside the installation directory and survive upgrade or reinstall.
+The path hash prevents two workspaces with the same directory name from overwriting one another. Policies live outside the installation directory and survive upgrade or reinstall. Relative process paths and read roots inside a policy resolve against the policy file's own directory (this is how the repository's `config/policy.vscode-test.json` test policy reaches its fixture executables).
 
 ## Discovery safety
 

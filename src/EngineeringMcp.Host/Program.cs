@@ -205,12 +205,15 @@ static void RegisterEngineeringServices(IServiceCollection services)
     services.AddSingleton<IWpfAutomationService>(sp => sp.GetRequiredService<WpfAutomationService>());
     services.AddSingleton<WpfSafeInspectionService>();
     services.AddSingleton<WpfProbeClient>();
+    services.AddSingleton<IWpfProbeClient>(sp => sp.GetRequiredService<WpfProbeClient>());
     services.AddSingleton<WpfUiInspectionService>();
     services.AddSingleton<UiAuditService>();
     services.AddSingleton<DotNetDiagnosticsService>();
+    services.AddSingleton<IDotNetDiagnosticsService>(sp => sp.GetRequiredService<DotNetDiagnosticsService>());
     services.AddSingleton<ClrMdService>();
     services.AddSingleton<SourceIntelligenceService>();
     services.AddSingleton<BackendProbeClient>();
+    services.AddSingleton<IBackendProbeClient>(sp => sp.GetRequiredService<BackendProbeClient>());
     services.AddSingleton<DiagnosisService>();
 }
 

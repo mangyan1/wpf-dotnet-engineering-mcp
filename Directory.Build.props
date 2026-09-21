@@ -14,5 +14,6 @@
     <LangVersion>latest</LangVersion>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
   </PropertyGroup>
 </Project>

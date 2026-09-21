@@ -203,7 +203,7 @@ check('permissions:\n  contents: read' in ci_workflow and
       'persist-credentials: false' in ci_workflow and
       'dotnet restore DotNetEngineeringMcp.sln --runtime win-x64 --locked-mode' in ci_workflow and
       'dotnet restore installer/EngineeringMcp.Installer.wixproj --locked-mode' in ci_workflow and
-      len(ci_actions) == 2,
+      len(ci_actions) == 4,
       "Public CI is read-only, lock-file-driven, and pins official actions by commit")
 dependabot = (ROOT / '.github/dependabot.yml').read_text(encoding='utf-8')
 check('package-ecosystem: nuget' in dependabot and

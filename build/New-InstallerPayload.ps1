@@ -12,6 +12,23 @@ $outputPath = [IO.Path]::GetFullPath($OutputFile)
 if (-not [IO.Directory]::Exists($payloadRoot)) {
     throw "Installer payload directory does not exist: $payloadRoot"
 }
+
+# The MSI must carry the entry point, host, packaged policy, and license set; fail here with a
+# named file instead of an opaque WiX bind error deep in the installer build.
+$requiredPayloadFiles = @(
+    'EngineeringMcp.ControlCenter.exe',
+    'app-manifest.json',
+    'host/EngineeringMcp.Host.exe',
+    'config/policy.packaged.json',
+    'config/policy.schema.json',
+    'LICENSE.txt',
+    'NOTICE.txt'
+)
+$missingRequiredFiles = @($requiredPayloadFiles |
+    Where-Object { -not (Test-Path -LiteralPath (Join-Path $payloadRoot $_) -PathType Leaf) })
+if ($missingRequiredFiles.Count -gt 0) {
+    throw "Installer payload is missing required file(s): $($missingRequiredFiles -join ', ')"
+}
 if ($outputPath.StartsWith($payloadRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Generated WiX source must be outside the payload directory.'
 }

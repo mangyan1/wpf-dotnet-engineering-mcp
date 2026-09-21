@@ -58,7 +58,7 @@ Public MCP tool names must match `^[a-z0-9_-]+$` for VS Code compatibility. Use 
 
 ## Metadata-only advanced WPF boundary
 
-Advanced grid, tree, item, selector, accessibility, window, wait, and assertion tools must not return element names, AutomationIds, row labels, cell text, values, ViewModel property values, validation messages, clipboard content, or raw screenshots. They may return bounded counts, booleans, control/pattern types, geometry, opaque session references, and non-reversible identifier fingerprints. Probe-backed tools may expose code-level binding paths and CLR type names, but never evaluate commands or return bound runtime values.
+Advanced grid, tree, item, selector, accessibility, window, wait, and assertion tools must not return element names, AutomationIds, row labels, cell text, values, ViewModel property values, validation messages, clipboard content, or raw screenshots. They may return bounded counts, booleans, control/pattern types, geometry, opaque session references, and non-reversible identifier fingerprints; session references are bounded per attachment and the oldest is evicted first past 10,000, with evicted references reporting `ELEMENT_REFERENCE_NOT_FOUND`. Probe-backed tools may expose code-level binding paths and CLR type names, but never evaluate commands or return bound runtime values.
 
 Capability IDs are internal manifest identifiers and retain dotted names such as `wpf.uia.read` and `dotnet.eventpipe`.
 

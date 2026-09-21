@@ -9,9 +9,9 @@ namespace EngineeringMcp.FailureCorrelation;
 
 public sealed class DiagnosisService(
     IWpfAutomationService wpf,
-    DotNetDiagnosticsService diagnostics,
-    WpfProbeClient probe,
-    BackendProbeClient backend,
+    IDotNetDiagnosticsService diagnostics,
+    IWpfProbeClient probe,
+    IBackendProbeClient backend,
     SourceIntelligenceService source)
 {
     public async Task<ToolResult<DiagnosisReport>> DiagnoseObserveAsync(

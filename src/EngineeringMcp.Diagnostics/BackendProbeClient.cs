@@ -4,7 +4,7 @@ using EngineeringMcp.Security;
 
 namespace EngineeringMcp.Diagnostics;
 
-public sealed class BackendProbeClient(ProcessGuard processGuard, RedactionService redactor, FilePolicyProvider policyProvider)
+public sealed class BackendProbeClient(ProcessGuard processGuard, RedactionService redactor, FilePolicyProvider policyProvider) : IBackendProbeClient
 {
     // Per-phase budgets mirror WpfProbeClient: the adapter server allows five seconds to read a
     // single request, so one short overall budget would spuriously fail healthy backends.

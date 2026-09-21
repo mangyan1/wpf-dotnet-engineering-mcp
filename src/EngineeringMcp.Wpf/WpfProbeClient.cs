@@ -4,7 +4,7 @@ using EngineeringMcp.Security;
 
 namespace EngineeringMcp.Wpf;
 
-public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService redactor, FilePolicyProvider policyProvider)
+public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService redactor, FilePolicyProvider policyProvider) : IWpfProbeClient
 {
     public async Task<ToolResult<ProbeResponse>> RequestAsync(int processId, ProbeRequest request, CancellationToken cancellationToken = default)
     {
