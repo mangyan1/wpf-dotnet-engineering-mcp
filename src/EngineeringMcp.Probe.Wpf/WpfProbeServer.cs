@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.IO.Pipes;
-using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Automation;
@@ -70,13 +69,12 @@ internal sealed class WpfProbeServer : IDisposable
 
     private static readonly TimeSpan RequestReadTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DispatcherTimeout = TimeSpan.FromSeconds(5);
-    private const int MaxRequestBytes = 64 * 1024;
-    private const int MaxResponseBytes = 4 * 1024 * 1024;
 
     private readonly WpfProbeOptions _options;
     private readonly CancellationTokenSource _cts = new();
     private readonly RedactionService _redactor = new();
     private readonly ConcurrentQueue<WpfExceptionObservation> _exceptions = new();
+    private readonly HashSet<string> _notedTransportFaults = new(StringComparer.Ordinal);
     private Task? _loop;
 
     public WpfProbeServer(WpfProbeOptions options)
@@ -107,7 +105,7 @@ internal sealed class WpfProbeServer : IDisposable
                 ProbeResponse response;
                 try
                 {
-                    var request = await BoundedJsonPipeProtocol.ReadAsync<ProbeRequest>(pipe, MaxRequestBytes, _cts.Token)
+                    var request = await BoundedJsonPipeProtocol.ReadAsync<ProbeRequest>(pipe, BoundedJsonPipeProtocol.WpfProbeMaxRequestBytes, _cts.Token)
                         .AsTask()
                         .WaitAsync(RequestReadTimeout, _cts.Token)
                         .ConfigureAwait(false);
@@ -128,21 +126,34 @@ internal sealed class WpfProbeServer : IDisposable
                     response = new ProbeResponse(false, ErrorCode: "PROBE_ERROR", ErrorMessage: _redactor.Redact(ex.Message));
                 }
 
-                await BoundedJsonPipeProtocol.WriteAsync(pipe, response, MaxResponseBytes, _cts.Token)
+                await BoundedJsonPipeProtocol.WriteAsync(pipe, response, BoundedJsonPipeProtocol.WpfProbeMaxResponseBytes, _cts.Token)
                     .AsTask()
                     .WaitAsync(RequestReadTimeout, _cts.Token)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (_cts.IsCancellationRequested) { break; }
-            catch (TimeoutException) { await DelayAfterTransportFaultAsync().ConfigureAwait(false); }
-            catch (IOException) { await DelayAfterTransportFaultAsync().ConfigureAwait(false); }
-            catch { await DelayAfterTransportFaultAsync().ConfigureAwait(false); }
+            catch (Exception ex)
+            {
+                // Persistent faults (pipe-name collision, ACL errors) must be visible; the fault
+                // class is logged once and the loop keeps its 100 ms retry cadence.
+                NoteTransportFault(ex);
+                await DelayAfterTransportFaultAsync().ConfigureAwait(false);
+            }
         }
+    }
+
+    private void NoteTransportFault(Exception ex)
+    {
+        lock (_notedTransportFaults)
+        {
+            if (!_notedTransportFaults.Add(ex.GetType().Name)) return;
+        }
+        RecordException("WpfProbe.AcceptLoop", ex);
     }
 
     private async Task<ProbeResponse> DispatchAsync(ProbeRequest request)
     {
-        if (!FixedTimeTokenEquals(request.Token, _options.Token!))
+        if (!BoundedJsonPipeProtocol.FixedTimeEquals(request.Token, _options.Token!))
             return new ProbeResponse(false, ErrorCode: "AUTH_FAILED", ErrorMessage: "Probe authentication failed.");
 
         var app = Application.Current;
@@ -180,7 +191,8 @@ internal sealed class WpfProbeServer : IDisposable
     {
         return request.Operation switch
         {
-            "status" => new ProbeResponse(true, new { processId = Environment.ProcessId, pipe = PipeName, dispatcherAccess = Application.Current!.Dispatcher.CheckAccess() }),
+            // "status" is handled before the dispatcher hop (see DispatchAsync) and is intentionally
+            // not duplicated here.
             "visual_tree" or "visualTree" => VisualTree(request),
             "logical_tree" or "logicalTree" => LogicalTree(request),
             "datacontext" => DataContext(request),
@@ -529,14 +541,7 @@ internal sealed class WpfProbeServer : IDisposable
 
     private static ProbeResponse NotFound() => new(false, ErrorCode: "ELEMENT_NOT_FOUND", ErrorMessage: "Requested WPF element was not found.");
 
-    private string PipeName => _options.PipeName ?? $"EngineeringMcp.WpfProbe.{Environment.ProcessId}";
-
-    private static bool FixedTimeTokenEquals(string supplied, string expected)
-    {
-        var a = System.Text.Encoding.UTF8.GetBytes(supplied ?? string.Empty);
-        var b = System.Text.Encoding.UTF8.GetBytes(expected);
-        return a.Length == b.Length && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(a, b);
-    }
+    private string PipeName => _options.PipeName ?? BoundedJsonPipeProtocol.WpfProbePipeName(Environment.ProcessId);
 
     private async Task DelayAfterTransportFaultAsync()
     {

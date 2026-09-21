@@ -79,8 +79,8 @@ public static class DotNetTools
         => ToolRun.Async(auth, ToolPolicies.Diagnose("dotnet_trace_stop"), traceId, () => diagnostics.StopTraceAsync(traceId, cancellationToken));
 
     [McpServerTool(Name = "dotnet_capture_dump", UseStructuredContent = true), Description("PRIVILEGED: captures a heap dump for an allowlisted process into protected local storage. Only an opaque dumpId leaves the diagnostic boundary.")]
-    public static ToolResult<object> CaptureDump([Description("Operating-system process identifier of an allowlisted target process.")] int processId, ClrMdService clrmd, ToolAuthorization auth)
-        => ToolRun.Sync(auth, ToolPolicies.Privileged("dotnet_capture_dump"), processId.ToString(), () => clrmd.CaptureDump(processId));
+    public static Task<ToolResult<object>> CaptureDump([Description("Operating-system process identifier of an allowlisted target process.")] int processId, ClrMdService clrmd, ToolAuthorization auth, CancellationToken cancellationToken)
+        => ToolRun.Async(auth, ToolPolicies.Privileged("dotnet_capture_dump"), processId.ToString(), () => clrmd.CaptureDumpAsync(processId, cancellationToken: cancellationToken));
 
     [McpServerTool(Name = "dotnet_analyze_dump", UseStructuredContent = true), Description("PRIVILEGED: analyzes a dump captured by an earlier call, by opaque dumpId; returns bounded stacks/types, not raw heap object values.")]
     public static ToolResult<DumpAnalysisSummary> AnalyzeDump(

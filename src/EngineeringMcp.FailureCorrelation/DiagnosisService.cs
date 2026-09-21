@@ -8,7 +8,7 @@ using EngineeringMcp.Wpf;
 namespace EngineeringMcp.FailureCorrelation;
 
 public sealed class DiagnosisService(
-    WpfAutomationService wpf,
+    IWpfAutomationService wpf,
     DotNetDiagnosticsService diagnostics,
     WpfProbeClient probe,
     BackendProbeClient backend,
@@ -35,86 +35,32 @@ public sealed class DiagnosisService(
             $"Selected UI element is {selected.Value.ControlType} '{selected.Value.Name}', enabled={selected.Value.IsEnabled}, offscreen={selected.Value.IsOffscreen}.",
             "wpf_query", correlationId, DateTimeOffset.UtcNow));
 
-        var probeExceptions = await probe.RequestAsync(wpfProcessId, new ProbeRequest(string.Empty, "exceptions"), cancellationToken).ConfigureAwait(false);
-        var wpfExceptions = probeExceptions.Success && probeExceptions.Value is { Success: true } exceptionResponse
-            ? ReadProbeList<WpfExceptionObservation>(exceptionResponse.Value).Where(item => item.TimestampUtc >= started.AddMinutes(-5)).Take(50).ToArray()
-            : [];
-        foreach (var exception in wpfExceptions)
-        {
-            evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                $"Recent WPF exception observed: {exception.Type}: {exception.Message}",
-                exception.Source, correlationId, exception.TimestampUtc));
-        }
-        if (!probeExceptions.Success)
-            unknowns.Add("The optional in-process WPF exception probe was unavailable.");
+        var wpfExceptions = await CollectProbeExceptionsAsync(
+            wpfProcessId, correlationId, started,
+            exceptionWindow: TimeSpan.FromMinutes(5), exceptionTakeCount: 50,
+            exceptionEvidencePrefix: "Recent WPF exception observed",
+            exceptionUnavailableUnknown: "The optional in-process WPF exception probe was unavailable.",
+            exceptionUnknownOnInnerFailure: false,
+            evidence, unknowns, cancellationToken).ConfigureAwait(false);
 
-        var bindingResult = await probe.RequestAsync(wpfProcessId,
-            new ProbeRequest(string.Empty, "binding_errors", AutomationId: selector.AutomationId, Name: selector.Name), cancellationToken).ConfigureAwait(false);
-        if (bindingResult.Success && bindingResult.Value is { Success: true } bindingResponse)
-        {
-            foreach (var binding in ReadProbeList<BindingDiagnostic>(bindingResponse.Value).Take(20))
-            {
-                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                    $"WPF binding error observed on {binding.Element}.{binding.Property}; Path={binding.Path ?? "<unknown>"}; Status={binding.Status ?? "<unknown>"}.",
-                    "wpf_probe_binding_errors", correlationId, DateTimeOffset.UtcNow));
-            }
-        }
+        await CollectBindingErrorsAsync(wpfProcessId, selector, correlationId, evidence, cancellationToken).ConfigureAwait(false);
+        await CollectValidationEvidenceAsync(wpfProcessId, selector, correlationId, evidence, cancellationToken).ConfigureAwait(false);
+        CollectSnapshotErrorEvidence(wpfProcessId, correlationId, "Current", evidence);
 
-        var validationResult = await probe.RequestAsync(wpfProcessId,
-            new ProbeRequest(string.Empty, "validation", AutomationId: selector.AutomationId, Name: selector.Name), cancellationToken).ConfigureAwait(false);
-        if (validationResult.Success && validationResult.Value is { Success: true } validationResponse &&
-            TryGetArrayLength(validationResponse.Value, out var validationCount) && validationCount > 0)
-        {
-            evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                $"WPF validation reports {validationCount} error item(s) in the selected subtree.",
-                "wpf_probe_validation", correlationId, DateTimeOffset.UtcNow));
-        }
-
-        var snapshot = wpf.Snapshot(wpfProcessId, maxElements: 300, maxDepth: 10);
-        if (snapshot.Success && snapshot.Value is not null)
-        {
-            foreach (var item in snapshot.Value.Elements.Where(element => ContainsErrorSignal(element.Name)).Take(10))
-            {
-                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                    $"Current UI contains possible error/status text on {item.ControlType}: '{item.Name}'.",
-                    "wpf_snapshot", correlationId, DateTimeOffset.UtcNow));
-            }
-        }
-
-        IReadOnlyList<BackendRequestObservation> backendRequests = [];
-        if (backendProcessId is int backendPid)
-        {
-            var backendResult = await backend.RequestAsync(backendPid, "recent", 200, cancellationToken).ConfigureAwait(false);
-            if (backendResult.Success && backendResult.Value is { Success: true } response)
-            {
-                backendRequests = ReadBackendObservations(response.Value).Where(request => request.TimestampUtc >= started.AddMinutes(-5)).ToArray();
-                foreach (var request in backendRequests)
-                {
-                    evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                        $"Recent backend {request.Method} {request.Path} returned HTTP {request.StatusCode} in {request.DurationMs:F1} ms.",
-                        "aspnet.recent", request.TraceId ?? correlationId, request.TimestampUtc));
-                }
-            }
-            else unknowns.Add("Backend state could not be inspected through the configured adapter.");
-        }
-        else unknowns.Add("No backend process was supplied, so backend state was not observed.");
+        var backendRequests = await CollectBackendEvidenceAsync(
+            backendProcessId, correlationId, started, ObserveBackendPolicy,
+            correlation: null, evidence, unknowns, cancellationToken).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(sourceRoot))
         {
-            var stacks = wpfExceptions.Select(item => item.StackTrace)
-                .Concat(backendRequests.Select(item => item.ExceptionStackTrace))
-                .Where(stack => !string.IsNullOrWhiteSpace(stack)).Cast<string>();
-            foreach (var stack in stacks.Take(10))
-            {
-                var mapped = source.MapStackTrace(stack, sourceRoot, 20);
-                if (!mapped.Success || mapped.Value is null) continue;
-                foreach (var location in mapped.Value)
-                    evidence.Add(new EvidenceItem(EvidenceKind.Observed, $"Exception stack maps to approved source: {location.File}:{location.Line}.", "source_map_stacktrace", correlationId, DateTimeOffset.UtcNow));
-            }
+            MapSourceEvidence(
+                wpfExceptions.Select(item => item.StackTrace)
+                    .Concat(backendRequests.Select(item => item.ExceptionStackTrace)),
+                sourceRoot, correlationId, evidence);
         }
         else unknowns.Add("No approved source root was supplied, so source mapping was not attempted.");
 
-        var failureObserved = wpfExceptions.Length > 0 ||
+        var failureObserved = wpfExceptions.Count > 0 ||
             evidence.Any(item => item.Source is "wpf_probe_binding_errors" or "wpf_probe_validation" or "wpf_snapshot") ||
             backendRequests.Any(request => request.StatusCode >= 500 || !string.IsNullOrWhiteSpace(request.ExceptionType));
         if (!failureObserved)
@@ -161,7 +107,7 @@ public sealed class DiagnosisService(
             var begin = await backend.RequestAsync(
                 correlationBackendPid, "begin_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
             if (begin.Success && begin.Value is { Success: true } beginResponse)
-                backendCorrelation = ReadBackendCorrelation(beginResponse.Value);
+                backendCorrelation = ReadProbeValue<BackendCorrelationObservation>(beginResponse.Value);
             if (backendCorrelation is null)
                 unknowns.Add("The backend adapter did not establish an action correlation marker; backend evidence will use bounded time-window correlation.");
         }
@@ -173,8 +119,10 @@ public sealed class DiagnosisService(
 
         if (!actionCapture.Success || actionCapture.Value is null)
         {
+            // Release the backend correlation marker even when the diagnosis aborts early; the
+            // stuck-lock unknown is discarded because a Fail result carries no report body.
             if (backendProcessId is int failedBackendPid && backendCorrelation is not null)
-                _ = await backend.RequestAsync(failedBackendPid, "end_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
+                await EndBackendCorrelationAsync(failedBackendPid, correlationId, new List<string>(), cancellationToken).ConfigureAwait(false);
             return ToolResult<DiagnosisReport>.Fail(actionCapture.Error!.Code, actionCapture.Error.Message, actionCapture.Error.Retryable);
         }
 
@@ -209,119 +157,29 @@ public sealed class DiagnosisService(
                 exception.Source, correlationId, exception.TimestampUtc));
         }
 
-        IReadOnlyList<WpfExceptionObservation> wpfExceptions = Array.Empty<WpfExceptionObservation>();
-        var probeExceptions = await probe.RequestAsync(wpfProcessId, new ProbeRequest(string.Empty, "exceptions"), cancellationToken).ConfigureAwait(false);
-        if (probeExceptions.Success && probeExceptions.Value is { Success: true } probeExceptionResponse)
-        {
-            wpfExceptions = ReadProbeList<WpfExceptionObservation>(probeExceptionResponse.Value)
-                .Where(x => x.TimestampUtc >= started.AddMilliseconds(-250))
-                .ToArray();
-            foreach (var exception in wpfExceptions)
-            {
-                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                    $"WPF in-process exception observed: {exception.Type}: {exception.Message}",
-                    exception.Source, correlationId, exception.TimestampUtc));
-            }
-        }
-        else
-        {
-            unknowns.Add("The optional in-process WPF exception probe was unavailable; dispatcher/domain exception evidence may be incomplete.");
-        }
+        var wpfExceptions = await CollectProbeExceptionsAsync(
+            wpfProcessId, correlationId, started,
+            exceptionWindow: TimeSpan.FromMilliseconds(250), exceptionTakeCount: int.MaxValue,
+            exceptionEvidencePrefix: "WPF in-process exception observed",
+            exceptionUnavailableUnknown: "The optional in-process WPF exception probe was unavailable; dispatcher/domain exception evidence may be incomplete.",
+            exceptionUnknownOnInnerFailure: true,
+            evidence, unknowns, cancellationToken).ConfigureAwait(false);
 
-        var bindingRequest = new ProbeRequest(string.Empty, "binding_errors", AutomationId: selector.AutomationId, Name: selector.Name);
-        var bindingErrors = await probe.RequestAsync(wpfProcessId, bindingRequest, cancellationToken).ConfigureAwait(false);
-        if (bindingErrors.Success && bindingErrors.Value is { Success: true } bindingResponse)
-        {
-            foreach (var binding in ReadProbeList<BindingDiagnostic>(bindingResponse.Value).Take(20))
-            {
-                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                    $"WPF binding error observed on {binding.Element}.{binding.Property}; Path={binding.Path ?? "<unknown>"}; Status={binding.Status ?? "<unknown>"}.",
-                    "wpf_probe_binding_errors", correlationId, DateTimeOffset.UtcNow));
-            }
-        }
+        await CollectBindingErrorsAsync(wpfProcessId, selector, correlationId, evidence, cancellationToken).ConfigureAwait(false);
+        await CollectValidationEvidenceAsync(wpfProcessId, selector, correlationId, evidence, cancellationToken).ConfigureAwait(false);
+        CollectSnapshotErrorEvidence(wpfProcessId, correlationId, "Post-action", evidence);
 
-        var validation = await probe.RequestAsync(wpfProcessId, new ProbeRequest(string.Empty, "validation", AutomationId: selector.AutomationId, Name: selector.Name), cancellationToken).ConfigureAwait(false);
-        if (validation.Success && validation.Value is { Success: true } validationResponse && TryGetArrayLength(validationResponse.Value, out var validationCount) && validationCount > 0)
-        {
-            evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                $"WPF validation reports {validationCount} error item(s) in the selected subtree.",
-                "wpf_probe_validation", correlationId, DateTimeOffset.UtcNow));
-        }
-
-        var after = wpf.Snapshot(wpfProcessId, maxElements: 300, maxDepth: 10);
-        if (after.Success && after.Value is not null)
-        {
-            var likelyErrors = after.Value.Elements
-                .Where(e => ContainsErrorSignal(e.Name))
-                .Take(10)
-                .ToArray();
-            foreach (var item in likelyErrors)
-            {
-                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                    $"Post-action UI contains possible error/status text on {item.ControlType}: '{item.Name}'.",
-                    "wpf_snapshot", correlationId, DateTimeOffset.UtcNow));
-            }
-        }
-
-        IReadOnlyList<BackendRequestObservation> backendRequests = Array.Empty<BackendRequestObservation>();
-        if (backendProcessId is int backendPid)
-        {
-            var backendResult = backendCorrelation is null
-                ? await backend.RequestAsync(backendPid, "recent", 200, cancellationToken).ConfigureAwait(false)
-                : await backend.RequestAsync(backendPid, "correlated", 200, cancellationToken,
-                    correlationId, backendCorrelation.AfterSequence).ConfigureAwait(false);
-            if (backendResult.Success && backendResult.Value is { Success: true } response)
-            {
-                backendRequests = ReadBackendObservations(response.Value)
-                    .Where(x => backendCorrelation is not null || x.TimestampUtc >= started.AddSeconds(-1))
-                    .ToArray();
-                foreach (var request in backendRequests)
-                {
-                    var claim = $"Backend {request.Method} {request.Path} returned HTTP {request.StatusCode} in {request.DurationMs:F1} ms.";
-                    evidence.Add(new EvidenceItem(EvidenceKind.Correlated, claim,
-                        backendCorrelation is null ? "aspnet.recent (time-window correlation)" : "aspnet.correlated (action marker)",
-                        request.TraceId ?? correlationId, request.TimestampUtc));
-                    if (!string.IsNullOrWhiteSpace(request.ExceptionType))
-                    {
-                        evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                            $"Backend exception observed: {request.ExceptionType}: {request.ExceptionMessage}",
-                            "aspnet_exceptions", request.TraceId ?? correlationId, request.TimestampUtc));
-                    }
-                }
-            }
-            else
-            {
-                unknowns.Add("Backend state could not be inspected through the configured backend probe.");
-            }
-
-            if (backendCorrelation is not null)
-                _ = await backend.RequestAsync(backendPid, "end_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
-        }
-        else
-        {
-            unknowns.Add("No backend process was supplied, so backend behavior was not observed.");
-        }
+        var backendRequests = await CollectBackendEvidenceAsync(
+            backendProcessId, correlationId, started, ClickBackendPolicy,
+            backendCorrelation, evidence, unknowns, cancellationToken).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(sourceRoot))
         {
-            var stacks = backendRequests.Select(x => x.ExceptionStackTrace)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Cast<string>()
-                .Concat(exceptionQueue.Select(x => x.StackTrace).Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>())
-                .Concat(wpfExceptions.Select(x => x.StackTrace).Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>());
-            var mappedAny = false;
-            foreach (var stack in stacks.Take(10))
-            {
-                var mapped = source.MapStackTrace(stack, sourceRoot, 20);
-                if (!mapped.Success || mapped.Value is null) continue;
-                foreach (var loc in mapped.Value)
-                {
-                    mappedAny = true;
-                    evidence.Add(new EvidenceItem(EvidenceKind.Observed,
-                        $"Exception stack maps to approved source: {loc.File}:{loc.Line}.",
-                        "source_map_stacktrace", correlationId, DateTimeOffset.UtcNow));
-                }
-            }
+            var mappedAny = MapSourceEvidence(
+                backendRequests.Select(x => x.ExceptionStackTrace)
+                    .Concat(exceptionQueue.Select(x => x.StackTrace))
+                    .Concat(wpfExceptions.Select(x => x.StackTrace)),
+                sourceRoot, correlationId, evidence);
             if (!mappedAny)
             {
                 unknowns.Add("No approved source location could be mapped from the captured exception evidence.");
@@ -350,17 +208,234 @@ public sealed class DiagnosisService(
         return ToolResult<DiagnosisReport>.Ok(report);
     }
 
+    // The two diagnosis paths intentionally differ only in evidence windows and message wording;
+    // the collectors below keep those differences in one policy record per path so the
+    // orchestration, evidence ordering, and observable payloads stay identical between both.
+    // Windows are positive durations looked back from the diagnosis start (started - window).
+    private sealed record BackendEvidencePolicy(
+        TimeSpan ObservationWindow,
+        bool BypassWindowWhenCorrelated,
+        EvidenceKind ClaimKind,
+        string ClaimPrefix,
+        string UncorrelatedSource,
+        string CorrelatedSource,
+        bool IncludeExceptionEvidence,
+        string UnavailableUnknown,
+        string MissingProcessUnknown);
+
+    private static readonly BackendEvidencePolicy ObserveBackendPolicy = new(
+        ObservationWindow: TimeSpan.FromMinutes(5),
+        BypassWindowWhenCorrelated: false,
+        ClaimKind: EvidenceKind.Observed,
+        ClaimPrefix: "Recent backend",
+        UncorrelatedSource: "aspnet.recent",
+        CorrelatedSource: "aspnet.recent",
+        IncludeExceptionEvidence: false,
+        UnavailableUnknown: "Backend state could not be inspected through the configured adapter.",
+        MissingProcessUnknown: "No backend process was supplied, so backend state was not observed.");
+
+    private static readonly BackendEvidencePolicy ClickBackendPolicy = new(
+        ObservationWindow: TimeSpan.FromSeconds(1),
+        BypassWindowWhenCorrelated: true,
+        ClaimKind: EvidenceKind.Correlated,
+        ClaimPrefix: "Backend",
+        UncorrelatedSource: "aspnet.recent (time-window correlation)",
+        CorrelatedSource: "aspnet.correlated (action marker)",
+        IncludeExceptionEvidence: true,
+        UnavailableUnknown: "Backend state could not be inspected through the configured backend probe.",
+        MissingProcessUnknown: "No backend process was supplied, so backend behavior was not observed.");
+
+    private async Task<IReadOnlyList<WpfExceptionObservation>> CollectProbeExceptionsAsync(
+        int processId,
+        string correlationId,
+        DateTimeOffset started,
+        TimeSpan exceptionWindow,
+        int exceptionTakeCount,
+        string exceptionEvidencePrefix,
+        string exceptionUnavailableUnknown,
+        bool exceptionUnknownOnInnerFailure,
+        List<EvidenceItem> evidence,
+        List<string> unknowns,
+        CancellationToken cancellationToken)
+    {
+        var probeExceptions = await probe.RequestAsync(processId, new ProbeRequest(string.Empty, "exceptions"), cancellationToken).ConfigureAwait(false);
+        var innerSucceeded = false;
+        IReadOnlyList<WpfExceptionObservation> exceptions = [];
+        if (probeExceptions.Success && probeExceptions.Value is { Success: true } response)
+        {
+            innerSucceeded = true;
+            // exceptionWindow is a positive duration looked back from the diagnosis start.
+            exceptions = ReadProbeList<WpfExceptionObservation>(response.Value)
+                .Where(item => item.TimestampUtc >= started - exceptionWindow)
+                .Take(exceptionTakeCount)
+                .ToArray();
+            foreach (var exception in exceptions)
+            {
+                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
+                    $"{exceptionEvidencePrefix}: {exception.Type}: {exception.Message}",
+                    exception.Source, correlationId, exception.TimestampUtc));
+            }
+        }
+        if (exceptionUnknownOnInnerFailure ? !innerSucceeded : !probeExceptions.Success)
+            unknowns.Add(exceptionUnavailableUnknown);
+        return exceptions;
+    }
+
+    private async Task CollectBindingErrorsAsync(
+        int processId,
+        UiSelector selector,
+        string correlationId,
+        List<EvidenceItem> evidence,
+        CancellationToken cancellationToken)
+    {
+        var bindingResult = await probe.RequestAsync(processId,
+            new ProbeRequest(string.Empty, "binding_errors", AutomationId: selector.AutomationId, Name: selector.Name), cancellationToken).ConfigureAwait(false);
+        if (bindingResult.Success && bindingResult.Value is { Success: true } bindingResponse)
+        {
+            foreach (var binding in ReadProbeList<BindingDiagnostic>(bindingResponse.Value).Take(20))
+            {
+                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
+                    $"WPF binding error observed on {binding.Element}.{binding.Property}; Path={binding.Path ?? "<unknown>"}; Status={binding.Status ?? "<unknown>"}.",
+                    "wpf_probe_binding_errors", correlationId, DateTimeOffset.UtcNow));
+            }
+        }
+    }
+
+    private async Task CollectValidationEvidenceAsync(
+        int processId,
+        UiSelector selector,
+        string correlationId,
+        List<EvidenceItem> evidence,
+        CancellationToken cancellationToken)
+    {
+        var validationResult = await probe.RequestAsync(processId,
+            new ProbeRequest(string.Empty, "validation", AutomationId: selector.AutomationId, Name: selector.Name), cancellationToken).ConfigureAwait(false);
+        if (validationResult.Success && validationResult.Value is { Success: true } validationResponse &&
+            TryGetArrayLength(validationResponse.Value, out var validationCount) && validationCount > 0)
+        {
+            evidence.Add(new EvidenceItem(EvidenceKind.Observed,
+                $"WPF validation reports {validationCount} error item(s) in the selected subtree.",
+                "wpf_probe_validation", correlationId, DateTimeOffset.UtcNow));
+        }
+    }
+
+    private void CollectSnapshotErrorEvidence(int processId, string correlationId, string evidencePrefix, List<EvidenceItem> evidence)
+    {
+        var snapshot = wpf.Snapshot(processId, maxElements: 300, maxDepth: 10);
+        if (snapshot.Success && snapshot.Value is not null)
+        {
+            foreach (var item in snapshot.Value.Elements.Where(element => ContainsErrorSignal(element.Name)).Take(10))
+            {
+                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
+                    $"{evidencePrefix} UI contains possible error/status text on {item.ControlType}: '{item.Name}'.",
+                    "wpf_snapshot", correlationId, DateTimeOffset.UtcNow));
+            }
+        }
+    }
+
+    private async Task<IReadOnlyList<BackendRequestObservation>> CollectBackendEvidenceAsync(
+        int? backendProcessId,
+        string correlationId,
+        DateTimeOffset started,
+        BackendEvidencePolicy policy,
+        BackendCorrelationObservation? correlation,
+        List<EvidenceItem> evidence,
+        List<string> unknowns,
+        CancellationToken cancellationToken)
+    {
+        if (backendProcessId is not int backendPid)
+        {
+            unknowns.Add(policy.MissingProcessUnknown);
+            return [];
+        }
+
+        IReadOnlyList<BackendRequestObservation> requests = [];
+        var backendResult = correlation is null
+            ? await backend.RequestAsync(backendPid, "recent", 200, cancellationToken).ConfigureAwait(false)
+            : await backend.RequestAsync(backendPid, "correlated", 200, cancellationToken,
+                correlationId, correlation.AfterSequence).ConfigureAwait(false);
+        if (backendResult.Success && backendResult.Value is { Success: true } response)
+        {
+            requests = ReadProbeList<BackendRequestObservation>(response.Value)
+                .Where(request => (policy.BypassWindowWhenCorrelated && correlation is not null) || request.TimestampUtc >= started - policy.ObservationWindow)
+                .ToArray();
+            foreach (var request in requests)
+            {
+                evidence.Add(new EvidenceItem(policy.ClaimKind,
+                    $"{policy.ClaimPrefix} {request.Method} {request.Path} returned HTTP {request.StatusCode} in {request.DurationMs:F1} ms.",
+                    correlation is null ? policy.UncorrelatedSource : policy.CorrelatedSource,
+                    request.TraceId ?? correlationId, request.TimestampUtc));
+                if (policy.IncludeExceptionEvidence && !string.IsNullOrWhiteSpace(request.ExceptionType))
+                {
+                    evidence.Add(new EvidenceItem(EvidenceKind.Observed,
+                        $"Backend exception observed: {request.ExceptionType}: {request.ExceptionMessage}",
+                        "aspnet_exceptions", request.TraceId ?? correlationId, request.TimestampUtc));
+                }
+            }
+        }
+        else
+        {
+            unknowns.Add(policy.UnavailableUnknown);
+        }
+
+        if (correlation is not null)
+            await EndBackendCorrelationAsync(backendPid, correlationId, unknowns, cancellationToken).ConfigureAwait(false);
+        return requests;
+    }
+
+    private async Task EndBackendCorrelationAsync(int backendProcessId, string correlationId, List<string> unknowns, CancellationToken cancellationToken)
+    {
+        // A failed end marker would leave the backend correlation lock held until it expires;
+        // that stuck-lock state must be visible in the report instead of silently discarded.
+        var end = await backend.RequestAsync(backendProcessId, "end_correlation", 1, cancellationToken, correlationId).ConfigureAwait(false);
+        if (!end.Success || end.Value is not { Success: true })
+            unknowns.Add("The backend adapter did not acknowledge the correlation end marker; the backend may retain the action correlation lock until it expires.");
+    }
+
+    private bool MapSourceEvidence(IEnumerable<string?> stacks, string sourceRoot, string correlationId, List<EvidenceItem> evidence)
+    {
+        var mappedAny = false;
+        foreach (var stack in stacks.Where(stack => !string.IsNullOrWhiteSpace(stack)).Take(10))
+        {
+            var mapped = source.MapStackTrace(stack!, sourceRoot, 20);
+            if (!mapped.Success || mapped.Value is null) continue;
+            foreach (var location in mapped.Value)
+            {
+                mappedAny = true;
+                evidence.Add(new EvidenceItem(EvidenceKind.Observed,
+                    $"Exception stack maps to approved source: {location.File}:{location.Line}.",
+                    "source_map_stacktrace", correlationId, DateTimeOffset.UtcNow));
+            }
+        }
+        return mappedAny;
+    }
+
+    private static readonly JsonSerializerOptions ProbeJsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     private static IReadOnlyList<T> ReadProbeList<T>(object? value)
     {
         if (value is JsonElement element)
         {
             try
             {
-                return element.Deserialize<List<T>>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+                return element.Deserialize<List<T>>(ProbeJsonOptions) ?? [];
             }
             catch (JsonException) { return []; }
         }
         return value as IReadOnlyList<T> ?? [];
+    }
+
+    private static T? ReadProbeValue<T>(object? value) where T : class
+    {
+        if (value is JsonElement element)
+        {
+            try
+            {
+                return element.Deserialize<T>(ProbeJsonOptions);
+            }
+            catch (JsonException) { return null; }
+        }
+        return value as T;
     }
 
     private static bool TryGetArrayLength(object? value, out int count)
@@ -377,38 +452,6 @@ public sealed class DiagnosisService(
             return true;
         }
         return false;
-    }
-
-    private static IReadOnlyList<BackendRequestObservation> ReadBackendObservations(object? value)
-    {
-        if (value is JsonElement element)
-        {
-            try
-            {
-                return element.Deserialize<List<BackendRequestObservation>>(new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                }) ?? [];
-            }
-            catch (JsonException) { return []; }
-        }
-        return value as IReadOnlyList<BackendRequestObservation> ?? [];
-    }
-
-    private static BackendCorrelationObservation? ReadBackendCorrelation(object? value)
-    {
-        if (value is JsonElement element)
-        {
-            try
-            {
-                return element.Deserialize<BackendCorrelationObservation>(new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-            }
-            catch (JsonException) { return null; }
-        }
-        return value as BackendCorrelationObservation;
     }
 
     private static bool ContainsErrorSignal(string? text)

@@ -15,7 +15,7 @@ namespace EngineeringMcp.Wpf;
 public sealed class WpfAutomationService(
     ProcessGuard processGuard,
     FilePolicyProvider policyProvider,
-    RedactionService redactionService)
+    RedactionService redactionService) : IWpfAutomationService
 {
     private sealed class AttachedSession : IDisposable
     {

@@ -6,9 +6,6 @@ namespace EngineeringMcp.Wpf;
 
 public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService redactor, FilePolicyProvider policyProvider)
 {
-    private const int MaxRequestBytes = 64 * 1024;
-    private const int MaxResponseBytes = 4 * 1024 * 1024;
-
     public async Task<ToolResult<ProbeResponse>> RequestAsync(int processId, ProbeRequest request, CancellationToken cancellationToken = default)
     {
         var allowed = processGuard.RequireAllowed(processId);
@@ -20,7 +17,7 @@ public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService r
         if (string.IsNullOrWhiteSpace(token) || token.Length < 32)
             return ToolResult<ProbeResponse>.Fail("PROBE_TOKEN_UNAVAILABLE", "ENGINEERING_MCP_PROBE_TOKEN is not configured in the MCP host.");
 
-        var pipeName = $"EngineeringMcp.WpfProbe.{processId}";
+        var pipeName = BoundedJsonPipeProtocol.WpfProbePipeName(processId);
         using var overallTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         overallTimeout.CancelAfter(TimeSpan.FromSeconds(12));
 
@@ -55,11 +52,11 @@ public sealed class WpfProbeClient(ProcessGuard processGuard, RedactionService r
             await using (pipe)
             {
                 var authenticated = request with { Token = token };
-                await BoundedJsonPipeProtocol.WriteAsync(pipe, authenticated, MaxRequestBytes, overallTimeout.Token)
+                await BoundedJsonPipeProtocol.WriteAsync(pipe, authenticated, BoundedJsonPipeProtocol.WpfProbeMaxRequestBytes, overallTimeout.Token)
                     .AsTask()
                     .WaitAsync(TimeSpan.FromSeconds(8), overallTimeout.Token)
                     .ConfigureAwait(false);
-                var response = await BoundedJsonPipeProtocol.ReadAsync<ProbeResponse>(pipe, MaxResponseBytes, overallTimeout.Token)
+                var response = await BoundedJsonPipeProtocol.ReadAsync<ProbeResponse>(pipe, BoundedJsonPipeProtocol.WpfProbeMaxResponseBytes, overallTimeout.Token)
                     .AsTask()
                     .WaitAsync(TimeSpan.FromSeconds(8), overallTimeout.Token)
                     .ConfigureAwait(false);

@@ -58,7 +58,6 @@ public sealed class DotNetDiagnosticsService(
             try { path = process.MainModule?.FileName; } catch { }
             return ToolResult<RuntimeProcessInfo>.Ok(new RuntimeProcessInfo(
                 processId,
-                RuntimeVersion: null,
                 CommandLine: path is null ? null : Path.GetFileName(path),
                 OperatingSystem: OperatingSystem.IsWindows() ? "Windows" : OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Unknown",
                 Architecture: System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString()));
@@ -104,10 +103,21 @@ public sealed class DotNetDiagnosticsService(
                 }
                 catch { }
             };
-            var processing = Task.Run(() => { try { source.Process(); } catch { } }, CancellationToken.None);
+            // A source that dies instantly must not be indistinguishable from a quiet counter stream.
+            Exception? processingFault = null;
+            var processing = Task.Run(() =>
+            {
+                try { source.Process(); }
+                catch (Exception ex) { processingFault = ex; }
+            }, CancellationToken.None);
             await Task.Delay(durationMs, cancellationToken).ConfigureAwait(false);
             try { session.Stop(); } catch { }
             await processing.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
+            if (processingFault is not null && latest.IsEmpty)
+                return ToolResult<IReadOnlyList<RuntimeCounterObservation>>.Fail(
+                    "EVENTPIPE_CAPTURE_UNAVAILABLE",
+                    "The diagnostics event stream ended before any counters were observed.",
+                    true);
             return ToolResult<IReadOnlyList<RuntimeCounterObservation>>.Ok(latest.Values.OrderBy(x => x.Name, StringComparer.Ordinal).ToArray());
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -197,6 +207,7 @@ public sealed class DotNetDiagnosticsService(
         EventPipeEventSource? source = null;
         Task? processing = null;
         string? captureWarning = null;
+        Exception? processingFault = null;
 
         // Diagnostics are best-effort. A failure to start EventPipe must never cause the caller
         // to execute an already-authorized UI action twice.
@@ -224,10 +235,11 @@ public sealed class DotNetDiagnosticsService(
                     processId,
                     "EventPipe:Microsoft-Windows-DotNETRuntime/ExceptionStart"));
             };
+            // A source that dies instantly must not be indistinguishable from a quiet exception stream.
             processing = Task.Run(() =>
             {
                 try { source.Process(); }
-                catch { }
+                catch (Exception ex) { processingFault = ex; }
             }, CancellationToken.None);
         }
         catch (Exception)
@@ -276,6 +288,8 @@ public sealed class DotNetDiagnosticsService(
             try { await processing.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false); }
             catch { captureWarning ??= "EVENTPIPE_PROCESSING_INCOMPLETE"; }
         }
+        if (processingFault is not null)
+            captureWarning ??= "EVENTPIPE_PROCESSING_FAULTED";
 
         try { source?.Dispose(); } catch { }
         try { session?.Dispose(); } catch { }
@@ -310,20 +324,39 @@ public sealed class DotNetDiagnosticsService(
             var id = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(12));
             var directory = GetSecureTraceDirectory();
             Directory.CreateDirectory(directory);
+            PruneExpiredTraces(directory);
             var path = Path.Combine(directory, $"trace-{id}.nettrace");
-            var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
             var providers = new[]
             {
                 new EventPipeProvider(ClrTraceEventParser.ProviderName, EventLevel.Informational,
                     (long)(ClrTraceEventParser.Keywords.Exception | ClrTraceEventParser.Keywords.GC | ClrTraceEventParser.Keywords.Threading | ClrTraceEventParser.Keywords.Contention))
             };
+            // The session is created before the trace file so a failed session start can never
+            // orphan an empty .nettrace file or leak its stream.
             var session = new DiagnosticsClient(processId).StartEventPipeSession(providers, requestRundown: true, circularBufferMB: 64);
+            FileStream file;
+            try
+            {
+                file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 64 * 1024, useAsync: true);
+            }
+            catch
+            {
+                try { session.Dispose(); } catch { }
+                throw;
+            }
             var copyTask = CopyBoundedTraceAsync(session, file);
             var active = new ActiveTrace { Id = id, ProcessId = processId, Path = path, StartedAtUtc = DateTimeOffset.UtcNow, Session = session, File = file, CopyTask = copyTask };
             if (!_traces.TryAdd(id, active))
             {
-                active.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                _ = DiscardTraceAsync(active);
                 return ToolResult<TraceHandle>.Fail("TRACE_ID_COLLISION", "Could not allocate a unique trace identifier.");
+            }
+            if (_traces.Count > MaxActiveTraces)
+            {
+                // Re-checked after admission so concurrent starts cannot exceed the active-trace limit.
+                if (_traces.TryRemove(id, out var excess))
+                    _ = DiscardTraceAsync(excess);
+                return ToolResult<TraceHandle>.Fail("TRACE_LIMIT_REACHED", $"At most {MaxActiveTraces} traces may be active at once.");
             }
             _ = AutoStopTraceAsync(id);
             return ToolResult<TraceHandle>.Ok(new TraceHandle(id, processId, "[LOCAL-REDACTED]", active.StartedAtUtc, "running"));
@@ -371,6 +404,18 @@ public sealed class DotNetDiagnosticsService(
         }
     }
 
+    // Fire-and-forget teardown for traces we are rejecting anyway (id collision or limit overflow):
+    // a hung Session.Stop() must not block the tool thread, and nothing can observe the result.
+    private static Task DiscardTraceAsync(ActiveTrace trace) =>
+        Task.Run(async () =>
+        {
+            try { await trace.DisposeAsync().ConfigureAwait(false); }
+            catch
+            {
+                // The rejected trace is best-effort and must not surface as an unobserved task failure.
+            }
+        });
+
     private async Task AutoStopTraceAsync(string traceId)
     {
         try
@@ -392,6 +437,21 @@ public sealed class DotNetDiagnosticsService(
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DotNetEngineeringMcp")
             : Path.GetFullPath(configured);
         return Path.Combine(root, "traces");
+    }
+
+    // Same bounds and best-effort semantics as ClrMdService.PruneExpiredDumps: a host crash can
+    // leave trace files behind that no live ActiveTrace will ever clean up.
+    private static void PruneExpiredTraces(string directory)
+    {
+        var cutoff = DateTime.UtcNow.AddHours(-24);
+        foreach (var file in Directory.EnumerateFiles(directory, "trace-*.nettrace", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                if (File.GetLastWriteTimeUtc(file) < cutoff) File.Delete(file);
+            }
+            catch { }
+        }
     }
 
     private string Safe(string value) => redactor.Redact(value, policyProvider.Current.Pii);

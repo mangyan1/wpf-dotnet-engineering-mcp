@@ -18,7 +18,8 @@ public sealed record SourceProjectInventory(
     IReadOnlyList<string> Projects,
     int CSharpFiles,
     int XamlFiles,
-    bool Truncated);
+    bool Truncated,
+    int SkippedEntries = 0);
 
 public sealed partial class SourceIntelligenceService(
     FileGuard fileGuard,
@@ -38,7 +39,8 @@ public sealed partial class SourceIntelligenceService(
 
         try
         {
-            var files = EnumerateApprovedFiles(allowed.Value, ["*.sln", "*.slnx", "*.csproj", "*.cs", "*.xaml"], MaxFilesToScan + 1).ToArray();
+            var skipped = 0;
+            var files = EnumerateApprovedFiles(allowed.Value, ["*.sln", "*.slnx", "*.csproj", "*.cs", "*.xaml"], MaxFilesToScan + 1, () => skipped++).ToArray();
             var truncated = files.Length > MaxFilesToScan;
             files = files.Take(MaxFilesToScan).ToArray();
             return ToolResult<SourceProjectInventory>.Ok(new SourceProjectInventory(
@@ -47,7 +49,8 @@ public sealed partial class SourceIntelligenceService(
                 files.Where(f => f.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)).ToArray(),
                 files.Count(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)),
                 files.Count(f => f.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase)),
-                truncated));
+                truncated,
+                skipped));
         }
         catch (Exception ex) { return ToolResult<SourceProjectInventory>.Fail("SOURCE_INVENTORY_FAILED", Safe(ex.Message)); }
     }
@@ -83,11 +86,9 @@ public sealed partial class SourceIntelligenceService(
         var results = new List<SourceLocation>();
         try
         {
-            foreach (var file in EnumerateApprovedFiles(rootResult.Value, ["*.cs"], MaxFilesToScan))
+            foreach (var (file, rootNode) in ScanCSharpFiles(EnumerateApprovedFiles(rootResult.Value, ["*.cs"], MaxFilesToScan)))
             {
                 if (results.Count >= maxResults) break;
-                var text = ReadSmallFile(file); if (text is null) continue;
-                var rootNode = CSharpSyntaxTree.ParseText(text).GetRoot();
                 IEnumerable<SyntaxNode> declarations = rootNode.DescendantNodes().Where(n => n switch
                 {
                     BaseTypeDeclarationSyntax t => t.Identifier.ValueText == symbolName,
@@ -117,11 +118,9 @@ public sealed partial class SourceIntelligenceService(
         var results = new List<SourceLocation>();
         try
         {
-            foreach (var file in EnumerateApprovedFiles(rootResult.Value, ["*.cs"], MaxFilesToScan))
+            foreach (var (file, syntaxRoot) in ScanCSharpFiles(EnumerateApprovedFiles(rootResult.Value, ["*.cs"], MaxFilesToScan), identifier))
             {
                 if (results.Count >= maxResults) break;
-                var text = ReadSmallFile(file); if (text is null || !text.Contains(identifier, StringComparison.Ordinal)) continue;
-                var syntaxRoot = CSharpSyntaxTree.ParseText(text).GetRoot();
                 foreach (var node in syntaxRoot.DescendantNodes().OfType<IdentifierNameSyntax>().Where(i => i.Identifier.ValueText == identifier))
                 {
                     results.Add(ToLocation(file, node, "IdentifierReference", identifier, FindContainer(node)));
@@ -145,11 +144,15 @@ public sealed partial class SourceIntelligenceService(
         if (!rootResult.Success || rootResult.Value is null)
             return ToolResult<IReadOnlyList<SourceLocation>>.Fail(rootResult.Error!.Code, rootResult.Error.Message);
         maxResults = Math.Clamp(maxResults, 1, 2_000);
+        var workspaceFailures = new List<string>();
 
         try
         {
             EnsureMsBuildRegistered();
             using var workspace = MSBuildWorkspace.Create();
+            // Workspace/project load failures are otherwise swallowed by Roslyn; collect them so a
+            // failed semantic search can explain which projects did not load.
+            workspace.RegisterWorkspaceFailedHandler(diagnostic => workspaceFailures.Add(diagnostic.Diagnostic.Message));
             var solutionPath = EnumerateApprovedFiles(rootResult.Value, ["*.sln", "*.slnx"], 2).FirstOrDefault();
             Solution solution;
             if (solutionPath is not null)
@@ -193,7 +196,10 @@ public sealed partial class SourceIntelligenceService(
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            return ToolResult<IReadOnlyList<SourceLocation>>.Fail("SEMANTIC_REFERENCE_SEARCH_FAILED", Safe(ex.Message), true);
+            var message = workspaceFailures.Count > 0
+                ? $"{Safe(ex.Message)} Workspace load diagnostics: {string.Join("; ", workspaceFailures.Take(5).Select(Safe))}"
+                : Safe(ex.Message);
+            return ToolResult<IReadOnlyList<SourceLocation>>.Fail("SEMANTIC_REFERENCE_SEARCH_FAILED", message, true);
         }
     }
 
@@ -216,17 +222,10 @@ public sealed partial class SourceIntelligenceService(
         var findings = new List<XamlFinding>();
         try
         {
-            foreach (var file in targets.Value)
+            foreach (var (file, doc) in ScanXamlDocuments(targets.Value, onParseError: (parseFile, ex) =>
+                findings.Add(new XamlFinding(parseFile, ex.LineNumber, "high", "XAML_PARSE", "XAML is not well-formed.", Safe(ex.Message)))))
             {
                 if (findings.Count >= maxResults) break;
-                var text = ReadSmallFile(file); if (text is null) continue;
-                XDocument doc;
-                try { doc = XDocument.Parse(text, LoadOptions.SetLineInfo | LoadOptions.PreserveWhitespace); }
-                catch (XmlException ex)
-                {
-                    findings.Add(new XamlFinding(file, ex.LineNumber, "high", "XAML_PARSE", "XAML is not well-formed.", Safe(ex.Message)));
-                    continue;
-                }
 
                 foreach (var element in doc.Descendants())
                 {
@@ -270,17 +269,13 @@ public sealed partial class SourceIntelligenceService(
         if (!targets.Success || targets.Value is null) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(targets.Error!.Code, targets.Error.Message);
         maxResults = Math.Clamp(maxResults, 1, 1_000);
         var results = new List<SourceLocation>();
-        foreach (var file in targets.Value)
+        foreach (var (file, document) in ScanXamlDocuments(targets.Value, bindingPath))
         {
             if (results.Count >= maxResults) break;
-            var text = ReadSmallFile(file); if (text is null || !text.Contains(bindingPath, StringComparison.Ordinal)) continue;
-            XDocument doc;
-            try { doc = XDocument.Parse(text, LoadOptions.SetLineInfo); } catch { continue; }
-            foreach (var attr in doc.Descendants().Attributes())
+            foreach (var attr in document.Descendants().Attributes())
             {
                 if (!attr.Value.Contains("{Binding", StringComparison.Ordinal) || !BindingPathMatches(attr.Value, bindingPath)) continue;
-                var info = (IXmlLineInfo)attr;
-                results.Add(new SourceLocation(file, info.HasLineInfo() ? info.LineNumber : 1, info.HasLineInfo() ? info.LinePosition : 1, "XamlBinding", bindingPath, attr.Parent?.Name.LocalName));
+                results.Add(ToAttributeLocation(file, attr, "XamlBinding", bindingPath));
                 if (results.Count >= maxResults) break;
             }
         }
@@ -331,19 +326,40 @@ public sealed partial class SourceIntelligenceService(
         var targets = ResolveXamlTargets(path);
         if (!targets.Success || targets.Value is null) return ToolResult<IReadOnlyList<SourceLocation>>.Fail(targets.Error!.Code, targets.Error.Message);
         var results = new List<SourceLocation>();
-        foreach (var file in targets.Value)
+        foreach (var (file, document) in ScanXamlDocuments(targets.Value, value))
         {
             if (results.Count >= maxResults) break;
-            var text = ReadSmallFile(file); if (text is null || !text.Contains(value, StringComparison.Ordinal)) continue;
-            XDocument doc; try { doc = XDocument.Parse(text, LoadOptions.SetLineInfo); } catch { continue; }
-            foreach (var attr in doc.Descendants().Attributes().Where(a => XamlAttributeNameMatches(a.Name.LocalName, attributeLocalName) && a.Value == value))
+            foreach (var attr in document.Descendants().Attributes().Where(a => XamlAttributeNameMatches(a.Name.LocalName, attributeLocalName) && a.Value == value))
             {
-                var info = (IXmlLineInfo)attr;
-                results.Add(new SourceLocation(file, info.HasLineInfo() ? info.LineNumber : 1, info.HasLineInfo() ? info.LinePosition : 1, kind, value, attr.Parent?.Name.LocalName));
+                results.Add(ToAttributeLocation(file, attr, kind, value));
                 if (results.Count >= maxResults) break;
             }
         }
         return ToolResult<IReadOnlyList<SourceLocation>>.Ok(results);
+    }
+
+    // Shared XAML scan: bounded read, substring pre-filter, parse with line info, and lazy
+    // per-document yields so callers keep their own max-results early-exit semantics. The laziness
+    // is approximate: a caller that stops mid-enumeration may still have paid one extra parse past
+    // its cap, and any findings from that file are dropped by the caller's final Take.
+    private IEnumerable<(string File, XDocument Document)> ScanXamlDocuments(IEnumerable<string> files, string? requiredSubstring = null, Action<string, XmlException>? onParseError = null)
+    {
+        foreach (var file in files)
+        {
+            var text = ReadSmallFile(file);
+            if (text is null) continue;
+            if (requiredSubstring is not null && !text.Contains(requiredSubstring, StringComparison.Ordinal)) continue;
+            XDocument document;
+            try { document = XDocument.Parse(text, LoadOptions.SetLineInfo | LoadOptions.PreserveWhitespace); }
+            catch (XmlException ex) { onParseError?.Invoke(file, ex); continue; }
+            yield return (file, document);
+        }
+    }
+
+    private static SourceLocation ToAttributeLocation(string file, XAttribute attribute, string kind, string value)
+    {
+        var info = (IXmlLineInfo)attribute;
+        return new SourceLocation(file, info.HasLineInfo() ? info.LineNumber : 1, info.HasLineInfo() ? info.LinePosition : 1, kind, value, attribute.Parent?.Name.LocalName);
     }
 
     private ToolResult<IReadOnlyList<string>> ResolveXamlTargets(string path)
@@ -372,7 +388,7 @@ public sealed partial class SourceIntelligenceService(
         return Directory.Exists(allowed.Value) ? ToolResult<string>.Ok(allowed.Value) : ToolResult<string>.Fail("DIRECTORY_REQUIRED", "An approved directory is required.");
     }
 
-    private IEnumerable<string> EnumerateApprovedFiles(string root, string[] patterns, int limit)
+    private IEnumerable<string> EnumerateApprovedFiles(string root, string[] patterns, int limit, Action? onSkipped = null)
     {
         var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         var seen = new HashSet<string>(comparer);
@@ -384,12 +400,12 @@ public sealed partial class SourceIntelligenceService(
             var directory = pending.Pop();
             ToolResult<string> approvedDirectory;
             try { approvedDirectory = fileGuard.RequireReadable(directory); }
-            catch { continue; }
-            if (!approvedDirectory.Success || approvedDirectory.Value is null) continue;
+            catch { onSkipped?.Invoke(); continue; }
+            if (!approvedDirectory.Success || approvedDirectory.Value is null) { onSkipped?.Invoke(); continue; }
 
             IEnumerable<string> files;
             try { files = Directory.EnumerateFiles(approvedDirectory.Value, "*", SearchOption.TopDirectoryOnly).ToArray(); }
-            catch { continue; }
+            catch { onSkipped?.Invoke(); continue; }
 
             foreach (var path in files)
             {
@@ -397,21 +413,21 @@ public sealed partial class SourceIntelligenceService(
                 if (!patterns.Any(pattern => FileNameMatchesPattern(Path.GetFileName(path), pattern))) continue;
                 if (!seen.Add(path)) continue;
                 var allowed = fileGuard.RequireReadable(path);
-                if (!allowed.Success || allowed.Value is null) continue;
+                if (!allowed.Success || allowed.Value is null) { onSkipped?.Invoke(); continue; }
                 yield return allowed.Value;
             }
 
             IEnumerable<string> children;
             try { children = Directory.EnumerateDirectories(approvedDirectory.Value, "*", SearchOption.TopDirectoryOnly).ToArray(); }
-            catch { continue; }
+            catch { onSkipped?.Invoke(); continue; }
             foreach (var child in children)
             {
                 try
                 {
-                    if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) != 0) continue;
+                    if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) != 0) { onSkipped?.Invoke(); continue; }
                     pending.Push(child);
                 }
-                catch { /* fail closed: inaccessible/unverifiable directory is skipped */ }
+                catch { onSkipped?.Invoke(); /* fail closed: inaccessible/unverifiable directory is skipped */ }
             }
         }
     }
@@ -431,6 +447,21 @@ public sealed partial class SourceIntelligenceService(
             return info.Length <= MaxFileBytes ? File.ReadAllText(file) : null;
         }
         catch { return null; }
+    }
+
+    // Shared per-file Roslyn scan: bounded read, optional substring pre-filter, parse, and lazy
+    // per-document yields so callers keep their own max-results early-exit semantics. The laziness
+    // is approximate: a caller that stops mid-enumeration may still have paid one extra parse past
+    // its cap, and any findings from that file are dropped by the caller's final Take.
+    private IEnumerable<(string File, SyntaxNode Root)> ScanCSharpFiles(IEnumerable<string> files, string? requiredSubstring = null)
+    {
+        foreach (var file in files)
+        {
+            var text = ReadSmallFile(file);
+            if (text is null) continue;
+            if (requiredSubstring is not null && !text.Contains(requiredSubstring, StringComparison.Ordinal)) continue;
+            yield return (file, CSharpSyntaxTree.ParseText(text).GetRoot());
+        }
     }
 
     private static SourceLocation ToLocation(string file, SyntaxNode node, string kind, string name, string? container)
