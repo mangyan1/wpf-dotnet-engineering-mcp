@@ -36,7 +36,11 @@ public static class SystemTools
 
     [McpServerTool(Name = "system_policy_diagnostics", UseStructuredContent = true), Description("Explains effective policy restrictions and safe remediation steps without returning policy paths, process paths, source roots, secrets, or tokens.")]
     public static PolicyDiagnosticReport PolicyDiagnosticReport(FilePolicyProvider policy)
-        => PolicyDiagnostics.Analyze(policy.Current, policy.Source);
+        => PolicyDiagnostics.Analyze(policy.Current, policy.Source) with
+        {
+            // MCP-facing diagnostics keep collapsing the source so policy paths never leave the host.
+            PolicySource = policy.Source == "locked-down-default" ? policy.Source : "configured-file"
+        };
 
     [McpServerTool(Name = "system_tool_preflight", UseStructuredContent = true), Description("Authoritatively reports whether one exact tool is published and allowed by the active policy and runtime capability registry. Agents must call this before claiming that a tool is policy-disabled; target, selector, and input validation still occur only when the tool is invoked.")]
     public static ToolPreflightReport ToolPreflight(

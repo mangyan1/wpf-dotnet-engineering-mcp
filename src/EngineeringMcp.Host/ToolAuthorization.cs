@@ -65,7 +65,7 @@ public sealed class ToolAuthorization(
     {
         try
         {
-            audit.WriteAsync(evt).AsTask().GetAwaiter().GetResult();
+            audit.Write(evt);
             return true;
         }
         catch

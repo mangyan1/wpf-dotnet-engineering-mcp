@@ -6,13 +6,25 @@ namespace EngineeringMcp.Security;
 
 public sealed class ProcessGuard(FilePolicyProvider policyProvider)
 {
+    /// <summary>
+    /// Advisory process classification for listings; the result must not gate a security decision.
+    /// Authorization must use <see cref="RequireAllowed"/>, which fails closed and verifies the
+    /// executable path and hash.
+    /// </summary>
     public ProcessDescriptor Describe(Process process)
     {
         string? path = null;
         try { path = process.MainModule?.FileName; } catch { }
 
-        var (allowed, reason) = Evaluate(process.ProcessName, path);
-        return new ProcessDescriptor(process.Id, process.ProcessName, path, allowed, reason);
+        string processName;
+        try { processName = process.ProcessName; }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            return new ProcessDescriptor(process.Id, string.Empty, path, Allowed: false, "Process exited before it could be classified.");
+        }
+
+        var (allowed, reason) = Evaluate(processName, path);
+        return new ProcessDescriptor(process.Id, processName, path, allowed, reason);
     }
 
     public ToolResult<Process> RequireAllowed(int processId)
@@ -38,7 +50,19 @@ public sealed class ProcessGuard(FilePolicyProvider policyProvider)
                 remediation: "Run Engineering MCP and the target in the same user session and elevation level, then retry. Do not bypass path verification.");
         }
 
-        var match = FindMatchingRule(process.ProcessName, path);
+        string processName;
+        try { processName = process.ProcessName; }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            // The PID can die between GetProcessById and this read; fail closed instead of escaping.
+            process.Dispose();
+            return ToolResult<Process>.Fail(
+                "PROCESS_NOT_FOUND",
+                "The target process does not exist.",
+                remediation: "Refresh the target process list and retry with a currently running process identifier.");
+        }
+
+        var match = FindMatchingRule(processName, path);
         if (match is null)
         {
             process.Dispose();
@@ -87,8 +111,18 @@ public sealed class ProcessGuard(FilePolicyProvider policyProvider)
                     "Configured SHA-256 is not valid hexadecimal.",
                     remediation: "Correct the process allowlist sha256 value in the selected policy, validate the policy, and restart the MCP server.");
             }
-            using var stream = File.OpenRead(path);
-            var actual = SHA256.HashData(stream);
+
+            byte[] actual;
+            try { actual = Convert.FromHexString(HashFile(path)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // The executable can be swapped or locked mid-verification; fail closed.
+                process.Dispose();
+                return ToolResult<Process>.Fail(
+                    "PROCESS_HASH_UNVERIFIABLE",
+                    "The executable hash could not be read because the file was inaccessible or replaced during verification.",
+                    remediation: "Run Engineering MCP and the target in the same user session and elevation level so the executable can be verified.");
+            }
             if (!CryptographicOperations.FixedTimeEquals(expected, actual))
             {
                 process.Dispose();
@@ -100,6 +134,13 @@ public sealed class ProcessGuard(FilePolicyProvider policyProvider)
         }
 
         return ToolResult<Process>.Ok(process);
+    }
+
+    /// <summary>Computes the uppercase SHA-256 of a file. No caching: the key metadata an attacker can spoof, and verification runs once per tool call.</summary>
+    internal static string HashFile(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
     }
 
     private (bool Allowed, string Reason) Evaluate(string processName, string? path)

@@ -239,7 +239,15 @@ check('ProcessEnvironmentSanitizer.SanitizePathInPlace' in selftest and
       'remediation' in (ROOT / 'src/EngineeringMcp.Contracts/SecurityModels.cs').read_text(encoding='utf-8').lower(),
       "Child environment sanitization and actionable failure contract are wired")
 
-workspace_provisioner = (ROOT / 'src/EngineeringMcp.Security/WpfWorkspacePolicyProvisioner.cs').read_text(encoding='utf-8')
+# The workspace authorization surface was split into the orchestrator plus scanner, PE
+# inspection, and shared path-guard helpers; assert against their concatenated text so the
+# security-critical constructs remain present somewhere in the workspace-authorization code.
+workspace_authorization_sources = '\n'.join((ROOT / path).read_text(encoding='utf-8') for path in [
+    'src/EngineeringMcp.Security/WpfWorkspacePolicyProvisioner.cs',
+    'src/EngineeringMcp.Security/WorkspaceProjectScanner.cs',
+    'src/EngineeringMcp.Security/PeInspection.cs',
+    'src/EngineeringMcp.Security/PathGuard.cs'])
+workspace_provisioner = workspace_authorization_sources
 check('MaximumDirectories = 4096' in workspace_provisioner and
       'FileAttributes.ReparsePoint' in workspace_provisioner and
       'UseWPF' in workspace_provisioner and
