@@ -206,17 +206,13 @@ check('permissions:\n  contents: read' in ci_workflow and
       len(ci_actions) == 4,
       "Public CI is read-only, lock-file-driven, and pins official actions by commit")
 dependabot = (ROOT / '.github/dependabot.yml').read_text(encoding='utf-8')
-check('package-ecosystem: nuget' in dependabot and
-      '- "/installer"' in dependabot and
-      '- "/src/*"' in dependabot and
-      '- "/tests/*"' in dependabot and
-      'group-by: dependency-name' in dependabot and
+check('package-ecosystem: nuget' not in dependabot and
       'package-ecosystem: npm' in dependabot and
       'directory: "/vscode-extension"' in dependabot and
       'package-ecosystem: github-actions' in dependabot and
       (ROOT / '.github/CODEOWNERS').exists() and
       (ROOT / 'CONTRIBUTING.md').exists(),
-      "Dependabot covers NuGet, installer, VS Code, and GitHub Actions dependencies")
+      "Dependabot covers VS Code and GitHub Actions; NuGet bumps use the manual locked-restore protocol")
 vulnerability_script = (ROOT / 'scripts/Test-NuGetVulnerabilities.ps1').read_text(encoding='utf-8')
 check('Test-NuGetVulnerabilities.ps1' in ci_workflow and
       'DotNetEngineeringMcp.sln' in vulnerability_script and
