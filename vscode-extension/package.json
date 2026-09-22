@@ -2,7 +2,7 @@
   "name": "dotnet-wpf-engineering-mcp",
   "displayName": ".NET/WPF Engineering MCP",
   "description": "Registers the shared local .NET/WPF Engineering MCP Streamable HTTP service with VS Code.",
-  "version": "0.2.0",
+  "version": "0.3.7-preview.6",
   "publisher": "local-development",
   "license": "Apache-2.0",
   "engines": {

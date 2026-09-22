@@ -1,15 +1,14 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
+using EngineeringMcp.Contracts;
 
 namespace EngineeringMcp.Host;
 
 internal static class HttpBearerAuthentication
 {
-    private const int MinimumTokenLength = 32;
-
     public static bool IsStrongToken([NotNullWhen(true)] string? token)
-        => !string.IsNullOrWhiteSpace(token) && token.Length >= MinimumTokenLength;
+        => !string.IsNullOrWhiteSpace(token) && token.Length >= McpRuntimeDefaults.MinimumTokenLength;
 
     public static bool IsAuthorized(string? authorizationHeader, string expectedToken)
     {

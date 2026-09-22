@@ -116,10 +116,4 @@ public sealed class SourceIntegrationTests
         Assert.IsTrue(result.Value!.All(location => Path.GetFullPath(location.File).StartsWith(root, StringComparison.OrdinalIgnoreCase)));
         Assert.IsTrue(result.Value!.All(location => location.Kind == "SemanticReference"));
     }
-
-    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
-    {
-        public override McpPolicy Current { get; } = policy;
-        public override string Source => "test";
-    }
 }

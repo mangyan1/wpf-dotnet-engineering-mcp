@@ -17,7 +17,7 @@ The Windows Control Center keeps the shared local MCP runtime, validation, edito
 ## Why this repository is verifiable
 
 - Source, build scripts, release notes, dependency lock files, and security policies are public and versioned together.
-- GitHub CI restores locked dependencies, builds on Windows with the pinned .NET SDK, runs all automated tests, and executes the static, product-neutrality, and sanitized secret gates.
+- GitHub CI restores locked dependencies, builds on Windows with the pinned .NET SDK, builds the MSI installer, runs all automated tests (uploading test results only for failed runs), and executes the static, product-neutrality, sanitized secret, and CodeQL gates.
 - The MCP HTTP endpoint is loopback-only, authenticated, non-cacheable, and bounded. Network access from tools is denied unless an explicit policy authorizes it.
 - The application contains no telemetry, analytics, crash reporting, or remote logging. It does not upload source, screenshots, diagnostics, or application data automatically.
 - Release packages contain an SPDX SBOM, dependency inventory, SHA-256 manifest, security documentation, and code-signing disclosure.
@@ -127,7 +127,7 @@ The package contains the Control Center, private MCP host, locked-down default p
 
 The MSI installs per-user under `%LOCALAPPDATA%\Programs\Engineering MCP` without elevation, adds Start Menu and Desktop shortcuts, and supports repair, upgrade, and uninstall. Application files and shortcuts are removed on uninstall. User-level MCP configuration, security tokens, selected policy, and environment selection are intentionally preserved so a reinstall does not break editor registration.
 
-Standalone mode keeps server control, protocol testing, policy selection, and **Connect to VS Code**. Repository builds and fixtures remain available only from a source checkout. To authorize any WPF application, use **Authorize WPF workspace** and select the solution or repository root after building the application. Engineering MCP discovers built `UseWPF=true` executable projects, creates exact-path process rules, enables privacy-safe WPF/source diagnostics, and stores the validated policy outside the installation directory. Multiple workspaces receive distinct durable policies. The installer itself defaults to metadata-only access.
+Standalone mode keeps server control, protocol testing, policy selection, and **Connect to VS Code**. Repository builds and fixtures remain available only from a source checkout. To authorize any WPF application, use **Authorize WPF workspace** and select the solution or repository root after building the application. Engineering MCP discovers built `UseWPF=true` executable projects, creates exact-path process rules pinned by the executable's SHA-256, enables privacy-safe WPF/source diagnostics, and stores the validated policy outside the installation directory. Rebuilding the application changes its SHA-256, so authorize the workspace again after a rebuild. Multiple workspaces receive distinct durable policies. The installer itself defaults to metadata-only access.
 
 See [`docs/WPF-WORKSPACES.md`](docs/WPF-WORKSPACES.md) for safe centralized-property discovery, manual executable authorization, policy boundaries, classic WPF support, and the application-integration contract.
 

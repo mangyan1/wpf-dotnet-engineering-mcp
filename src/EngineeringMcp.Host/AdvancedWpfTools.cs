@@ -19,7 +19,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as Button or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_wait_absent", processId, service, auth,
-            () => service.WaitAbsent(processId, Selector(automationId, name, controlType, reference), timeoutMs, cancellationToken));
+            () => service.WaitAbsent(processId, WpfTools.Selector(automationId, name, controlType, reference), timeoutMs, cancellationToken));
 
     [McpServerTool(Name = "wpf_wait_hidden", UseStructuredContent = true), Description("Waits until a semantic element is offscreen/hidden. Returns metadata only and never returns UI text or values.")]
     public static ToolResult<UiConditionResult> WaitHidden(
@@ -31,7 +31,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as Button or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_wait_hidden", processId, service, auth,
-            () => service.WaitHidden(processId, Selector(automationId, name, controlType, reference), timeoutMs, cancellationToken));
+            () => service.WaitHidden(processId, WpfTools.Selector(automationId, name, controlType, reference), timeoutMs, cancellationToken));
 
     [McpServerTool(Name = "wpf_wait_disabled", UseStructuredContent = true), Description("Waits until a semantic element is disabled. Returns metadata only and never evaluates application commands.")]
     public static ToolResult<UiConditionResult> WaitDisabled(
@@ -43,7 +43,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as Button or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_wait_disabled", processId, service, auth,
-            () => service.WaitDisabled(processId, Selector(automationId, name, controlType, reference), timeoutMs, cancellationToken));
+            () => service.WaitDisabled(processId, WpfTools.Selector(automationId, name, controlType, reference), timeoutMs, cancellationToken));
 
     [McpServerTool(Name = "wpf_assert_exists", UseStructuredContent = true), Description("Asserts that a semantic element exists and returns a metadata-only assertion result.")]
     public static ToolResult<SafeUiAssertionResult> AssertExists(
@@ -54,7 +54,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as Button or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_assert_exists", processId, service, auth,
-            () => service.AssertExists(processId, Selector(automationId, name, controlType, reference)));
+            () => service.AssertExists(processId, WpfTools.Selector(automationId, name, controlType, reference)));
 
     [McpServerTool(Name = "wpf_assert_not_exists", UseStructuredContent = true), Description("Asserts that a semantic element is absent and returns no element text or values.")]
     public static ToolResult<SafeUiAssertionResult> AssertNotExists(
@@ -65,7 +65,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as Button or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_assert_not_exists", processId, service, auth,
-            () => service.AssertNotExists(processId, Selector(automationId, name, controlType, reference)));
+            () => service.AssertNotExists(processId, WpfTools.Selector(automationId, name, controlType, reference)));
 
     [McpServerTool(Name = "wpf_assert_pattern", UseStructuredContent = true), Description("Asserts that an element exposes a named UI Automation pattern without reading its text or value.")]
     public static ToolResult<SafeUiAssertionResult> AssertPattern(
@@ -77,7 +77,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as Button or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_assert_pattern", processId, service, auth,
-            () => service.AssertPattern(processId, Selector(automationId, name, controlType, reference), pattern));
+            () => service.AssertPattern(processId, WpfTools.Selector(automationId, name, controlType, reference), pattern));
 
     [McpServerTool(Name = "wpf_selector_audit", UseStructuredContent = true), Description("Audits selector stability using counts, issue codes, control types, and opaque references only. Raw names and AutomationIds are withheld.")]
     public static ToolResult<SelectorAuditSummary> SelectorAudit(
@@ -112,7 +112,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type; typically DataGrid or Table.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_grid_summary", processId, service, auth,
-            () => service.GridSummary(processId, Selector(automationId, name, controlType, reference)));
+            () => service.GridSummary(processId, WpfTools.Selector(automationId, name, controlType, reference)));
 
     [McpServerTool(Name = "wpf_tree_summary", UseStructuredContent = true), Description("Returns TreeView structural counts and expansion capability only; node labels and values are omitted.")]
     public static ToolResult<TreeMetadataSummary> TreeSummary(
@@ -123,7 +123,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type; typically Tree.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_tree_summary", processId, service, auth,
-            () => service.TreeSummary(processId, Selector(automationId, name, controlType, reference)));
+            () => service.TreeSummary(processId, WpfTools.Selector(automationId, name, controlType, reference)));
 
     [McpServerTool(Name = "wpf_items_summary", UseStructuredContent = true), Description("Returns aggregate list/grid/tree item counts and states only; item text and values are omitted.")]
     public static ToolResult<ItemsMetadataSummary> ItemsSummary(
@@ -134,7 +134,7 @@ public static class AdvancedWpfTools
         [Description("WPF UI Automation control type, such as List, Tree, or DataGrid.")] string? controlType = null,
         [Description("Opaque UI element reference returned by an earlier MCP UI query.")] string? reference = null)
         => Run("wpf_items_summary", processId, service, auth,
-            () => service.ItemsSummary(processId, Selector(automationId, name, controlType, reference)));
+            () => service.ItemsSummary(processId, WpfTools.Selector(automationId, name, controlType, reference)));
 
     [McpServerTool(Name = "wpf_accessibility_summary", UseStructuredContent = true), Description("Returns aggregate accessibility/testability counts only. Accessible names and application content are never returned.")]
     public static ToolResult<AccessibilityMetadataSummary> AccessibilitySummary(
@@ -149,8 +149,5 @@ public static class AdvancedWpfTools
         => Run("wpf_window_state", processId, service, auth, () => service.WindowState(processId));
 
     private static ToolResult<T> Run<T>(string name, int processId, WpfSafeInspectionService service, ToolAuthorization auth, Func<ToolResult<T>> action)
-        => ToolRun.Sync(auth, ToolPolicies.Read(name, "wpf.uia.read"), processId.ToString(), action);
-
-    private static UiSelector Selector(string? automationId, string? name, string? controlType, string? reference)
-        => new(Reference: reference, AutomationId: automationId, Name: name, ControlType: controlType);
+        => ToolRun.Sync(auth, ToolPolicyCatalog.Get(name).ToPolicy(), processId.ToString(), action);
 }

@@ -80,7 +80,7 @@ check('UseUrls(launch.ListenUrl)' in program and 'IPAddress.IsLoopback' in progr
       "HTTP service is loopback guarded")
 check('UseCors' not in program and 'AddCors' not in program,
       "HTTP service does not enable CORS")
-check('MaxRequestBodySize = 1_048_576' in program and 'SemaphoreSlim(8, 8)' in program,
+check('MaxRequestBodySize = McpRuntimeDefaults.MaxHttpBodyBytes' in program and 'SemaphoreSlim(8, 8)' in program,
       "HTTP request size and concurrency are bounded")
 check('http://127.0.0.1:8765' in runtime and 'McpPath = "/mcp"' in runtime,
       "Runtime endpoint centralized")
@@ -203,7 +203,7 @@ check('permissions:\n  contents: read' in ci_workflow and
       'persist-credentials: false' in ci_workflow and
       'dotnet restore DotNetEngineeringMcp.sln --runtime win-x64 --locked-mode' in ci_workflow and
       'dotnet restore installer/EngineeringMcp.Installer.wixproj --locked-mode' in ci_workflow and
-      len(ci_actions) == 2,
+      len(ci_actions) == 4,
       "Public CI is read-only, lock-file-driven, and pins official actions by commit")
 dependabot = (ROOT / '.github/dependabot.yml').read_text(encoding='utf-8')
 check('package-ecosystem: nuget' in dependabot and
@@ -239,7 +239,15 @@ check('ProcessEnvironmentSanitizer.SanitizePathInPlace' in selftest and
       'remediation' in (ROOT / 'src/EngineeringMcp.Contracts/SecurityModels.cs').read_text(encoding='utf-8').lower(),
       "Child environment sanitization and actionable failure contract are wired")
 
-workspace_provisioner = (ROOT / 'src/EngineeringMcp.Security/WpfWorkspacePolicyProvisioner.cs').read_text(encoding='utf-8')
+# The workspace authorization surface was split into the orchestrator plus scanner, PE
+# inspection, and shared path-guard helpers; assert against their concatenated text so the
+# security-critical constructs remain present somewhere in the workspace-authorization code.
+workspace_authorization_sources = '\n'.join((ROOT / path).read_text(encoding='utf-8') for path in [
+    'src/EngineeringMcp.Security/WpfWorkspacePolicyProvisioner.cs',
+    'src/EngineeringMcp.Security/WorkspaceProjectScanner.cs',
+    'src/EngineeringMcp.Security/PeInspection.cs',
+    'src/EngineeringMcp.Security/PathGuard.cs'])
+workspace_provisioner = workspace_authorization_sources
 check('MaximumDirectories = 4096' in workspace_provisioner and
       'FileAttributes.ReparsePoint' in workspace_provisioner and
       'UseWPF' in workspace_provisioner and

@@ -1,3 +1,63 @@
 # Adversarial Tests
 
-Reserved by the architecture. **Not implemented yet.** Follow `docs/ROADMAP.md` and do not advertise this capability until its phase gate passes.
+Hostile-input tests for the policy engine, tool gate, authorization, file guard, diagnostic IPC, and redaction seams, plus unit tests for the failure-correlation service and the audit hash chain. All dependencies are exercised through the same interfaces the host wires in `Program.cs` (`IWpfAutomationService`, `IWpfProbeClient`, `IBackendProbeClient`, `IDotNetDiagnosticsService`), so no test launches a real WPF process or host.
+
+Run with `dotnet test tests/EngineeringMcp.AdversarialTests --configuration Release --no-build` from the repository root. Targets `net10.0-windows10.0.19041.0` (the reparse-point test needs NTFS junctions; it reports `Inconclusive` when the filesystem refuses them).
+
+## AdversarialTests.cs
+
+- PromptInjectionText_RemainsData_AndSecretsAreRedacted
+- MultipleSecretShapes_DoNotSurviveRedaction
+
+## AuditChainTests.cs
+
+Verifies the `JsonLinesAuditSink` record-hash chain by re-walking written files with only the documented genesis constant — the detection property that docs/ADR/0001 relies on.
+
+- RecordHashChain_IsVerifiableByRewalkingTheFile
+- TamperedRecord_DivergesFromRecomputedChain
+
+## DiagnosisServiceTests.cs
+
+Covers `DiagnosisService` decision logic against fake WPF/probe/backend/diagnostics seams: evidence windows, verdict mapping, backend correlation markers, and source mapping.
+
+- Observe_QueryFailure_ForwardsPolicyFailureWithoutDiagnosis
+- Observe_QuietSurface_StatesUnknownsInsteadOfClaimingFailure
+- Observe_ProbeExceptionWithinPositiveWindow_IsObservedFailureEvidence
+- Observe_ProbeExceptionOlderThanWindow_IsExcludedFromEvidence
+- Observe_ProbeTransportFailure_StatesProbeUnknownWithoutEvidence
+- Observe_ProbeInnerFailure_IsDistinguishedFromTransportFailure
+- Observe_BindingAndValidationEvidence_CarrySelectorAndFailTheVerdict
+- Observe_SnapshotErrorText_IsBoundedAndUsesBoundedSnapshotRequest
+- Observe_BackendProbeFailure_AddsAdapterUnknownInsteadOfEvidence
+- Observe_BackendServerErrorWithinWindow_IsObservedFailureEvidence
+- Observe_BackendRequestOutsideWindow_IsExcluded
+- Click_BeforeQueryFailure_FailsForwardedWithoutCaptureOrClick
+- Click_FailedInvocation_ClampsWindowAndReportsFailedStatus
+- Click_UnavailableCapture_StatesExecutionStillHappenedExactlyOnce
+- Click_RuntimeExceptionDuringAction_IsObservedEvidenceAndFailsVerdict
+- Click_AcceptedCorrelation_UsesMarkerSequencesAndBypassesWindow
+- Click_DeclinedCorrelation_FallsBackToTimeWindowWithExceptionEvidence
+- Click_DeclinedCorrelation_ExcludesRequestsOutsideOneSecondWindow
+- Click_UnacknowledgedEndMarker_SurfacesStuckCorrelationLock
+- Click_AbortedCapture_StillReleasesBackendCorrelationMarker
+- Click_QuietAction_StatesAbsenceOfEvidenceAndBackendNextStep
+- Click_SourceMappingOverApprovedRoot_ProducesSourceEvidence
+- Click_SourceMappingWithoutStackLocations_StatesUnknownAndNextStep
+
+## HostileInputTests.cs
+
+- PolicyEngine_ToolLists_DenyUnknownAndDisabledTools
+- PolicyEngine_DenyByDefault_RejectsDestructiveActionsWithoutExplicitApproval
+- ToolGate_AppliesConfiguredPolicyAndCapabilityState
+- ToolPolicyCatalog_UnknownToolNameIsNotPublished
+- ToolAuthorization_FailingAuditSink_DeniesThenLatchesUntilRestart
+- ToolAuthorization_CompletionAuditFailure_TripsTheGateForLaterCalls
+- ToolAuthorization_ToolNotEnabled_IsDeniedAndAudited
+- ToolAuthorization_AuditDisabledPolicy_DoesNotDenyOnBrokenSink
+- FileGuard_RelativeTraversal_CannotEscapeTheApprovedReadRoot
+- FileGuard_ReparsePointInsideApprovedRoot_IsDenied
+- FileGuard_BuiltInSensitiveRules_HoldEvenWithoutPolicyDenyGlobs
+- BoundedJsonPipeProtocol_RejectsNonPositiveAndIllFormedFrames
+- BoundedJsonPipeProtocol_WriteAsync_RefusesOversizedPayloadWithoutWriting
+- BoundedJsonPipeProtocol_FixedTimeEquals_RejectsWrongTokens
+- Redactor_MasksAwsAccessKeysAndUrlEmbeddedCredentials

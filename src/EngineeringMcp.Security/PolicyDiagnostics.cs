@@ -20,12 +20,12 @@ public static class PolicyDiagnostics
 {
     public static PolicyDiagnosticReport Analyze(McpPolicy policy, string policySource)
     {
-        var source = string.Equals(policySource, "locked-down-default", StringComparison.Ordinal)
-            ? "locked-down-default"
-            : "configured-file";
+        // The actual source (including its path, which Control Center already displays) is reported
+        // here; MCP-facing tools collapse it to "configured-file" to keep policy paths out of the
+        // tool contract.
         var findings = new List<PolicyDiagnosticFinding>();
 
-        if (source == "locked-down-default")
+        if (string.Equals(policySource, "locked-down-default", StringComparison.Ordinal))
         {
             findings.Add(new(
                 "POLICY_NOT_CONFIGURED",
@@ -70,8 +70,17 @@ public static class PolicyDiagnostics
                 "Enable audit recording before using Engineering MCP for diagnostic or UI operations."));
         }
 
+        if (policy.Processes.Allow.Any(rule => !string.IsNullOrWhiteSpace(rule.Publisher)))
+        {
+            findings.Add(new(
+                "PROCESS_PUBLISHER_RULE_FAILS_CLOSED",
+                "warning",
+                "Publisher-constrained process rules fail closed because Authenticode publisher verification is not implemented.",
+                "Use an exact executable path and optional SHA-256 rule instead of publisher in an approved policy, then restart the MCP server."));
+        }
+
         return new PolicyDiagnosticReport(
-            source,
+            policySource,
             policy.PermissionCeiling.ToString(),
             policy.Processes.Allow.Count,
             policy.Filesystem.ReadRoots.Count,

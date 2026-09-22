@@ -2,7 +2,6 @@ namespace EngineeringMcp.Contracts;
 
 public sealed record RuntimeProcessInfo(
     int ProcessId,
-    string? RuntimeVersion,
     string? CommandLine,
     string? OperatingSystem,
     string? Architecture);

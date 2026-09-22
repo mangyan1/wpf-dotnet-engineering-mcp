@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Pipes;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
@@ -131,13 +129,11 @@ public sealed class EngineeringMcpBackendMiddleware(
 public sealed class BackendProbeHostedService(
     BackendObservationBuffer buffer,
     BackendActionCorrelation correlation,
+    RedactionService redactor,
     EngineeringMcpBackendOptions options) : BackgroundService
 {
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
-    private const int MaxRequestBytes = 32 * 1024;
-    private const int MaxResponseBytes = 2 * 1024 * 1024;
-    private readonly RedactionService _redactor = new();
-    private string PipeName => options.PipeName ?? $"EngineeringMcp.AspNetProbe.{Environment.ProcessId}";
+    private string PipeName => options.PipeName ?? BoundedJsonPipeProtocol.AspNetProbePipeName(Environment.ProcessId);
     private string Token => options.Token ?? Environment.GetEnvironmentVariable("ENGINEERING_MCP_BACKEND_TOKEN") ?? string.Empty;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -153,23 +149,31 @@ public sealed class BackendProbeHostedService(
                 BackendProbeResponse response;
                 try
                 {
-                    var request = await BoundedJsonPipeProtocol.ReadAsync<BackendProbeRequest>(pipe, MaxRequestBytes, stoppingToken)
+                    var request = await BoundedJsonPipeProtocol.ReadAsync<BackendProbeRequest>(pipe, BoundedJsonPipeProtocol.BackendProbeMaxRequestBytes, stoppingToken)
                         .AsTask().WaitAsync(RequestTimeout, stoppingToken).ConfigureAwait(false);
                     response = request is null ? Fail("INVALID_REQUEST", "Request was empty.") : Dispatch(request);
                 }
                 catch (TimeoutException) { response = Fail("REQUEST_TIMEOUT", "Backend probe request was not received within five seconds."); }
                 catch (JsonException) { response = Fail("INVALID_JSON", "Request JSON was invalid."); }
-                catch (Exception ex) { response = Fail("BACKEND_PROBE_ERROR", _redactor.Redact(ex.Message)); }
-                await BoundedJsonPipeProtocol.WriteAsync(pipe, response, MaxResponseBytes, stoppingToken).ConfigureAwait(false);
+                catch (Exception ex) { response = Fail("BACKEND_PROBE_ERROR", redactor.Redact(ex.Message)); }
+                await BoundedJsonPipeProtocol.WriteAsync(pipe, response, BoundedJsonPipeProtocol.BackendProbeMaxResponseBytes, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch { await Task.Delay(100, stoppingToken).ConfigureAwait(false); }
+            catch { await DelayAfterTransportFaultAsync(stoppingToken).ConfigureAwait(false); }
         }
+    }
+
+    // Mirrors WpfProbeServer.DelayAfterTransportFaultAsync: the retry delay must observe shutdown
+    // so a fault landing during host stop cannot escape ExecuteAsync as an unhandled cancellation.
+    private static async Task DelayAfterTransportFaultAsync(CancellationToken stoppingToken)
+    {
+        try { await Task.Delay(100, stoppingToken).ConfigureAwait(false); }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
     }
 
     private BackendProbeResponse Dispatch(BackendProbeRequest request)
     {
-        if (!FixedTimeEquals(request.Token, Token)) return Fail("AUTH_FAILED", "Backend probe authentication failed.");
+        if (!BoundedJsonPipeProtocol.FixedTimeEquals(request.Token, Token)) return Fail("AUTH_FAILED", "Backend probe authentication failed.");
         return request.Operation switch
         {
             "health" => new BackendProbeResponse(true, new BackendHealthObservation(
@@ -211,13 +215,6 @@ public sealed class BackendProbeHostedService(
         => value is { Length: >= 16 and <= 64 } && value.All(character => char.IsAsciiHexDigit(character));
 
     private static BackendProbeResponse Fail(string code, string message) => new(false, ErrorCode: code, ErrorMessage: message);
-
-    private static bool FixedTimeEquals(string supplied, string expected)
-    {
-        var a = Encoding.UTF8.GetBytes(supplied ?? string.Empty);
-        var b = Encoding.UTF8.GetBytes(expected);
-        return a.Length == b.Length && CryptographicOperations.FixedTimeEquals(a, b);
-    }
 }
 
 public static class EngineeringMcpBackendExtensions

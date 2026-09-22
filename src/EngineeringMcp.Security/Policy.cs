@@ -14,6 +14,32 @@ public sealed record PolicyDecision(bool Allowed, string Code, string Reason, st
     public static PolicyDecision Deny(string code, string reason, string remediation) => new(false, code, reason, remediation);
 }
 
+/// <summary>
+/// Shared enabledTools/disabledTools evaluation used by both the execution gate (PolicyEngine)
+/// and tool publication (ToolPolicyCatalog) so the two surfaces cannot drift.
+/// </summary>
+internal static class ToolListRules
+{
+    /// <summary>Returns the deny decision for the configured tool lists, or null when neither list denies the tool.</summary>
+    public static PolicyDecision? DenyFor(McpPolicy policy, string toolName)
+    {
+        if (policy.DisabledTools?.Contains(toolName, StringComparer.Ordinal) == true)
+            return PolicyDecision.Deny(
+                "TOOL_DISABLED",
+                $"Tool '{toolName}' is listed in disabledTools.",
+                $"Keep the denial or remove '{toolName}' from disabledTools in an approved policy, then restart the MCP server.");
+
+        if (policy.EnabledTools is { Count: > 0 } &&
+            !policy.EnabledTools.Contains(toolName, StringComparer.Ordinal))
+            return PolicyDecision.Deny(
+                "TOOL_NOT_ENABLED",
+                $"Tool '{toolName}' is not present in enabledTools.",
+                $"Add '{toolName}' to enabledTools in an approved policy, then restart the MCP server.");
+
+        return null;
+    }
+}
+
 public sealed class PolicyEngine
 {
     public PolicyDecision Authorize(ToolPolicy policy, McpPolicy configuredPolicy, bool capabilityAvailable)
@@ -30,18 +56,8 @@ public sealed class PolicyEngine
                 $"Tool '{policy.ToolName}' requires {policy.RequiredPermission}, but the configured permission ceiling is {configuredPolicy.PermissionCeiling}.",
                 $"In Control Center, select or configure an approved policy with permissionCeiling set to at least {policy.RequiredPermission}, then restart the MCP server.");
 
-        if (configuredPolicy.DisabledTools?.Contains(policy.ToolName, StringComparer.Ordinal) == true)
-            return PolicyDecision.Deny(
-                "TOOL_DISABLED",
-                $"Tool '{policy.ToolName}' is listed in disabledTools.",
-                $"Keep the denial or remove '{policy.ToolName}' from disabledTools in an approved policy, then restart the MCP server.");
-
-        if (configuredPolicy.EnabledTools is { Count: > 0 } &&
-            !configuredPolicy.EnabledTools.Contains(policy.ToolName, StringComparer.Ordinal))
-            return PolicyDecision.Deny(
-                "TOOL_NOT_ENABLED",
-                $"Tool '{policy.ToolName}' is not present in the enabled tool allowlist.",
-                $"Enable the approved profile containing '{policy.ToolName}' or add the exact tool to enabledTools, then restart the MCP server.");
+        if (ToolListRules.DenyFor(configuredPolicy, policy.ToolName) is { } toolListDenial)
+            return toolListDenial;
 
         if (policy.Risk == RiskClass.Destructive && !configuredPolicy.AllowDestructiveActions)
             return PolicyDecision.Deny(

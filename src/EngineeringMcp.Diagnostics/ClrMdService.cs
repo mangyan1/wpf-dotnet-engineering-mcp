@@ -12,8 +12,11 @@ public sealed class ClrMdService(
     RedactionService redactor)
 {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _capturedDumps = new(StringComparer.Ordinal);
-    public ToolResult<object> CaptureDump(int processId, string? destinationDirectory = null)
+    public async Task<ToolResult<object>> CaptureDumpAsync(int processId, string? destinationDirectory = null, CancellationToken cancellationToken = default)
     {
+        // Cancellation is observed only before the dump write starts: aborting mid-dump is unsafe
+        // with ClrMD, so the blocking WriteDump runs on the pool and runs to completion.
+        cancellationToken.ThrowIfCancellationRequested();
         if (!policyProvider.Current.AllowPrivilegedDiagnostics || policyProvider.Current.PermissionCeiling < PermissionLevel.SensitiveDiagnostics)
             return ToolResult<object>.Fail("PRIVILEGED_DIAGNOSTICS_DISABLED", "Dump capture requires SensitiveDiagnostics permission and explicit privileged-diagnostics policy.");
 
@@ -31,7 +34,7 @@ public sealed class ClrMdService(
             Directory.CreateDirectory(directory);
             PruneExpiredDumps(directory);
             var path = Path.Combine(directory, $"dump-{processId}-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}.dmp");
-            new DiagnosticsClient(processId).WriteDump(DumpType.WithHeap, path, logDumpGeneration: false);
+            await Task.Run(() => new DiagnosticsClient(processId).WriteDump(DumpType.WithHeap, path, logDumpGeneration: false), CancellationToken.None).ConfigureAwait(false);
             var dumpId = Guid.NewGuid().ToString("N");
             _capturedDumps[dumpId] = path;
             return ToolResult<object>.Ok(new
@@ -50,6 +53,8 @@ public sealed class ClrMdService(
 
     public ToolResult<DumpAnalysisSummary> AnalyzeCapturedDump(string dumpId, int maxThreads = 128, int maxFramesPerThread = 128)
     {
+        // Deny-first: the privilege gate runs before any dump reference or file access.
+        if (EnsurePrivilegedDiagnostics() is { } denied) return denied;
         if (!_capturedDumps.TryGetValue(dumpId, out var path) || !File.Exists(path))
             return ToolResult<DumpAnalysisSummary>.Fail("DUMP_REFERENCE_NOT_FOUND", "The local dump reference does not exist in this MCP session.");
         return AnalyzeTrustedLocalDump(path, maxThreads, maxFramesPerThread);
@@ -57,9 +62,7 @@ public sealed class ClrMdService(
 
     public ToolResult<DumpAnalysisSummary> AnalyzeDump(string dumpPath, int maxThreads = 128, int maxFramesPerThread = 128)
     {
-        if (!policyProvider.Current.AllowPrivilegedDiagnostics || policyProvider.Current.PermissionCeiling < PermissionLevel.SensitiveDiagnostics)
-            return ToolResult<DumpAnalysisSummary>.Fail("PRIVILEGED_DIAGNOSTICS_DISABLED", "Dump analysis requires SensitiveDiagnostics permission and explicit privileged-diagnostics policy.");
-
+        if (EnsurePrivilegedDiagnostics() is { } denied) return denied;
         var allowed = fileGuard.RequireReadable(dumpPath);
         if (!allowed.Success || allowed.Value is null)
             return ToolResult<DumpAnalysisSummary>.Fail(allowed.Error!.Code, allowed.Error.Message, allowed.Error.Retryable, allowed.Error.Remediation);
@@ -67,10 +70,20 @@ public sealed class ClrMdService(
         return AnalyzeTrustedLocalDump(allowed.Value, maxThreads, maxFramesPerThread);
     }
 
+    /// <summary>
+    /// Single privileged-diagnostics gate. Returns the structured denial when the policy does not
+    /// allow privileged diagnostics, or null when analysis may proceed. Every dump analysis entry
+    /// point calls this before touching any file or dump reference.
+    /// </summary>
+    private ToolResult<DumpAnalysisSummary>? EnsurePrivilegedDiagnostics()
+        => policyProvider.Current.AllowPrivilegedDiagnostics && policyProvider.Current.PermissionCeiling >= PermissionLevel.SensitiveDiagnostics
+            ? null
+            : ToolResult<DumpAnalysisSummary>.Fail("PRIVILEGED_DIAGNOSTICS_DISABLED", "Dump analysis requires SensitiveDiagnostics permission and explicit privileged-diagnostics policy.");
+
     private ToolResult<DumpAnalysisSummary> AnalyzeTrustedLocalDump(string dumpPath, int maxThreads, int maxFramesPerThread)
     {
-        if (!policyProvider.Current.AllowPrivilegedDiagnostics || policyProvider.Current.PermissionCeiling < PermissionLevel.SensitiveDiagnostics)
-            return ToolResult<DumpAnalysisSummary>.Fail("PRIVILEGED_DIAGNOSTICS_DISABLED", "Dump analysis requires SensitiveDiagnostics permission and explicit privileged-diagnostics policy.");
+        // Defense in depth: callers gate first; trusted internal paths re-check here for free.
+        if (EnsurePrivilegedDiagnostics() is { } denied) return denied;
 
         maxThreads = Math.Clamp(maxThreads, 1, 512);
         maxFramesPerThread = Math.Clamp(maxFramesPerThread, 1, 512);
@@ -97,8 +110,12 @@ public sealed class ClrMdService(
                 return ToolResult<DumpAnalysisSummary>.Fail("CLR_NOT_FOUND", "No CLR runtime was found in the dump.");
             using var runtime = clrInfo.CreateRuntime();
             var threads = new List<ThreadStackSummary>();
-            foreach (var thread in runtime.Threads.Where(t => t.IsAlive).Take(maxThreads))
+            var aliveCount = 0;
+            foreach (var thread in runtime.Threads)
             {
+                if (!thread.IsAlive) continue;
+                aliveCount++;
+                if (threads.Count >= maxThreads) continue;
                 var frames = thread.EnumerateStackTrace().Take(maxFramesPerThread)
                     .Select(frame => SafeFrame(frame.ToString() ?? string.Empty))
                     .ToArray();
@@ -108,7 +125,6 @@ public sealed class ClrMdService(
                     thread.CurrentException?.Type?.Name,
                     frames));
             }
-            var aliveCount = runtime.Threads.Count(t => t.IsAlive);
             return ToolResult<DumpAnalysisSummary>.Ok(new DumpAnalysisSummary(
                 "[LOCAL-REDACTED]",
                 clrInfo.Version.ToString(),

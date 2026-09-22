@@ -175,10 +175,4 @@ public sealed class WpfScreenshotIntegrationTests
 
     private static string FindFixtureExecutable()
         => WpfTestFixtureLocator.FindExecutable();
-
-    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
-    {
-        public override McpPolicy Current { get; } = policy;
-        public override string Source => "test";
-    }
 }

@@ -126,10 +126,4 @@ public sealed class AspNetCoreAdapterTests
             return element.Deserialize<T>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         return value is T typed ? typed : default;
     }
-
-    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
-    {
-        public override McpPolicy Current { get; } = policy;
-        public override string Source => "test";
-    }
 }

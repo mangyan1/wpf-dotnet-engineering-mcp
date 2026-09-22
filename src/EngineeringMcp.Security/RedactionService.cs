@@ -20,6 +20,7 @@ public sealed partial class RedactionService
         output = CommonSecretRegex().Replace(output, "$1[REDACTED:CREDENTIAL]");
         output = PrivateKeyRegex().Replace(output, "[REDACTED:PRIVATE_KEY]");
         output = CookieRegex().Replace(output, "$1[REDACTED:COOKIE]");
+        output = UrlCredentialRegex().Replace(output, "$1://[REDACTED:CREDENTIAL]@");
         output = AwsAccessKeyRegex().Replace(output, "[REDACTED:ACCESS_KEY]");
 
         if (piiMode != PiiMode.Off)
@@ -55,6 +56,8 @@ public sealed partial class RedactionService
             || ConnectionPasswordRegex().IsMatch(value)
             || CommonSecretRegex().IsMatch(value)
             || PrivateKeyRegex().IsMatch(value)
+            || CookieRegex().IsMatch(value)
+            || UrlCredentialRegex().IsMatch(value)
             || AwsAccessKeyRegex().IsMatch(value);
     }
 
@@ -126,6 +129,11 @@ public sealed partial class RedactionService
 
     [GeneratedRegex(@"(?i)((?:Set-)?Cookie\s*:\s*)[^\r\n]+", RegexOptions.CultureInvariant)]
     private static partial Regex CookieRegex();
+
+    // Matches credentials embedded in URLs (https://user:password@host) without matching
+    // scheme://host:port/path forms; the password clause cannot cross "/" before the "@".
+    [GeneratedRegex(@"(?i)\b(https?|ftp)://[^\s/@:]+:[^\s/@]+@", RegexOptions.CultureInvariant)]
+    private static partial Regex UrlCredentialRegex();
 
     [GeneratedRegex(@"\bAKIA[0-9A-Z]{16}\b", RegexOptions.CultureInvariant)]
     private static partial Regex AwsAccessKeyRegex();

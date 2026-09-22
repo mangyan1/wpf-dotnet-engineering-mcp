@@ -1,5 +1,6 @@
 using EngineeringMcp.Contracts;
 using EngineeringMcp.Security;
+using EngineeringMcp.TestSupport;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EngineeringMcp.SecurityTests;
@@ -209,11 +210,5 @@ public sealed class SecurityTests
         await using var oversized = new MemoryStream(BitConverter.GetBytes(2048));
         await Assert.ThrowsExactlyAsync<InvalidDataException>(async () =>
             await BoundedJsonPipeProtocol.ReadAsync<ToolFailure>(oversized, 1024));
-    }
-
-    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
-    {
-        public override McpPolicy Current { get; } = policy;
-        public override string Source => "test";
     }
 }

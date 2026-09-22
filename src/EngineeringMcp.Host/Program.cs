@@ -28,21 +28,12 @@ else
 
 static async Task RunStdioAsync(string[] args)
 {
-    var builder = Host.CreateApplicationBuilder(args);
-
-    // stdio MCP requires stdout to remain protocol-clean, so logs go to stderr.
-    builder.Logging.ClearProviders();
-    builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
-    builder.Logging.AddProvider(new EngineeringFileLoggerProvider());
-
-    RegisterEngineeringServices(builder.Services);
-    builder.Services
-        .AddMcpServer()
-        .WithStdioServerTransport()
-        .WithToolsFromAssembly()
-        .AddEngineeringContractFilters();
-
-    await builder.Build().RunAsync();
+    var host = ConfigureEngineeringHost(
+        Host.CreateApplicationBuilder(args),
+        mcp => mcp.WithStdioServerTransport(),
+        logsToStderr: true).Build();
+    AttachOperationalTraceLogger(host.Services);
+    await host.RunAsync();
 }
 
 static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
@@ -51,28 +42,22 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
     if (!HttpBearerAuthentication.IsStrongToken(httpToken))
     {
         throw new InvalidOperationException(
-            $"HTTP transport requires {McpRuntimeDefaults.HttpTokenEnvironmentVariable} with at least 32 characters. " +
+            $"HTTP transport requires {McpRuntimeDefaults.HttpTokenEnvironmentVariable} with at least {McpRuntimeDefaults.MinimumTokenLength} characters. " +
             "Use stdio transport when a bearer token cannot be provided securely.");
     }
 
-    var builder = WebApplication.CreateBuilder(args);
-    builder.Logging.ClearProviders();
-    builder.Logging.AddConsole();
-    builder.Logging.AddProvider(new EngineeringFileLoggerProvider());
+    var builder = ConfigureEngineeringHost(
+        WebApplication.CreateBuilder(args),
+        mcp => mcp.WithHttpTransport(options => options.Stateless = true),
+        logsToStderr: false);
 
     // The shared development service is deliberately loopback-only. It is not a LAN/remote server.
     builder.WebHost.UseUrls(launch.ListenUrl);
-    builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 1_048_576);
+    builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = McpRuntimeDefaults.MaxHttpBodyBytes);
     builder.Configuration["AllowedHosts"] = "127.0.0.1;localhost;[::1]";
 
-    RegisterEngineeringServices(builder.Services);
-    builder.Services
-        .AddMcpServer()
-        .WithHttpTransport(options => options.Stateless = true)
-        .WithToolsFromAssembly()
-        .AddEngineeringContractFilters();
-
     var app = builder.Build();
+    AttachOperationalTraceLogger(app.Services);
     var requestGate = new SemaphoreSlim(8, 8);
     var allowedOrigin = new Uri(launch.ListenUrl).GetLeftPart(UriPartial.Authority);
     var clientActivity = app.Services.GetRequiredService<McpClientActivityTracker>();
@@ -89,13 +74,13 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
         }
 
         var host = context.Request.Host.Host;
-        if (!IsAllowedLoopbackHost(host))
+        if (!McpHostLaunchOptions.IsAllowedLoopbackHost(host))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
         }
 
-        if (context.Request.ContentLength is > 1_048_576)
+        if (context.Request.ContentLength is > McpRuntimeDefaults.MaxHttpBodyBytes)
         {
             context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
             return;
@@ -168,11 +153,29 @@ static async Task RunHttpAsync(string[] args, McpHostLaunchOptions launch)
     await app.RunAsync();
 }
 
-static bool IsAllowedLoopbackHost(string host)
-    => string.Equals(host, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
-       || string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
-       || string.Equals(host, "::1", StringComparison.OrdinalIgnoreCase)
-       || string.Equals(host, "[::1]", StringComparison.OrdinalIgnoreCase);
+// One shared loopback definition for both the listen-URL validation and the Host-header check.
+static TBuilder ConfigureEngineeringHost<TBuilder>(TBuilder builder, Func<IMcpServerBuilder, IMcpServerBuilder> transport, bool logsToStderr)
+    where TBuilder : IHostApplicationBuilder
+{
+    builder.Logging.ClearProviders();
+    // stdio MCP requires stdout to remain protocol-clean, so its logs go to stderr.
+    if (logsToStderr)
+        builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+    else
+        builder.Logging.AddConsole();
+    builder.Logging.AddProvider(new EngineeringFileLoggerProvider());
+
+    RegisterEngineeringServices(builder.Services);
+    transport(builder.Services.AddMcpServer())
+        .WithToolsFromAssembly()
+        .AddEngineeringContractFilters();
+    return builder;
+}
+
+// ToolRun/ToolAuthorization are static and trace one operational log line per invocation through
+// this shared reference; it stays null (and logging is skipped) when no logger is registered.
+static void AttachOperationalTraceLogger(IServiceProvider services)
+    => ToolRun.Logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(ToolRun));
 
 static void RegisterEngineeringServices(IServiceCollection services)
 {
@@ -199,14 +202,18 @@ static void RegisterEngineeringServices(IServiceCollection services)
     services.AddSingleton<ProcessOperationCoordinator>();
     services.AddSingleton<ToolAuthorization>();
     services.AddSingleton<WpfAutomationService>();
+    services.AddSingleton<IWpfAutomationService>(sp => sp.GetRequiredService<WpfAutomationService>());
     services.AddSingleton<WpfSafeInspectionService>();
     services.AddSingleton<WpfProbeClient>();
+    services.AddSingleton<IWpfProbeClient>(sp => sp.GetRequiredService<WpfProbeClient>());
     services.AddSingleton<WpfUiInspectionService>();
     services.AddSingleton<UiAuditService>();
     services.AddSingleton<DotNetDiagnosticsService>();
+    services.AddSingleton<IDotNetDiagnosticsService>(sp => sp.GetRequiredService<DotNetDiagnosticsService>());
     services.AddSingleton<ClrMdService>();
     services.AddSingleton<SourceIntelligenceService>();
     services.AddSingleton<BackendProbeClient>();
+    services.AddSingleton<IBackendProbeClient>(sp => sp.GetRequiredService<BackendProbeClient>());
     services.AddSingleton<DiagnosisService>();
 }
 
@@ -244,17 +251,28 @@ internal sealed record McpHostLaunchOptions(McpHostTransport Transport, string L
         return new McpHostLaunchOptions(transport, listenUrl);
     }
 
+    // One shared loopback definition for both the listen-URL validation and the Host-header check:
+    // parsed comparison accepts every spelling of the same loopback addresses (Uri expands IPv6 and
+    // Host headers may keep brackets) while rejecting everything else.
+    internal static bool IsAllowedLoopbackHost(string host)
+        => string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+           || (IPAddress.TryParse(host?.Trim('[', ']'), out var address)
+               && (address.Equals(IPAddress.Loopback) || address.Equals(IPAddress.IPv6Loopback)));
+
     private static string ValidateLoopbackUrl(string value)
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
             !string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
-            !(string.Equals(uri.Host, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
-              string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) ||
-              string.Equals(uri.Host, "::1", StringComparison.OrdinalIgnoreCase)) ||
-            uri.Port is < 1024 or > 65535)
+            !IsAllowedLoopbackHost(uri.Host))
         {
-            throw new ArgumentException("HTTP MCP listen URL must be an explicit loopback http:// URL on a non-privileged port.");
+            throw new ArgumentException("HTTP MCP listen URL must be an explicit loopback http:// URL.");
         }
+
+        if (uri.IsDefaultPort)
+            throw new ArgumentException("HTTP MCP listen URL resolves to privileged port 80 (explicit or omitted); specify an explicit non-privileged port between 1024 and 65535.");
+
+        if (uri.Port is < 1024 or > 65535)
+            throw new ArgumentException("HTTP MCP listen URL must use a non-privileged port between 1024 and 65535.");
 
         return uri.GetLeftPart(UriPartial.Authority);
     }

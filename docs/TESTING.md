@@ -10,6 +10,8 @@
 
 The live HTTP integration suite additionally requires bearer rejection, Origin rejection, portable unique tool names, output schemas, parameter descriptions, titles, all MCP annotations, `isError=true` for a deterministic domain failure, and safe remediation text for policy/guard denials. Security tests cover versioned policy rejection, built-in sensitive-file denial, expanded synthetic PII classes, timestamp/version/path false-positive regressions, oversized framed-IPC rejection, policy readiness diagnostics, and child-process PATH sanitization.
 
+`tests/EngineeringMcp.AdversarialTests` holds the unit tests for `DiagnosisService` decision logic (evidence windows, verdict and fault-code mapping, backend correlation markers and stuck-lock unknowns, policy observation) plus hostile-input tests that deny by default: unknown/disabled tool names, missing explicit-approval gates, audit-sink failure latching, read-root traversal and reparse-point escapes, sensitive-file rules without policy deny globs, oversized or ill-formed framed IPC, and unredacted secret shapes. Each test enumerates its name in the project README.
+
 The integration suite launches real local fixtures to verify masked PNG output, authenticated WPF probe restart, a live ASP.NET request correlated through the named-pipe adapter, and one-file XAML audit isolation. No production account or personal data is required.
 
 ## Installed-package and VS Code acceptance
@@ -30,7 +32,7 @@ powershell -ExecutionPolicy Bypass -File scripts/test-installed-vscode.ps1 `
 
 The lifecycle gate stops only Engineering MCP processes whose executable path is beneath the selected installation root. It verifies that the per-user policy and VS Code `mcp.json` hashes remain unchanged through install, uninstall, and reinstall. It extracts the candidate MSI to a verified temporary directory, compares the installed host hash with that payload, and requires exactly one installer registration so stale same-version development builds cannot pass. It then starts the installed host on an isolated loopback port and performs a VS Code-style initialize, 76-tool discovery, policy-diagnostic call, exact-tool preflight, successful runtime diagnostic, and intentionally denied privileged call with actionable remediation. The test never prints bearer tokens or policy contents.
 
-The installer intentionally allows equal-version upgrades for development and pre-release rebuilds. WiX ICE61 conflicts with that inclusive upgrade range, so only ICE61 is suppressed for this documented case; the remaining installer validation stays enabled.
+The installer intentionally allows equal-version upgrades for development and pre-release rebuilds (`AllowSameVersionUpgrades="yes"`). The WiX project suppresses the four ICE rules that conflict with this per-user, profile-driven design (`SuppressIces` `ICE38;ICE61;ICE64;ICE91`): ICE61 flags the same-version upgrade the inclusive range exists to allow, and ICE38/ICE64/ICE91 fire on the per-user shortcuts, profile paths, and non-registry keypaths the per-user MSI uses. All other installer validation stays enabled.
 
 Release validation also runs the static contract script, NuGet vulnerable-package scan, locked dependency restore, Release packaging, SPDX SBOM generation, checksum generation, and installed-package acceptance. Authenticode signing is a promotion gate and requires an operator-provided certificate thumbprint or the explicitly labelled development self-signing mode.
 
@@ -44,4 +46,4 @@ The current live fixture verifies a successful request, health, bounded observat
 
 ## Hallucination test
 
-Fixture: button is disabled; no probe/source evidence exists. Question: “Why is it disabled?” Correct result: `OBSERVED: disabled; UNKNOWN: reason; NEXT: inspect probe/source`. Claiming validation failed is a test failure.
+Fixture: button is disabled; no probe/source evidence exists. Question: “Why is it disabled?” Correct result: `OBSERVED: disabled; UNKNOWN: reason; NEXT: inspect probe/source`. Claiming validation failed is a test failure. This contract is enforced by `Observe_QuietSurface_StatesUnknownsInsteadOfClaimingFailure` and `Click_QuietAction_StatesAbsenceOfEvidenceAndBackendNextStep` in `tests/EngineeringMcp.AdversarialTests/DiagnosisServiceTests.cs`.

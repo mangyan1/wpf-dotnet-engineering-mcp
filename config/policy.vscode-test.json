@@ -7,13 +7,13 @@
     "allow": [
       {
         "name": "EngineeringMcp.Wpf.TestApp.exe",
-        "path": null,
+        "path": "..\\tests\\EngineeringMcp.Wpf.TestApp\\bin\\Debug\\net10.0-windows10.0.19041.0\\EngineeringMcp.Wpf.TestApp.exe",
         "sha256": null,
         "publisher": null
       },
       {
         "name": "EngineeringMcp.AspNetCore.TestApp.exe",
-        "path": null,
+        "path": "..\\tests\\EngineeringMcp.AspNetCore.TestApp\\bin\\Debug\\net10.0\\EngineeringMcp.AspNetCore.TestApp.exe",
         "sha256": null,
         "publisher": null
       }

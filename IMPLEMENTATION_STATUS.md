@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-08-29
+Last updated: 2026-09-21
 
 Current source version: 0.3.7-preview.6. This public pre-release carries universal bounded WPF workspace discovery and authorization, inert centralized-property import discovery, verified manual executable fallback, target-only DPI-aware screenshot capture, conservative text masking, provider-chrome audit corrections, Apache-2.0 licensing, protected release governance, the Microsoft.Build.Framework 17.14.28 dependency update, and the associated regression coverage.
 
@@ -31,7 +31,7 @@ Additional source verification on 2026-08-29:
 - Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.6-win-x64.zip` and `EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.6` on the `preview` channel, binds the package to the exact source commit, and packages the Apache-2.0 license, mangyan1 notice, universal WPF workspace guide, and code-signing policy.
 - The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.6`.
 - All 57 static contract/security checks passed, including product-neutrality, inert centralized-property/manual-executable authorization, packaged code-signing policy, dependency-manifest coverage, pinned read-only CI, dependency-update, and ownership gates.
-- Public GitHub CI uses locked application and installer dependency restore, the pinned .NET SDK, commit-pinned official actions, a NuGet advisory gate, pull-request dependency review, read-only token permissions, no release secrets, and no artifact upload.
+- Public GitHub CI uses locked application and installer dependency restore, the pinned .NET SDK, commit-pinned official actions, a NuGet advisory gate, pull-request dependency review, read-only token permissions, no release secrets, an MSI build job, a CodeQL scan, and test-result (TRX) upload only for failed runs.
 - A real application integration fixture returned backend adapter status `ready` with one bounded request observation and a selector audit of 43/43 stable actionable selectors with zero missing or duplicate IDs; the fixture remains external to the universal MCP product.
 
 | Area | Status | Notes |
@@ -41,7 +41,7 @@ Additional source verification on 2026-08-29:
 | Official C# MCP SDK server | IMPLEMENTED | `ModelContextProtocol` 2.2.0 |
 | System MCP tools | IMPLEMENTED | version/health/capabilities/permissions/policy diagnostics/exact-tool preflight |
 | Policy/process/filesystem guardrails | IMPLEMENTED | default-deny security control plane |
-| Redaction/audit | IMPLEMENTED | secret/PII redaction and structured audit path |
+| Redaction/audit | IMPLEMENTED | secret/PII redaction applied in a single parse of tool output, plus a hash-chained audit path that rolls per UTC day and prunes on rollover |
 | WPF UIA/FlaUI | IMPLEMENTED | semantic read and interaction tool surface |
 | Advanced WPF metadata tools | IMPLEMENTED, VERIFIED | 21 read-only tools; synthetic leak checks prove no UI text, business values, raw identifiers, titles, validation messages, clipboard, or raw screenshot output |
 | Screenshot redaction | IMPLEMENTED, RUNTIME VERIFIED, DEFAULT OFF | Password, text-bearing, and policy-sensitive UIA regions masked; policy opt-in due to custom-rendering/OCR residual risk |
@@ -50,18 +50,24 @@ Additional source verification on 2026-08-29:
 | GUI/A11y | IMPLEMENTED | deterministic audit surfaces |
 | EventPipe diagnostics | IMPLEMENTED | two concurrent traces maximum; 64 MiB/30-second bounds; managed cleanup |
 | Source intelligence | IMPLEMENTED, VERIFIED | Roslyn/XAML/source mapping layer; XAML operations accept one approved file or directory |
-| Failure correlation | IMPLEMENTED, VERIFIED | Read-only observe/failure/workflow plus risk-gated click diagnosis with exact backend action markers and labelled time-window fallback |
+| Failure correlation | IMPLEMENTED, VERIFIED | Read-only observe/failure/workflow plus risk-gated click diagnosis with exact backend action markers, labelled time-window fallback, and per-phase backend probe budgets |
 | ASP.NET adapter | IMPLEMENTED, PIPE/ACTION-CORRELATION VERIFIED | Reusable opt-in middleware and authenticated local probe; bounded route metadata only, no bodies, headers, cookies, or query strings |
 | ClrMD/dump analysis | IMPLEMENTED, PRIVILEGED | policy-gated sensitive diagnostic path |
 | UX heuristics | IMPLEMENTED | explicitly heuristic output |
 | VS Code integration | IMPLEMENTED | authenticated HTTP definition and environment-backed bearer token |
-| Universal WPF workspace authorization | IMPLEMENTED | bounded project discovery identifies built `UseWPF=true` executable projects, writes distinct exact-path per-workspace policies outside the install directory, and restarts MCP without weakening packaged default-deny behavior |
+| Universal WPF workspace authorization | IMPLEMENTED | bounded project discovery identifies built `UseWPF=true` executable projects, pins each executable's SHA-256 at provision time (a rebuilt binary requires re-provisioning), writes distinct exact-path per-workspace policies outside the install directory, and restarts MCP without weakening packaged default-deny behavior |
 | Actionable policy denials | IMPLEMENTED, VERIFIED | structured remediation field, safe system policy diagnostic report, and Control Center Policy Readiness card |
 | Child environment sanitization | IMPLEMENTED, VERIFIED | local absolute PATH entries only; relative, duplicate, and UNC/network entries are removed before child launch |
 | Codex integration | IMPLEMENTED, VERIFIED CONFIG | global `dotnetWpfEngineering` entry uses bearer-token environment variable |
 | Developer Control Center | IMPLEMENTED, BUILD VERIFIED | authenticated MCP self-test + WPF end-to-end button-driven lab + policy selection |
 | Protocol hardening | IMPLEMENTED, VERIFIED | structured output/error signaling, schemas, annotations, native images, progress, pagination |
 | Production packaging | IMPLEMENTED, VERIFIED | locked dependencies, local release hardening, SPDX SBOM, checksums, optional/required Authenticode gate, development self-sign mode, and installed lifecycle acceptance |
+
+Additional source verification on 2026-09-21 with .NET SDK 10.0.400:
+
+- Locked restore with `--runtime win-x64` passed with no NuGet audit findings; Release build passed with 0 warnings and 0 errors.
+- `dotnet test` Release: 86 tests passed and the opt-in installed-package acceptance test skipped by design; the suite now includes 42 adversarial/unit tests covering `DiagnosisService` decision logic, audit hash-chain re-walk verification, policy denials, audit-sink fail-closed latching, file-guard escapes, bounded framed IPC, and redaction.
+- All 57 static contract checks passed; the public CI now builds the MSI in a dedicated job, uploads test results (TRX) only on failed runs, and runs a SHA-pinned CodeQL scan.
 
 ## Developer Control Center verification target
 

@@ -56,6 +56,26 @@ internal sealed class FixedProcessRunner
         }
     }
 
+    // Long-lived child launcher sharing RunAsync's output/error wiring. The caller owns
+    // the returned Process lifetime plus any environment rules beyond the sanitizer.
+    public Process StartMonitored(ProcessStartInfo startInfo, Action<string> onOutput, EventHandler? onExited = null, Action<Process>? onCreated = null)
+    {
+        var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
+        // Exited cannot fire before Start, so onCreated sees the process before any
+        // exit event can race the caller's process-field assignment.
+        onCreated?.Invoke(process);
+        process.OutputDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) onOutput(e.Data); };
+        process.ErrorDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) onOutput(e.Data); };
+        if (onExited is not null) process.Exited += onExited;
+
+        if (!process.Start())
+            throw new InvalidOperationException($"Failed to start {startInfo.FileName}.");
+
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        return process;
+    }
+
     public Process StartDetached(
         string fileName,
         IReadOnlyList<string> arguments,

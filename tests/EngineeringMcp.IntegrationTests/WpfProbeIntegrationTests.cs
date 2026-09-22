@@ -61,10 +61,4 @@ public sealed class WpfProbeIntegrationTests
         Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(20)), "WPF probe integration test timed out.");
         if (failure is not null) throw failure;
     }
-
-    private sealed class FixedPolicyProvider(McpPolicy policy) : FilePolicyProvider
-    {
-        public override McpPolicy Current { get; } = policy;
-        public override string Source => "test";
-    }
 }

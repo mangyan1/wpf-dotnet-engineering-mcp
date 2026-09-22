@@ -10,7 +10,8 @@ namespace EngineeringMcp.Wpf;
 /// </summary>
 public static class SafeUiAnalysis
 {
-    private static readonly HashSet<string> ActionableTypes = new(StringComparer.OrdinalIgnoreCase)
+    // Single actionable control-type set shared with UiAuditService's accessibility audit.
+    internal static readonly HashSet<string> ActionableTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "Button", "Edit", "CheckBox", "RadioButton", "ComboBox", "ListItem", "DataItem",
         "TreeItem", "MenuItem", "Hyperlink", "TabItem", "Slider"

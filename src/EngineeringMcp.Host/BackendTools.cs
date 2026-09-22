@@ -33,5 +33,5 @@ public static class BackendTools
 
     private static Task<ToolResult<BackendProbeResponse>> Request(string tool, int processId, string op, int limit, BackendProbeClient backend, ToolAuthorization auth, CancellationToken cancellationToken)
         => ToolRun.Async(auth, ToolPolicyCatalog.Get(tool).ToPolicy(), processId.ToString(),
-            () => backend.RequestAsync(processId, op, limit, cancellationToken));
+            () => backend.RequestAsync(processId, op, limit, cancellationToken), cancellationToken);
 }

@@ -283,8 +283,8 @@ public partial class MainWindow
         CancellationToken cancellationToken)
     {
         var serverWasHealthy = await EnsureMcpServerHealthyAsync(cancellationToken);
-        var fixtureWasRunning = IsRunning(_fixtureProcess);
-        var backendWasRunning = IsRunning(_backendProcess);
+        var fixtureWasRunning = IsProcessRunning(_fixtureProcess);
+        var backendWasRunning = IsProcessRunning(_backendProcess);
         var result = false;
         var restored = true;
 
@@ -331,37 +331,28 @@ public partial class MainWindow
 
     private async void Build_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureDeveloperMode("Build solution") || _busy) return;
-        _busy = true;
-        try { await RunIsolatedValidationAsync(runAutomatedTests: false, runtimeValidation: null, cancellationToken: CancellationToken.None); }
-        finally { _busy = false; }
+        if (!EnsureDeveloperMode("Build solution")) return;
+        await RunDevOperationAsync("Build solution", cancellationToken =>
+            RunIsolatedValidationAsync(runAutomatedTests: false, runtimeValidation: null, cancellationToken));
     }
 
     private async void Test_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureDeveloperMode("Run code tests") || _busy) return;
-        _busy = true;
-        try { await RunIsolatedValidationAsync(runAutomatedTests: true, runtimeValidation: null, cancellationToken: CancellationToken.None); }
-        finally { _busy = false; }
+        if (!EnsureDeveloperMode("Run code tests")) return;
+        await RunDevOperationAsync("Run code tests", cancellationToken =>
+            RunIsolatedValidationAsync(runAutomatedTests: true, runtimeValidation: null, cancellationToken));
     }
 
     private async void RunReadiness_Click(object sender, RoutedEventArgs e)
     {
-        if (!EnsureDeveloperMode("Repository readiness") || _busy) return;
-        _busy = true;
-        try
+        if (!EnsureDeveloperMode("Repository readiness")) return;
+        await RunDevOperationAsync("Repository readiness", async cancellationToken =>
         {
-            AppendLog("=== REPOSITORY READINESS ===");
-            if (!ValidateLocalFiles()) return;
-            if (!await RunIsolatedValidationAsync(runAutomatedTests: true, runtimeValidation: null, cancellationToken: CancellationToken.None)) return;
+            if (!ValidateLocalFiles()) return false;
+            if (!await RunIsolatedValidationAsync(runAutomatedTests: true, runtimeValidation: null, cancellationToken)) return false;
             AppendLog("READINESS: PASS");
-            SetStatus("Repository readiness passed.");
-        }
-        finally
-        {
-            _busy = false;
-            RefreshStatus();
-        }
+            return true;
+        });
     }
 
     private async Task<int> RunDotNetAsync(

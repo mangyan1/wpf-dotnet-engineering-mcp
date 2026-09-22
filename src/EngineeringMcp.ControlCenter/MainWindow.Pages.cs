@@ -27,89 +27,96 @@ public partial class MainWindow
 
     // Static catalog mirrors the mockup's tool table; the authoritative set stays
     // with the host's CapabilityRegistry (ponytail: rebuild dynamically via tools/list when needed).
-    private static readonly (string Name, string Desc, string Cat, string Risk)[] ToolsCatalog =
+    private sealed record ToolEntry(string Name, string Desc, string Cat, string Risk, bool Core = false);
+
+    private static readonly ToolEntry[] ToolsCatalog =
     [
-        ("wpf_list_processes","List running WPF/WinUI processes","wpf","read"),
-        ("wpf_attach","Attach UI Automation session to a process","wpf","read"),
-        ("wpf_list_windows","List top-level windows of the attached process","wpf","read"),
-        ("wpf_snapshot","Dump the UI tree as an accessibility snapshot","wpf","read"),
-        ("wpf_find","Find nodes in the UI tree by selector","wpf","read"),
-        ("wpf_query","Read properties of a UI node","wpf","read"),
-        ("wpf_wait","Wait until a UI condition is met","wpf","read"),
-        ("wpf_assert","Assert on UI state (text, enabled, visibility)","wpf","read"),
-        ("wpf_click","Invoke or click a UI element","wpf","mutate"),
-        ("wpf_type","Type text into a control","wpf","mutate"),
-        ("wpf_select","Select an item in a combo/list","wpf","mutate"),
-        ("wpf_toggle","Toggle a checkbox or switch","wpf","mutate"),
-        ("wpf_expand","Expand an expander or tree node","wpf","mutate"),
-        ("wpf_collapse","Collapse an expander or tree node","wpf","mutate"),
-        ("wpf_scroll","Scroll a container into view","wpf","mutate"),
-        ("wpf_focus","Set keyboard focus to a control","wpf","mutate"),
-        ("wpf_screenshot","Capture the window as an image","wpf","read"),
-        ("wpf_detach","Detach the UI Automation session","wpf","read"),
-        ("wpf_probe","Handshake with the in-app probe endpoint","wpf","read"),
-        ("wpf_wait_absent","Wait until a selected element is absent (metadata only)","wpf","read"),
-        ("wpf_wait_hidden","Wait until a selected element is hidden (metadata only)","wpf","read"),
-        ("wpf_wait_disabled","Wait until a selected element is disabled","wpf","read"),
-        ("wpf_assert_exists","Assert that a selected element exists","wpf","read"),
-        ("wpf_assert_not_exists","Assert that a selected element is absent","wpf","read"),
-        ("wpf_assert_pattern","Assert an observed UI Automation pattern","wpf","read"),
-        ("wpf_selector_audit","Audit selector stability without returning identifiers","wpf","read"),
-        ("wpf_duplicate_automation_ids","Find duplicate IDs using fingerprints only","wpf","read"),
-        ("wpf_control_inventory","Count UI Automation control types","wpf","read"),
-        ("wpf_pattern_inventory","Count observed UI Automation patterns","wpf","read"),
-        ("wpf_grid_summary","Summarize grid structure without cell values","wpf","read"),
-        ("wpf_tree_summary","Summarize tree structure without node labels","wpf","read"),
-        ("wpf_items_summary","Summarize item controls without item text","wpf","read"),
-        ("wpf_accessibility_summary","Aggregate accessibility metadata without names","wpf","read"),
-        ("wpf_window_state","Read window geometry/state without titles","wpf","read"),
-        ("wpf_binding_info","Read binding metadata without bound values","wpf","read"),
-        ("wpf_binding_errors","Read bounded binding error metadata","wpf","read"),
-        ("wpf_command_state","Read command type/presence without invocation","wpf","read"),
-        ("wpf_validation_summary","Count validation errors without messages/values","wpf","read"),
-        ("wpf_datacontext_type","Read DataContext type only","wpf","read"),
-        ("wpf_dispatcher_status","Read dispatcher status metadata","wpf","read"),
-        ("wpfui_inspect","Inspect WPF-UI themed control metadata","wpf","read"),
-        ("dotnet_runtime_info","Runtime version, GC mode, RID of a process","dotnet","read"),
-        ("dotnet_counters","Read EventCounters from a live process","dotnet","read"),
-        ("dotnet_gc_summary","GC heap summary and generations","dotnet","read"),
-        ("dotnet_threads","List managed threads and their stacks","dotnet","read"),
-        ("dotnet_modules","List loaded modules and versions","dotnet","read"),
-        ("dotnet_exceptions","List recent exceptions","dotnet","read"),
-        ("dotnet_trace_start","Start an EventPipe trace","dotnet","mutate"),
-        ("dotnet_trace_stop","Stop a trace and return the capture","dotnet","mutate"),
-        ("dotnet_capture_dump","Capture a crash/hang dump","dotnet","priv"),
-        ("dotnet_analyze_dump","Analyze a dump with clrmd","dotnet","priv"),
-        ("diagnose","Correlate recent app failures into a diagnosis","dotnet","read"),
-        ("diagnose_click","Reproduce a UI failure by clicking the blamed element","dotnet","mutate"),
-        ("aspnet_health","Probe a backend ASP.NET health endpoint","system","read"),
-        ("aspnet_requests","List recent backend requests","system","read"),
-        ("aspnet_exceptions","List recent backend exceptions","system","read"),
-        ("source_inventory","Inventory the solution: projects, files, LOC","source","read"),
-        ("source_read","Read a source file (policy-guarded)","source","read"),
-        ("source_find_symbol","Find symbol definitions via Roslyn","source","read"),
-        ("source_find_references","Find symbol references (exact)","source","read"),
-        ("source_find_references_page","Find symbol references (paged)","source","read"),
-        ("source_find_references_semantic","Find references via semantic model","source","read"),
-        ("source_find_automation_id","Find the AutomationId for a XAML element","source","read"),
-        ("source_find_binding","Locate XAML bindings for a property","source","read"),
-        ("source_analyze_xaml","Analyze a XAML file for issues","source","read"),
-        ("source_map_stacktrace","Map a runtime stack trace to source lines","source","read"),
-        ("wpfui_audit_resources","Audit WPF-UI resource usage (themes, keys)","source","read"),
-        ("a11y_audit","Audit accessibility tree (names, roles, contrast)","source","read"),
-        ("gui_audit","Audit visual layout (clipping, overlap, spacing)","source","read"),
-        ("ux_review","Heuristic UX review of a screen flow","source","read"),
-        ("system_version","Server version and transport info","system","read"),
-        ("system_health","Server self-health check","system","read"),
-        ("system_capabilities","List capabilities and permissions","system","read"),
-        ("system_permissions","Show effective policy for the caller","system","read"),
-        ("system_policy_diagnostics","Explain policy denials and safe remediation","system","read"),
-        ("system_tool_preflight","Check exact tool publication and authorization","system","read"),
+        new("wpf_list_processes","List running WPF/WinUI processes","wpf","read", Core: true),
+        new("wpf_attach","Attach UI Automation session to a process","wpf","read", Core: true),
+        new("wpf_list_windows","List top-level windows of the attached process","wpf","read"),
+        new("wpf_snapshot","Dump the UI tree as an accessibility snapshot","wpf","read", Core: true),
+        new("wpf_find","Find nodes in the UI tree by selector","wpf","read", Core: true),
+        new("wpf_query","Read properties of a UI node","wpf","read"),
+        new("wpf_wait","Wait until a UI condition is met","wpf","read"),
+        new("wpf_assert","Assert on UI state (text, enabled, visibility)","wpf","read", Core: true),
+        new("wpf_click","Invoke or click a UI element","wpf","mutate"),
+        new("wpf_type","Type text into a control","wpf","mutate", Core: true),
+        new("wpf_select","Select an item in a combo/list","wpf","mutate"),
+        new("wpf_toggle","Toggle a checkbox or switch","wpf","mutate"),
+        new("wpf_expand","Expand an expander or tree node","wpf","mutate"),
+        new("wpf_collapse","Collapse an expander or tree node","wpf","mutate"),
+        new("wpf_scroll","Scroll a container into view","wpf","mutate"),
+        new("wpf_focus","Set keyboard focus to a control","wpf","mutate"),
+        new("wpf_screenshot","Capture the window as an image","wpf","read", Core: true),
+        new("wpf_detach","Detach the UI Automation session","wpf","read"),
+        new("wpf_probe","Handshake with the in-app probe endpoint","wpf","read", Core: true),
+        new("wpf_wait_absent","Wait until a selected element is absent (metadata only)","wpf","read"),
+        new("wpf_wait_hidden","Wait until a selected element is hidden (metadata only)","wpf","read"),
+        new("wpf_wait_disabled","Wait until a selected element is disabled","wpf","read"),
+        new("wpf_assert_exists","Assert that a selected element exists","wpf","read"),
+        new("wpf_assert_not_exists","Assert that a selected element is absent","wpf","read"),
+        new("wpf_assert_pattern","Assert an observed UI Automation pattern","wpf","read"),
+        new("wpf_selector_audit","Audit selector stability without returning identifiers","wpf","read"),
+        new("wpf_duplicate_automation_ids","Find duplicate IDs using fingerprints only","wpf","read"),
+        new("wpf_control_inventory","Count UI Automation control types","wpf","read"),
+        new("wpf_pattern_inventory","Count observed UI Automation patterns","wpf","read"),
+        new("wpf_grid_summary","Summarize grid structure without cell values","wpf","read"),
+        new("wpf_tree_summary","Summarize tree structure without node labels","wpf","read"),
+        new("wpf_items_summary","Summarize item controls without item text","wpf","read"),
+        new("wpf_accessibility_summary","Aggregate accessibility metadata without names","wpf","read"),
+        new("wpf_window_state","Read window geometry/state without titles","wpf","read"),
+        new("wpf_binding_info","Read binding metadata without bound values","wpf","read"),
+        new("wpf_binding_errors","Read bounded binding error metadata","wpf","read"),
+        new("wpf_command_state","Read command type/presence without invocation","wpf","read"),
+        new("wpf_validation_summary","Count validation errors without messages/values","wpf","read"),
+        new("wpf_datacontext_type","Read DataContext type only","wpf","read"),
+        new("wpf_dispatcher_status","Read dispatcher status metadata","wpf","read"),
+        new("wpfui_inspect","Inspect WPF-UI themed control metadata","wpf","read"),
+        new("dotnet_runtime_info","Runtime version, GC mode, RID of a process","dotnet","read"),
+        new("dotnet_counters","Read EventCounters from a live process","dotnet","read"),
+        new("dotnet_gc_summary","GC heap summary and generations","dotnet","read"),
+        new("dotnet_threads","List managed threads and their stacks","dotnet","read"),
+        new("dotnet_modules","List loaded modules and versions","dotnet","read"),
+        new("dotnet_exceptions","List recent exceptions","dotnet","read"),
+        new("dotnet_trace_start","Start an EventPipe trace","dotnet","mutate"),
+        new("dotnet_trace_stop","Stop a trace and return the capture","dotnet","mutate"),
+        new("dotnet_capture_dump","Capture a crash/hang dump","dotnet","priv"),
+        new("dotnet_analyze_dump","Analyze a dump with clrmd","dotnet","priv"),
+        new("diagnose","Correlate recent app failures into a diagnosis","dotnet","read"),
+        new("diagnose_click","Reproduce a UI failure by clicking the blamed element","dotnet","mutate"),
+        new("aspnet_health","Probe a backend ASP.NET health endpoint","system","read"),
+        new("aspnet_requests","List recent backend requests","system","read"),
+        new("aspnet_exceptions","List recent backend exceptions","system","read"),
+        new("source_inventory","Inventory the solution: projects, files, LOC","source","read"),
+        new("source_read","Read a source file (policy-guarded)","source","read"),
+        new("source_find_symbol","Find symbol definitions via Roslyn","source","read"),
+        new("source_find_references","Find symbol references (exact)","source","read"),
+        new("source_find_references_page","Find symbol references (paged)","source","read"),
+        new("source_find_references_semantic","Find references via semantic model","source","read"),
+        new("source_find_automation_id","Find the AutomationId for a XAML element","source","read"),
+        new("source_find_binding","Locate XAML bindings for a property","source","read"),
+        new("source_analyze_xaml","Analyze a XAML file for issues","source","read"),
+        new("source_map_stacktrace","Map a runtime stack trace to source lines","source","read"),
+        new("wpfui_audit_resources","Audit WPF-UI resource usage (themes, keys)","source","read"),
+        new("a11y_audit","Audit accessibility tree (names, roles, contrast)","source","read"),
+        new("gui_audit","Audit visual layout (clipping, overlap, spacing)","source","read"),
+        new("ux_review","Heuristic UX review of a screen flow","source","read"),
+        new("system_version","Server version and transport info","system","read", Core: true),
+        new("system_health","Server self-health check","system","read", Core: true),
+        new("system_capabilities","List capabilities and permissions","system","read", Core: true),
+        new("system_permissions","Show effective policy for the caller","system","read", Core: true),
+        new("system_policy_diagnostics","Explain policy denials and safe remediation","system","read", Core: true),
+        new("system_tool_preflight","Check exact tool publication and authorization","system","read", Core: true),
     ];
+
+    // Core tool surface required by the self-test, derived from the catalog's marked
+    // subset so the name/description list is maintained in one place.
+    internal static IReadOnlyList<string> RequiredCoreTools =>
+        ToolsCatalog.Where(entry => entry.Core).Select(entry => entry.Name).ToArray();
 
     private static Brush ResBrush(string key) => (Brush)Application.Current.Resources[key];
 
-    private static ToolRow ToToolRow((string Name, string Desc, string Cat, string Risk) t)
+    private static ToolRow ToToolRow(ToolEntry t)
     {
         var (foreground, border, permission, riskText) = t.Risk switch
         {
@@ -229,22 +236,14 @@ public partial class MainWindow
 
     private void CopyMcpConfig_Click(object sender, RoutedEventArgs e)
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(new
+        var document = new System.Text.Json.Nodes.JsonObject
         {
-            servers = new Dictionary<string, object>
+            ["servers"] = new System.Text.Json.Nodes.JsonObject
             {
-                [McpRuntimeDefaults.ServerName] = new
-                {
-                    type = "http",
-                    url = McpRuntimeDefaults.VsCodeMcpEndpoint,
-                    headers = new Dictionary<string, string>
-                    {
-                        ["Authorization"] = $"Bearer ${{env:{McpRuntimeDefaults.HttpTokenEnvironmentVariable}}}"
-                    }
-                }
+                [McpRuntimeDefaults.ServerName] = BuildVsCodeServerEntry()
             }
-        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        Clipboard.SetText(json);
+        };
+        Clipboard.SetText(document.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
         SetStatus("MCP configuration copied to clipboard.");
     }
 

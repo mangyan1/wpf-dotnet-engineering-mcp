@@ -60,19 +60,9 @@ internal static class McpContractFilters
                     if (processLease is not null) await processLease.DisposeAsync();
                 }
 
-                // ponytail: isError is derived from the serialized structured result because the SDK
-                // owns the ToolResult->CallToolResult mapping; McpHttpIntegrationTests guards this key.
-                if (result.StructuredContent is JsonElement structured &&
-                    structured.ValueKind == JsonValueKind.Object &&
-                    structured.TryGetProperty("success", out var success) &&
-                    success.ValueKind == JsonValueKind.False)
-                {
-                    result.IsError = true;
-                }
-
-                // ponytail: defense-in-depth redaction of every output string. Services redact their
-                // own outputs; this pass catches a service that forgets. Upgrade path: none needed
-                // unless output volumes make the per-call walk measurable.
+                // isError derivation and defense-in-depth redaction both live in
+                // RedactOutput below; the structured content is parsed to JsonNode once there and
+                // re-serialized only when redaction changed a string.
                 RedactOutput(result, services.GetRequiredService<RedactionService>(), policy.Pii);
 
                 return result;
@@ -90,11 +80,21 @@ internal static class McpContractFilters
         if (result.StructuredContent is not JsonElement structured)
             return;
         var node = JsonNode.Parse(structured.GetRawText());
-        if (node is not null)
-            result.StructuredContent = JsonSerializer.SerializeToElement(RedactNode(node, redaction, pii, 0));
+        if (node is null)
+            return;
+
+        // isError is derived from the serialized structured result because the SDK
+        // owns the ToolResult->CallToolResult mapping; McpHttpIntegrationTests guards this key.
+        if (node is JsonObject obj && obj["success"] is JsonValue success && success.TryGetValue<bool>(out var ok) && !ok)
+            result.IsError = true;
+
+        var changed = false;
+        RedactNode(node, redaction, pii, 0, ref changed);
+        if (changed)
+            result.StructuredContent = JsonSerializer.SerializeToElement(node);
     }
 
-    private static JsonNode? RedactNode(JsonNode? node, RedactionService redaction, PiiMode pii, int depth)
+    private static JsonNode? RedactNode(JsonNode? node, RedactionService redaction, PiiMode pii, int depth, ref bool changed)
     {
         if (node is null || depth > 32) return node;
         switch (node)
@@ -106,7 +106,7 @@ internal static class McpContractFilters
                 var entries = obj.ToArray();
                 obj.Clear();
                 foreach (var (key, value) in entries)
-                    obj[key] = RedactNode(value, redaction, pii, depth + 1);
+                    obj[key] = RedactNode(value, redaction, pii, depth + 1, ref changed);
                 return obj;
             }
             case JsonArray array:
@@ -114,11 +114,13 @@ internal static class McpContractFilters
                 var items = array.ToArray();
                 array.Clear();
                 foreach (var item in items)
-                    array.Add(RedactNode(item, redaction, pii, depth + 1));
+                    array.Add(RedactNode(item, redaction, pii, depth + 1, ref changed));
                 return array;
             }
             case JsonValue value when value.TryGetValue<string>(out var text):
-                return JsonValue.Create(redaction.Redact(text, pii));
+                var redacted = redaction.Redact(text, pii);
+                if (!string.Equals(redacted, text, StringComparison.Ordinal)) changed = true;
+                return JsonValue.Create(redacted);
             default:
                 return node;
         }

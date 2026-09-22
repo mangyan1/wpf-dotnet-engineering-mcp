@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using EngineeringMcp.Contracts;
 
 namespace EngineeringMcp.Security;
@@ -31,6 +32,10 @@ public class FilePolicyProvider
         }
 
         var fullPath = Path.GetFullPath(path);
+        // Only check for reparse points when the policy file exists, so a missing file surfaces the
+        // real file-not-found error instead of a misleading reparse-point failure.
+        if (File.Exists(fullPath) && PathGuard.ContainsReparsePoint(fullPath))
+            throw new InvalidDataException("The policy file path contains a reparse point; symbolic links and junctions are denied for policy loading.");
         var json = File.ReadAllText(fullPath);
         var options = new JsonSerializerOptions
         {
@@ -51,14 +56,22 @@ public class FilePolicyProvider
                 ReadRoots = deserialized.Filesystem.ReadRoots
                     .Select(root => Path.GetFullPath(root, policyDirectory))
                     .ToArray()
-            }
+            },
+            // Relative process paths resolve against the policy file directory, mirroring readRoots,
+            // so matching does not depend on the host process working directory.
+            Processes = new ProcessPolicy(deserialized.Processes.Allow
+                .Select(rule => rule with
+                {
+                    Path = string.IsNullOrWhiteSpace(rule.Path) ? rule.Path : Path.GetFullPath(rule.Path, policyDirectory)
+                })
+                .ToArray())
         };
         PolicyValidator.Validate(Current);
         Source = fullPath;
     }
 }
 
-public static class PolicyValidator
+public static partial class PolicyValidator
 {
     private static readonly HashSet<string> KnownProfiles = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -78,6 +91,8 @@ public static class PolicyValidator
             throw new InvalidDataException("pii 'Off' is not permitted. Use Mask, Hash, or Remove.");
         if (policy.Audit.RetentionDays is < 1 or > 3650)
             throw new InvalidDataException("audit.retentionDays must be between 1 and 3650.");
+        if (!string.IsNullOrWhiteSpace(policy.Audit.Directory) && !Path.IsPathFullyQualified(policy.Audit.Directory))
+            throw new InvalidDataException("audit.directory must be an absolute path when configured.");
         if (policy.Screenshots.Enabled && !policy.Screenshots.FailClosedOnRedactionError)
             throw new InvalidDataException("Enabled screenshots must fail closed when redaction fails.");
         if (policy.EnabledToolProfiles is { Count: > 0 })
@@ -90,12 +105,29 @@ public static class PolicyValidator
         var duplicateRule = policy.Processes.Allow.GroupBy(rule => rule.Name, StringComparer.OrdinalIgnoreCase).FirstOrDefault(group => group.Count() > 1);
         if (duplicateRule is not null)
             throw new InvalidDataException($"Duplicate process allow rule for '{duplicateRule.Key}'.");
+        foreach (var rule in policy.Processes.Allow)
+        {
+            if (!string.IsNullOrWhiteSpace(rule.Sha256) && !Sha256Regex().IsMatch(rule.Sha256))
+                throw new InvalidDataException("processes.allow sha256 values must contain exactly 64 hexadecimal characters.");
+            if (string.IsNullOrWhiteSpace(rule.Path) && string.IsNullOrWhiteSpace(rule.Sha256))
+                throw new InvalidDataException(
+                    $"Process allow rule '{rule.Name}' must specify an exact executable path or sha256; a name-only rule would match any executable of that name.");
+        }
         if (policy.EnabledTools is { Count: > 0 } && policy.DisabledTools is { Count: > 0 })
         {
             var overlap = policy.EnabledTools.Intersect(policy.DisabledTools, StringComparer.Ordinal).FirstOrDefault();
             if (overlap is not null)
                 throw new InvalidDataException($"Tool '{overlap}' cannot be both enabled and disabled.");
         }
+        foreach (var toolName in (policy.EnabledTools ?? []).Concat(policy.DisabledTools ?? []))
+        {
+            if (toolName is null || !ToolNameRegex().IsMatch(toolName))
+                throw new InvalidDataException("enabledTools and disabledTools entries must match ^[a-z0-9_-]+$.");
+        }
+        if (policy.UiActions.DenyAutomationIds is null || policy.UiActions.DenyAutomationIds.Any(string.IsNullOrWhiteSpace) ||
+            policy.UiActions.DestructiveAutomationIds is null || policy.UiActions.DestructiveAutomationIds.Any(string.IsNullOrWhiteSpace) ||
+            policy.UiActions.StatefulAutomationIds is null || policy.UiActions.StatefulAutomationIds.Any(string.IsNullOrWhiteSpace))
+            throw new InvalidDataException("uiActions automationId entries must be non-empty.");
 
         foreach (var root in policy.Filesystem.ReadRoots)
         {
@@ -106,4 +138,10 @@ public static class PolicyValidator
                 throw new InvalidDataException("A filesystem read root cannot be an entire drive or filesystem root.");
         }
     }
+
+    [GeneratedRegex("^[A-Fa-f0-9]{64}$", RegexOptions.CultureInvariant)]
+    private static partial Regex Sha256Regex();
+
+    [GeneratedRegex("^[a-z0-9_-]+$", RegexOptions.CultureInvariant)]
+    private static partial Regex ToolNameRegex();
 }

@@ -75,7 +75,7 @@ The optional in-process probes use current-user-only named pipes, strong fixed-t
 
 ## Policy and audit integrity
 
-Policy files are versioned and semantically validated before use. Open network defaults, disabled PII protection, invalid retention, unsafe screenshot failure mode, duplicate process rules, unknown profiles, and contradictory exact tool rules fail closed. Audit records include session/client identity, a policy fingerprint, correlation ID, duration, and monotonic sequence. Each host writes a separate append stream. If an authorization or completion audit write fails, the host marks audit unhealthy and denies subsequent audited operations until restart after repair.
+Policy files are versioned and semantically validated before use. Open network defaults, disabled PII protection, invalid retention, unsafe screenshot failure mode, duplicate process rules, name-only process rules (a rule must pin an exact executable path or SHA-256), unknown profiles, and contradictory exact tool rules fail closed. Policy-relative process paths and read roots resolve against the policy file's own directory. Audit records include session/client identity, a policy fingerprint, correlation ID, duration, monotonic sequence, and a per-record SHA-256 hash chain rooted at a fixed genesis value. Each host writes a separate append stream per UTC day named with its start time and process id, and retention pruning re-runs on every rollover. If an authorization or completion audit write fails, the host marks audit unhealthy and denies subsequent audited operations until restart after repair.
 
 ## Prompt injection
 

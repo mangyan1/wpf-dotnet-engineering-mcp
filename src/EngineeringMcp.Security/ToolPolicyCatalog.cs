@@ -45,14 +45,8 @@ public static class ToolPolicyCatalog
             return new(false, "UNKNOWN_TOOL", $"Tool '{toolName}' is not in the Engineering MCP contract.",
                 "Call tools/list and use an exact published tool name.");
 
-        if (policy.DisabledTools?.Contains(toolName, StringComparer.Ordinal) == true)
-            return new(false, "TOOL_DISABLED", $"Tool '{toolName}' is listed in disabledTools.",
-                $"Keep the denial or remove '{toolName}' from disabledTools in an approved policy, then restart the MCP server.");
-
-        if (policy.EnabledTools is { Count: > 0 } &&
-            !policy.EnabledTools.Contains(toolName, StringComparer.Ordinal))
-            return new(false, "TOOL_NOT_ENABLED", $"Tool '{toolName}' is not present in enabledTools.",
-                $"Add '{toolName}' to enabledTools in an approved policy, then restart the MCP server.");
+        if (ToolListRules.DenyFor(policy, toolName) is { } toolListDenial)
+            return new(toolListDenial.Allowed, toolListDenial.Code, toolListDenial.Reason, toolListDenial.Remediation);
 
         if (policy.EnabledToolProfiles is { Count: > 0 } &&
             !policy.EnabledToolProfiles.Contains(definition.Profile, StringComparer.OrdinalIgnoreCase))
