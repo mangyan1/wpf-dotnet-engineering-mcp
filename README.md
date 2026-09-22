@@ -17,7 +17,7 @@ The Windows Control Center keeps the shared local MCP runtime, validation, edito
 ## Why this repository is verifiable
 
 - Source, build scripts, release notes, dependency lock files, and security policies are public and versioned together.
-- GitHub CI restores locked dependencies, builds on Windows with the pinned .NET SDK, builds the MSI installer, runs all automated tests (uploading test results only for failed runs), and executes the static, product-neutrality, sanitized secret, and CodeQL gates.
+- GitHub CI restores locked dependencies, builds on Windows with the pinned .NET SDK, builds the MSI installer, runs all automated tests (uploading test results only for failed runs), and executes the static, product-neutrality, and sanitized secret gates; CodeQL runs through GitHub's default code-scanning setup (actions, C#, JavaScript/TypeScript, and Python).
 - The MCP HTTP endpoint is loopback-only, authenticated, non-cacheable, and bounded. Network access from tools is denied unless an explicit policy authorizes it.
 - The application contains no telemetry, analytics, crash reporting, or remote logging. It does not upload source, screenshots, diagnostics, or application data automatically.
 - Release packages contain an SPDX SBOM, dependency inventory, SHA-256 manifest, security documentation, and code-signing disclosure.
