@@ -31,7 +31,7 @@ Additional source verification on 2026-08-29:
 - Release hardening produced the timestamped development-self-signed `EngineeringMcp-0.3.7-preview.6-win-x64.zip` and `EngineeringMcp-0.3.7-preview.6-win-x64-Setup.msi`; the manifest reports version `0.3.7-preview.6` on the `preview` channel, binds the package to the exact source commit, and packages the Apache-2.0 license, mangyan1 notice, universal WPF workspace guide, and code-signing policy.
 - The final MSI passed install, uninstall, reinstall, durable policy/VS Code preservation, and installed 76-tool acceptance. The installed host reports `0.3.7-preview.6`.
 - All 57 static contract/security checks passed, including product-neutrality, inert centralized-property/manual-executable authorization, packaged code-signing policy, dependency-manifest coverage, pinned read-only CI, dependency-update, and ownership gates.
-- Public GitHub CI uses locked application and installer dependency restore, the pinned .NET SDK, commit-pinned official actions, a NuGet advisory gate, pull-request dependency review, read-only token permissions, no release secrets, an MSI build job, a CodeQL scan, and test-result (TRX) upload only for failed runs.
+- Public GitHub CI uses locked application and installer dependency restore, the pinned .NET SDK, commit-pinned official actions, a NuGet advisory gate, pull-request dependency review, read-only token permissions, no release secrets, an MSI build job, and test-result (TRX) upload only for failed runs; CodeQL scans run through GitHub's default code-scanning setup.
 - A real application integration fixture returned backend adapter status `ready` with one bounded request observation and a selector audit of 43/43 stable actionable selectors with zero missing or duplicate IDs; the fixture remains external to the universal MCP product.
 
 | Area | Status | Notes |
@@ -67,7 +67,7 @@ Additional source verification on 2026-09-21 with .NET SDK 10.0.400:
 
 - Locked restore with `--runtime win-x64` passed with no NuGet audit findings; Release build passed with 0 warnings and 0 errors.
 - `dotnet test` Release: 86 tests passed and the opt-in installed-package acceptance test skipped by design; the suite now includes 42 adversarial/unit tests covering `DiagnosisService` decision logic, audit hash-chain re-walk verification, policy denials, audit-sink fail-closed latching, file-guard escapes, bounded framed IPC, and redaction.
-- All 57 static contract checks passed; the public CI now builds the MSI in a dedicated job, uploads test results (TRX) only on failed runs, and runs a SHA-pinned CodeQL scan.
+- All 57 static contract checks passed; the public CI builds the MSI in a dedicated job, uploads test results (TRX) only on failed runs, and CodeQL scans (actions, C#, JavaScript/TypeScript, Python) run through GitHub's default code-scanning setup.
 
 ## Developer Control Center verification target
 
